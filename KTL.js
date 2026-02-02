@@ -20329,46 +20329,206 @@ function Ktl($, appInfo) {
                 });
             },
 
-            addCheckboxesToTable: function (viewId, withMaster = true) {
-                if (!viewId) return;
+            /**
+             * Adds checkboxes to a table view with consistent class naming and shift-click support.
+             * Supports both legacy boolean parameter and modern options object for flexibility.
+             *
+             * @param {string} viewId - The ID of the view
+             * @param {boolean|Object} optionsOrWithMaster - Options object or legacy boolean for withMaster
+             * @param {boolean} [optionsOrWithMaster.addMasterCheckbox=true] - Add header master checkbox
+             * @param {boolean} [optionsOrWithMaster.addColumnCheckboxes=false] - Add checkboxes to column headers for bulk edit
+             * @param {boolean} [optionsOrWithMaster.isBulkOps=false] - Whether this is for bulk operations (adds data attributes)
+             * @param {Function} [optionsOrWithMaster.onMasterChange=null] - Callback when master checkbox changes: (viewId, isChecked, checkedRows) => {}
+             * @param {Function} [optionsOrWithMaster.onRowChange=null] - Callback when row checkbox changes: (viewId, checkbox, row, checkedRows) => {}
+             * @returns {boolean} - True if checkboxes were added
+             *
+             * @example
+             * // Legacy style (backward compatible)
+             * ktl.views.addCheckboxesToTable('view_123', true);
+             *
+             * // Modern style with options and callbacks
+             * ktl.views.addCheckboxesToTable('view_123', {
+             *     addMasterCheckbox: true,
+             *     addColumnCheckboxes: true,
+             *     isBulkOps: true,
+             *     onMasterChange: (viewId, isChecked, checkedRows) => {
+             *         console.log('Master changed', isChecked, 'Total rows:', checkedRows.length);
+             *     },
+             *     onRowChange: (viewId, checkbox, row, checkedRows) => {
+             *         console.log('Row changed', row.id, 'Total checked:', checkedRows.length);
+             *         // checkedRows is array of checked row elements
+             *     }
+             * });
+             */
+            addCheckboxesToTable: function (viewId, optionsOrWithMaster = true) {
+                if (!viewId) return false;
+
+                // Handle backward compatibility: boolean parameter vs options object
+                const opts = typeof optionsOrWithMaster === 'boolean'
+                    ? {
+                        addMasterCheckbox: optionsOrWithMaster,
+                        addColumnCheckboxes: false,
+                        isBulkOps: false,
+                        onMasterChange: null,
+                        onRowChange: null
+                    }
+                    : {
+                        addMasterCheckbox: true,
+                        addColumnCheckboxes: false,
+                        isBulkOps: false,
+                        onMasterChange: null,
+                        onRowChange: null,
+                        ...optionsOrWithMaster
+                    };
+
                 const viewType = ktl.views.getViewType(viewId);
                 if (viewType !== 'table' && viewType !== 'search') {
                     ktl.log.clog('purple', 'addCheckboxesToTable - unsupported view type', viewId, viewType);
-                    return;
+                    return false;
                 }
 
-                //Only add checkboxes if there's data and checkboxes not yet added.
-                var selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
-                if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table td:nth-child(1) input[type=checkbox]')) {
-                    if (withMaster) { // Add the master checkbox to to the header to select/unselect all
-                        $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
-                        $('#' + viewId + ' .kn-table thead input:first').addClass('masterSelector');
-                        $('#' + viewId + ' .masterSelector').change(function () {
-                            $('#' + viewId + ' tr td input:checkbox').each(function () {
-                                $(this).attr('checked', $('#' + viewId + ' th input:checkbox').attr('checked') !== undefined);
-                            });
+                const viewElement = document.getElementById(viewId);
+                if (!viewElement) return false;
 
-                            //TODO: onMasterCheckboxChange(viewId);
-                        });
-                    } else {
-                        //Add blank cell to keep header properly aligned.
-                        $('#' + viewId + ' thead tr').prepend('<th class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></th>');
+                // Check if data exists and checkboxes not already added
+                const noDataCell = viewElement.querySelector('div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
+                const existingCheckbox = viewElement.querySelector('.kn-table th:nth-child(1) input[type=checkbox]');
+
+                if (noDataCell || existingCheckbox) {
+                    return false;
+                }
+
+                const table = viewElement.querySelector('.kn-table');
+                if (!table) return false;
+
+                const thead = table.querySelector('thead tr');
+                const tbody = table.querySelector('tbody');
+                if (!thead || !tbody) return false;
+
+                const rowCheckboxClass = opts.isBulkOps ? 'ktlRowCheckbox ktlBulkOpsCheckbox bulkEditCb' : 'ktlRowCheckbox';
+                const masterCheckboxClass = opts.isBulkOps ? 'ktlMasterCheckbox ktlBulkOpsCheckbox bulkEditCb' : 'ktlMasterCheckbox';
+                const columnCheckboxClass = 'ktlColumnCheckbox ktlBulkOpsCheckbox bulkEditHeaderCbox ktlDisplayNone';
+
+                // Add header row
+                const headerTh = document.createElement('th');
+                headerTh.style.width = '24px';
+
+                if (opts.addMasterCheckbox) {
+                    const masterCheckbox = document.createElement('input');
+                    masterCheckbox.type = 'checkbox';
+                    masterCheckbox.className = masterCheckboxClass;
+                    if (opts.isBulkOps) {
+                        masterCheckbox.setAttribute('data-ktl-bulkops', '1');
                     }
 
-                    //Add a checkbox to each row in the table body
-                    $('#' + viewId + ' tbody tr').each(function () {
-                        if (this.id && !this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
-                            $(this).prepend('<td><input type="checkbox"></td>');
-                        } else if (this.classList.contains('kn-table-totals')) {
-                            $(this).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
+                    masterCheckbox.addEventListener('change', function () {
+                        const isChecked = this.checked;
+                        const rowCheckboxes = viewElement.querySelectorAll('tbody .ktlRowCheckbox');
+                        rowCheckboxes.forEach(cb => cb.checked = isChecked);
+
+                        if (typeof opts.onMasterChange === 'function') {
+                            const checkedRows = isChecked
+                                ? Array.from(rowCheckboxes).map(cb => cb.closest('tr')).filter(r => r !== null)
+                                : [];
+                            opts.onMasterChange(viewId, isChecked, checkedRows);
                         }
                     });
 
-                    $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb');
-
-                    // Add shift-click functionality for range selection
-                    ktl.views.addShiftClickToCheckboxes(viewId);
+                    headerTh.appendChild(masterCheckbox);
+                } else {
+                    // Add blank cell for alignment
+                    headerTh.className = 'ktlBlankCell';
+                    headerTh.style.backgroundColor = '#eee';
+                    headerTh.style.borderTop = '1px solid #dadada';
                 }
+
+                thead.insertBefore(headerTh, thead.firstChild);
+
+                // Add column header checkboxes for bulk edit
+                if (opts.addColumnCheckboxes) {
+                    const headerCells = Array.from(thead.querySelectorAll('th'));
+
+                    headerCells.forEach((th, idx) => {
+                        if (idx === 0) return; // Skip first column (checkbox column we just added)
+
+                        // Check if this column has inline-editable cells
+                        const bodyCell = tbody.querySelector(`tr:not(.kn-table-group) td:nth-child(${idx + 1})`);
+                        if (!bodyCell || !bodyCell.classList.contains('cell-edit') || bodyCell.classList.contains('ktlNoInlineEdit')) {
+                            return;
+                        }
+
+                        // Check for field keywords that prevent bulk edit
+                        let skipField = false;
+                        const fieldId = th.classList[0];
+                        if (fieldId && fieldId.startsWith('field_')) {
+                            const fieldType = ktl.fields.getFieldType(fieldId);
+                            if (fieldType === 'file') {
+                                skipField = true;
+                            } else {
+                                const kw = {};
+                                ktl.fields.getFieldKeywords(fieldId, kw);
+                                if (kw && Object.keys(kw).length > 0 && (kw[fieldId]?._lud || kw[fieldId]?._lub)) {
+                                    skipField = true;
+                                }
+                            }
+                        }
+
+                        if (!skipField && !th.querySelector('.ktlColumnCheckbox')) {
+                            const labelEl = th.querySelector('.table-fixed-label');
+                            if (labelEl) {
+                                labelEl.style.display = 'inline-flex';
+
+                                const columnCheckbox = document.createElement('input');
+                                columnCheckbox.type = 'checkbox';
+                                columnCheckbox.className = columnCheckboxClass;
+                                if (opts.isBulkOps) {
+                                    columnCheckbox.setAttribute('data-ktl-bulkops', '1');
+                                }
+
+                                labelEl.appendChild(columnCheckbox);
+                                th.classList.add('ktlColumnHeaderCheckboxTh');
+                            }
+                        }
+                    });
+                }
+
+                // Add row checkboxes
+                const bodyRows = Array.from(tbody.querySelectorAll('tr'));
+                bodyRows.forEach(row => {
+                    const td = document.createElement('td');
+
+                    if (row.id && !row.classList.contains('kn-table-totals') && !row.classList.contains('kn-table-group')) {
+                        const rowCheckbox = document.createElement('input');
+                        rowCheckbox.type = 'checkbox';
+                        rowCheckbox.className = rowCheckboxClass;
+                        if (opts.isBulkOps) {
+                            rowCheckbox.setAttribute('data-ktl-bulkops', '1');
+                        }
+
+                        // Add change listener for row checkbox callback
+                        if (typeof opts.onRowChange === 'function') {
+                            rowCheckbox.addEventListener('change', function () {
+                                const checkedRows = Array.from(viewElement.querySelectorAll('tbody tr .ktlRowCheckbox:checked'))
+                                    .map(cb => cb.closest('tr'))
+                                    .filter(r => r !== null);
+                                opts.onRowChange(viewId, this, row, checkedRows);
+                            });
+                        }
+
+                        td.appendChild(rowCheckbox);
+                    } else if (row.classList.contains('kn-table-totals')) {
+                        td.className = 'ktlBlankCell';
+                        td.style.backgroundColor = '#eee';
+                        td.style.borderTop = '1px solid #dadada';
+                    }
+
+                    row.insertBefore(td, row.firstChild);
+                });
+
+                // Add shift-click functionality
+                ktl.views.addShiftClickToCheckboxes(viewId);
+
+                return true;
             },
 
             // Shared: convert simple text markup tokens into HTML
@@ -27765,7 +27925,7 @@ function Ktl($, appInfo) {
             if (!bulkOpsActive[viewId] || !isBulkOpsCheckbox(e.target, viewId)) return;
 
             //Upon Ctrl+click on master checkbox, toggle all row checkboxes on or off.
-            if (e.target.classList.contains('masterSelector')) {
+            if (e.target.classList.contains('ktlMasterCheckbox') || e.target.classList.contains('masterSelector')) {
                 e.stopImmediatePropagation();
                 preventClick = true;
                 const checkedRows = $(`#${viewId} tbody ${bulkOpsCheckboxSelector}:checked`);
@@ -27776,11 +27936,11 @@ function Ktl($, appInfo) {
             }
 
             //Upon Ctrl+click on a header checkbox, toggle all header checkboxes on or off.
-            if (e.target.classList.contains('bulkEditHeaderCbox')) {
+            if (e.target.classList.contains('ktlColumnCheckbox') || e.target.classList.contains('bulkEditHeaderCbox')) {
                 e.stopImmediatePropagation();
                 preventClick = true;
-                const checked = $('#' + viewId + ' .bulkEditHeaderCbox:checked');
-                $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', checked.length === 0);
+                const checked = $(`#${viewId} .ktlColumnCheckbox:checked, #${viewId} .bulkEditHeaderCbox:checked`);
+                $(`#${viewId} .ktlColumnCheckbox, #${viewId} .bulkEditHeaderCbox`).prop('checked', checked.length === 0);
                 updateBulkOpsGuiElements(viewId);
             }
         })
@@ -27804,7 +27964,7 @@ function Ktl($, appInfo) {
                     }
 
                     if (e.target.closest('td')) //If click in td row, uncheck master checkbox in header.
-                        $(`#${viewId} .masterSelector`).first().prop('checked', false);
+                        $(`#${viewId} .ktlMasterCheckbox, #${viewId} .masterSelector`).first().prop('checked', false);
                     else if (e.target.closest('th')) {
                         const fieldId = Array.from(e.target.closest('th').classList).find(className => className.startsWith('field_'));
                         //Also check/uncheck any duplicate columns, if any.
@@ -27858,7 +28018,7 @@ function Ktl($, appInfo) {
             if (!viewId) return;
 
             bulkOpsHeaderArray = [];
-            $('#' + viewId + ' .bulkEditHeaderCbox').each((idx, cb) => {
+            $('#' + viewId + ' .ktlColumnCheckbox, #' + viewId + ' .bulkEditHeaderCbox').each((idx, cb) => {
                 let fieldId = $(cb).closest('th');
                 fieldId = fieldId.attr('class').split(' ')[0].split(':')[0];
                 if (fieldId.startsWith('field_')) {
@@ -28028,75 +28188,17 @@ function Ktl($, appInfo) {
 
         function bulkOpsAddCheckboxesToTable(viewId) {
             if (!viewId) return;
-            const viewType = ktl.views.getViewType(viewId);
-            if (viewType !== 'table' && viewType !== 'search') {
-                ktl.log.clog('purple', 'bulkOpsAddCheckboxesToTable - unsupported view type', viewId, viewType);
-                return;
-            }
 
-            //Only add checkboxes if there's data and checkboxes not yet added.
-            const selNoData = $('#' + viewId + ' > div.kn-table-wrapper > table > tbody > tr > td.kn-td-nodata');
-            if (selNoData.length === 0 && !document.querySelector('#' + viewId + ' .kn-table th:nth-child(1) input[type=checkbox]')) {
-                // Add the master checkbox to the header to select/unselect all
-                $('#' + viewId + ' .kn-table thead tr').prepend('<th style="width: 24px;"><input type="checkbox"></th>');
-                $('#' + viewId + ' .kn-table thead input:first').addClass('masterSelector');
-                $('#' + viewId + ' .kn-table thead input:first').attr('data-ktl-bulkops', '1');
-                $('#' + viewId + ' .masterSelector').change(function () {
-                    const headerChecked = $('#' + viewId + ' th input:checkbox').prop('checked');
-                    $(`#${viewId} tbody ${bulkOpsCheckboxSelector}`).each(function () {
-                        $(this).prop('checked', headerChecked);
-                    });
+            const addColumnCheckboxes = viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy');
 
-                    updateBulkOpsGuiElements(viewId);
-                });
-
-                //Add a checkbox to each header that is inline-editable.
-                if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy')) {
-                    $('#' + viewId + ' thead th').each((idx, el) => {
-                        const inline = $('#' + viewId + ' tbody tr:not(.kn-table-group:first) td:nth-child(' + (idx) + ')');
-
-                        //Don't add checkboxes for headers having fields with these keywords.
-                        let kwNoCheckBox = false;
-                        const kw = {};
-                        const fieldId = el.classList[0];
-                        if (fieldId && fieldId.startsWith('field_')) {
-                            const fieldType = ktl.fields.getFieldType(fieldId);
-                            if (fieldType === 'file') //Not supported in API calls.
-                                kwNoCheckBox = true;
-                            else {
-                                ktl.fields.getFieldKeywords(fieldId, kw);
-                                if (!$.isEmptyObject(kw)) {
-                                    if (kw[fieldId]._lud || kw[fieldId]._lub)
-                                        kwNoCheckBox = true;
-                                }
-                            }
-                        }
-
-                        if (idx > 0 && inline.length && inline[0].classList.contains('cell-edit') && !inline[0].classList.contains('ktlNoInlineEdit') && !kwNoCheckBox && !$(el).find('.bulkEditHeaderCbox').length) {
-                            $(el).find('.table-fixed-label').css('display', 'inline-flex').append('<input type="checkbox">').addClass('bulkEditTh');
-                            $(el).find('input:checkbox').addClass('bulkEditHeaderCbox ktlDisplayNone').attr('data-ktl-bulkops', '1');
-                        }
-                    })
-
+            ktl.views.addCheckboxesToTable(viewId, {
+                addMasterCheckbox: true,
+                addColumnCheckboxes: addColumnCheckboxes,
+                isBulkOps: true,
+                onMasterChange: (vId) => {
+                    updateBulkOpsGuiElements(vId);
                 }
-
-                if (viewCanDoBulkOp(viewId, 'edit') || viewCanDoBulkOp(viewId, 'copy') || viewCanDoBulkOp(viewId, 'delete') || viewCanDoBulkOp(viewId, 'action'))
-                    $('#' + viewId + ' thead input:checkbox').addClass('bulkEditCb').attr('data-ktl-bulkops', '1');
-
-                //Add a checkbox to each row in the table body
-                $('#' + viewId + ' tbody tr').each(function () {
-                    if (this.id && !this.classList.contains('kn-table-totals') && !this.classList.contains('kn-table-group')) {
-                        $(this).prepend('<td><input type="checkbox"></td>');
-                    } else if (this.classList.contains('kn-table-totals')) {
-                        //Check if needed... $(this).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                    }
-                });
-
-                $('#' + viewId + ' tbody tr td input:checkbox').addClass('bulkEditCb').attr('data-ktl-bulkops', '1');
-
-                // Add shift-click functionality for range selection
-                ktl.views.addShiftClickToCheckboxes(viewId);
-            }
+            });
         }
 
         function addBulkOpsButtons(view, data) {
@@ -28245,9 +28347,9 @@ function Ktl($, appInfo) {
             if (document.querySelector('#ktl-bulk-copy-' + viewId)) return;
             const copyBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Copy', '', ['kn-button'], 'ktl-bulk-copy-' + viewId);
             copyBtn.addEventListener('click', function (e) {
-                let checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
+                let checkedFields = $('.ktlColumnCheckbox:is(:checked), .bulkEditHeaderCbox:is(:checked)');
                 if (!checkedFields.length)
-                    $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', true);
+                    $('#' + viewId + ' .ktlColumnCheckbox, #' + viewId + ' .bulkEditHeaderCbox').prop('checked', true);
 
                 apiData = {};
 
