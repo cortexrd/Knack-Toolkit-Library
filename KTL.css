@@ -538,6 +538,7 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	text-align: center;
 	display: block;
 	width: fit-content;
+	/* Top margin adjusted from -10px to 2px to avoid overlapping/tight spacing with surrounding header content. */
 	margin: 2px auto -10px auto;
 }
 
