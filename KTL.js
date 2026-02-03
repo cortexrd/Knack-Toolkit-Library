@@ -3845,6 +3845,830 @@ function Ktl($, appInfo) {
     })(); //Core
 
     //====================================================
+    // API feature (Knack API helper)
+    //====================================================
+
+    this.api = (function () {
+        /**
+         * @typedef {Object} KtlKnackApiOptions
+         * @property {boolean} [showSpinner=false] - Toggle Knack spinner during API calls.
+         * @property {number} [timeout=60000] - Request timeout in milliseconds.
+         * @property {boolean} [debug=false] - Enable console logging for API activity.
+         * @property {boolean} [developerOnly=false] - Restrict logs to developer roles when true.
+         * @property {string[]} [developerRoles=['Developer']] - Roles considered developers.
+         * @property {number} [maxRetries=3] - Max retry attempts for retryable errors.
+         * @property {number} [retryDelayBase=300] - Base delay for backoff in milliseconds.
+         * @property {number} [retryDelayMax=20000] - Max delay for backoff in milliseconds.
+         * @property {number[]} [retryOnStatus=[429,500,502,503,504]] - HTTP status codes to retry.
+         * @property {number} [writeConcurrency=4] - Max concurrent create/update requests.
+         * @property {number} [writeMinConcurrency=1] - Min concurrency after rate limiting.
+         * @property {number} [writeMaxConcurrency=4] - Upper bound for adaptive concurrency.
+         * @property {number} [writeRampDelayMs=2000] - Delay before ramping concurrency.
+         */
+
+        class KtlKnackApi {
+            /**
+             * @param {KtlKnackApiOptions} [options] - API configuration options.
+             */
+            constructor(options = {}) {
+                const cfg = typeof ktl?.core?.getCfg === 'function' ? ktl.core.getCfg() : {};
+                const cfgDeveloperRoles = Array.isArray(cfg?.developerRoles) ? cfg.developerRoles : null;
+                const cfgDeveloperOnly = cfgDeveloperRoles ? true : false;
+
+                this.options = {
+                    showSpinner: options.showSpinner === true,
+                    timeout: Number.isFinite(options.timeout) ? options.timeout : 60000,
+                    debug: options.debug === true,
+                    developerOnly: options.developerOnly === true
+                        ? true
+                        : (options.developerOnly === false ? false : cfgDeveloperOnly),
+                    developerRoles: Array.isArray(options.developerRoles)
+                        ? options.developerRoles
+                        : (cfgDeveloperRoles || ['Developer']),
+                    maxRetries: Number.isFinite(options.maxRetries) ? options.maxRetries : 3,
+                    retryDelayBase: Number.isFinite(options.retryDelayBase) ? options.retryDelayBase : 300,
+                    retryDelayMax: Number.isFinite(options.retryDelayMax) ? options.retryDelayMax : 20000,
+                    retryOnStatus: Array.isArray(options.retryOnStatus)
+                        ? options.retryOnStatus
+                        : [429, 500, 502, 503, 504],
+                    writeConcurrency: Number.isFinite(options.writeConcurrency) ? options.writeConcurrency : 5,
+                    writeMinConcurrency: Number.isFinite(options.writeMinConcurrency) ? options.writeMinConcurrency : 1,
+                    writeMaxConcurrency: Number.isFinite(options.writeMaxConcurrency) ? options.writeMaxConcurrency : 5,
+                    writeRampDelayMs: Number.isFinite(options.writeRampDelayMs) ? options.writeRampDelayMs : 2000
+                };
+
+                this._initLogSettings();
+                this._initWriteQueue();
+            }
+
+            /**
+             * Enable or disable debug logs.
+             * @param {boolean} enabled
+             */
+            setDebug(enabled) {
+                this.options.debug = Boolean(enabled);
+                this._log('Debug mode updated', { enabled });
+            }
+
+            /**
+             * @returns {boolean} Whether logs are allowed for the current user.
+             */
+            canLog() {
+                return this._canShowLogs;
+            }
+
+            /**
+             * Get records from a view.
+             * @param {string} viewId
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>|Object>}
+             */
+            async getRecords(viewId, options = {}) {
+                const opts = options || {};
+                const params = this._buildQueryParams(opts);
+                const url = this._formatApiUrl(viewId) + this._formatParams(params);
+                const responseData = await this._request(url, { method: 'GET' }, opts.timeout);
+                return opts.rawResponse ? responseData : responseData?.records;
+            }
+
+            /**
+             * Get all records from a view across pages.
+             * @param {string} viewId
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>>}
+             */
+            async getAllRecords(viewId, options = {}) {
+                const opts = options || {};
+                const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
+                const firstPage = await this.getRecords(viewId, {
+                    filters: opts.filters,
+                    sorters: opts.sorters,
+                    page: 1,
+                    rows,
+                    rawResponse: true,
+                    timeout: opts.timeout
+                });
+
+                const totalPages = Number(firstPage?.total_pages || 0);
+                const totalRecords = Number(firstPage?.total_records || 0);
+                const allRecords = Array.isArray(firstPage?.records) ? [...firstPage.records] : [];
+
+                if (totalRecords === 0 || totalPages <= 1) return allRecords;
+
+                for (let page = 2; page <= totalPages; page += 1) {
+                    const nextPage = await this.getRecords(viewId, {
+                        filters: opts.filters,
+                        sorters: opts.sorters,
+                        page,
+                        rows,
+                        rawResponse: true,
+                        timeout: opts.timeout
+                    });
+
+                    if (Array.isArray(nextPage?.records)) {
+                        allRecords.push(...nextPage.records);
+                    }
+
+                    if (typeof opts.onProgress === 'function') {
+                        opts.onProgress({
+                            page,
+                            totalPages,
+                            recordsLoaded: allRecords.length,
+                            totalRecords,
+                            percentage: totalPages > 0 ? Math.round((page / totalPages) * 100) : 100
+                        });
+                    }
+                }
+
+                return allRecords;
+            }
+
+            /**
+             * Fetch a single record by ID.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
+            async getRecord(viewId, recordId, options = {}) {
+                const opts = options || {};
+                const url = this._formatApiUrl(viewId, recordId);
+                return await this._request(url, { method: 'GET' }, opts.timeout);
+            }
+
+            /**
+             * Fetch child records connected to a parent record.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {string} connectionFieldKey
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>|Object>}
+             */
+            async getRecordChildren(viewId, recordId, connectionFieldKey, options = {}) {
+                const opts = options || {};
+                const params = this._buildQueryParams(opts);
+                params[`${connectionFieldKey}_id`] = recordId;
+                const url = this._formatApiUrl(viewId) + this._formatParams(params);
+                const responseData = await this._request(url, { method: 'GET' }, opts.timeout);
+                return opts.rawResponse ? responseData : responseData?.records;
+            }
+
+            /**
+             * Fetch all connected child records.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {string} connectionFieldKey
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>>}
+             */
+            async getAllRecordChildren(viewId, recordId, connectionFieldKey, options = {}) {
+                const opts = options || {};
+                const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
+                const firstPage = await this.getRecordChildren(viewId, recordId, connectionFieldKey, {
+                    filters: opts.filters,
+                    sorters: opts.sorters,
+                    page: 1,
+                    rows,
+                    rawResponse: true,
+                    timeout: opts.timeout
+                });
+
+                const totalPages = Number(firstPage?.total_pages || 0);
+                const totalRecords = Number(firstPage?.total_records || 0);
+                const allRecords = Array.isArray(firstPage?.records) ? [...firstPage.records] : [];
+
+                if (totalRecords === 0 || totalPages <= 1) return allRecords;
+
+                for (let page = 2; page <= totalPages; page += 1) {
+                    const nextPage = await this.getRecordChildren(viewId, recordId, connectionFieldKey, {
+                        filters: opts.filters,
+                        sorters: opts.sorters,
+                        page,
+                        rows,
+                        rawResponse: true,
+                        timeout: opts.timeout
+                    });
+
+                    if (Array.isArray(nextPage?.records)) {
+                        allRecords.push(...nextPage.records);
+                    }
+
+                    if (typeof opts.onProgress === 'function') {
+                        opts.onProgress({
+                            page,
+                            totalPages,
+                            recordsLoaded: allRecords.length,
+                            totalRecords,
+                            percentage: totalPages > 0 ? Math.round((page / totalPages) * 100) : 100
+                        });
+                    }
+                }
+
+                return allRecords;
+            }
+
+            /**
+             * Create a record in a view.
+             * @param {string} viewId
+             * @param {Object} recordData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
+            async createRecord(viewId, recordData, refreshViews, options = {}) {
+                const opts = options || {};
+                const url = this._formatApiUrl(viewId);
+                return await this._enqueueWrite(async () => {
+                    const result = await this._request(
+                        url,
+                        {
+                            method: 'POST',
+                            body: this._prepareBody(recordData),
+                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs)
+                        },
+                        opts.timeout
+                    );
+                    await this._refreshAfterWrite(refreshViews);
+                    return result;
+                });
+            }
+
+            /**
+             * Update a record in a view.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {Object} recordData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
+            async updateRecord(viewId, recordId, recordData, refreshViews, options = {}) {
+                const opts = options || {};
+                const url = this._formatApiUrl(viewId, recordId);
+                return await this._enqueueWrite(async () => {
+                    const result = await this._request(
+                        url,
+                        {
+                            method: 'PUT',
+                            body: this._prepareBody(recordData),
+                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs)
+                        },
+                        opts.timeout
+                    );
+                    await this._refreshAfterWrite(refreshViews);
+                    return result;
+                });
+            }
+
+            /**
+             * Delete a record in a view.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
+            async deleteRecord(viewId, recordId, refreshViews, options = {}) {
+                const opts = options || {};
+                const url = this._formatApiUrl(viewId, recordId);
+                const result = await this._request(url, { method: 'DELETE' }, opts.timeout);
+                await this._refreshAfterWrite(refreshViews);
+                return result;
+            }
+
+            /**
+             * Refresh one or more views.
+             * @param {string|string[]} viewId
+             * @returns {Promise<void|void[]>}
+             */
+            async refreshView(viewId) {
+                if (Array.isArray(viewId)) {
+                    return Promise.all(viewId.map(id => this._refreshSingleView(id)));
+                }
+                return this._refreshSingleView(viewId);
+            }
+
+            /**
+             * Fetch application details.
+             * @param {string} [applicationId]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
+            async getApplication(applicationId, options = {}) {
+                const opts = options || {};
+                const appId = applicationId || Knack.application_id;
+                const base = this._getApiBaseUrl().replace(/\/$/, '');
+                const url = `${base}/application/${appId}`;
+                return await this._request(url, { method: 'GET' }, opts.timeout);
+            }
+
+            /**
+             * Build Knack filters for query parameters.
+             * @param {Array<Object>|Object} filters
+             * @returns {Object}
+             */
+            buildFilters(filters) {
+                if (!filters) return {};
+
+                if (filters.match && filters.rules) {
+                    return { filters: JSON.stringify(filters) };
+                }
+
+                const list = Array.isArray(filters) ? filters : [filters];
+                const formatted = {};
+
+                list.forEach((filter, index) => {
+                    const filterKey = `filters[${index}]`;
+                    if (filter.field) formatted[`${filterKey}[field]`] = filter.field;
+                    if (filter.operator) formatted[`${filterKey}[operator]`] = filter.operator;
+
+                    if (filter.value !== undefined) {
+                        if (Array.isArray(filter.value)) {
+                            filter.value.forEach((val, valIndex) => {
+                                formatted[`${filterKey}[value][${valIndex}]`] = val;
+                            });
+                        } else {
+                            formatted[`${filterKey}[value]`] = filter.value;
+                        }
+                    }
+
+                    if (filter.type) formatted[`${filterKey}[type]`] = filter.type;
+                });
+
+                return formatted;
+            }
+
+            /**
+             * Build Knack sorters for query parameters.
+             * @param {Array<Object>|Object} sorters
+             * @returns {Object}
+             */
+            buildSorters(sorters) {
+                if (!sorters) return {};
+
+                const list = Array.isArray(sorters) ? sorters : [sorters];
+                const formatted = {};
+
+                list.forEach((sorter, index) => {
+                    const sorterKey = `sort[${index}]`;
+                    if (sorter.field) formatted[`${sorterKey}[field]`] = sorter.field;
+                    formatted[`${sorterKey}[direction]`] = sorter.direction || 'asc';
+                });
+
+                return formatted;
+            }
+
+            /**
+             * Format URL parameters.
+             * @param {Object} params
+             * @returns {string}
+             * @private
+             */
+            _formatParams(params) {
+                if (!params || Object.keys(params).length === 0) return '';
+                const urlParams = new URLSearchParams();
+                Object.entries(params).forEach(([key, value]) => urlParams.append(key, value));
+                return `?${urlParams.toString()}`;
+            }
+
+            /**
+             * Build query params from common options.
+             * @param {Object} options
+             * @returns {Object}
+             * @private
+             */
+            _buildQueryParams(options = {}) {
+                let params = {};
+                if (options.filters) params = { ...params, ...this.buildFilters(options.filters) };
+                if (options.sorters) params = { ...params, ...this.buildSorters(options.sorters) };
+                if (Number.isFinite(options.page)) params.page = options.page;
+                if (Number.isFinite(options.rows)) params.rows_per_page = options.rows;
+                return params;
+            }
+
+            /**
+             * Initialize write queue for concurrency control.
+             * @private
+             */
+            _initWriteQueue() {
+                const max = Math.max(1, Math.floor(this.options.writeMaxConcurrency || 1));
+                const min = Math.max(1, Math.floor(this.options.writeMinConcurrency || 1));
+                const start = Math.min(max, Math.max(min, Math.floor(this.options.writeConcurrency || max)));
+
+                this._writeQueue = {
+                    max,
+                    min,
+                    current: start,
+                    active: 0,
+                    pausedUntil: 0,
+                    last429At: 0,
+                    rampDelayMs: Math.max(0, Math.floor(this.options.writeRampDelayMs || 0)),
+                    queue: []
+                };
+            }
+
+            /**
+             * Enqueue a write task respecting concurrency limits.
+             * @param {() => Promise<any>} task
+             * @returns {Promise<any>}
+             * @private
+             */
+            _enqueueWrite(task) {
+                return new Promise((resolve, reject) => {
+                    this._writeQueue.queue.push({ task, resolve, reject });
+                    this._drainWriteQueue();
+                });
+            }
+
+            /**
+             * Drain the write queue based on concurrency and pause state.
+             * @private
+             */
+            _drainWriteQueue() {
+                const q = this._writeQueue;
+                if (!q) return;
+
+                const now = Date.now();
+                if (q.pausedUntil > now) {
+                    const delay = Math.max(0, q.pausedUntil - now);
+                    setTimeout(() => this._drainWriteQueue(), delay + 1);
+                    return;
+                }
+
+                while (q.active < q.current && q.queue.length > 0) {
+                    const job = q.queue.shift();
+                    q.active += 1;
+
+                    Promise.resolve()
+                        .then(job.task)
+                        .then((result) => {
+                            q.active -= 1;
+                            this._maybeRampWriteConcurrency();
+                            job.resolve(result);
+                            this._drainWriteQueue();
+                        })
+                        .catch((error) => {
+                            q.active -= 1;
+                            job.reject(error);
+                            this._drainWriteQueue();
+                        });
+                }
+            }
+
+            /**
+             * Pause and lower concurrency after a rate limit response.
+             * @param {number} delayMs
+             * @private
+             */
+            _notifyWriteRateLimit(delayMs) {
+                const q = this._writeQueue;
+                if (!q) return;
+
+                const now = Date.now();
+                const pauseFor = Math.max(0, Math.floor(delayMs || 0));
+                const pauseUntil = now + pauseFor;
+
+                q.pausedUntil = Math.max(q.pausedUntil, pauseUntil);
+                q.last429At = now;
+                q.current = Math.max(q.min, Math.min(q.current, q.min));
+
+                if (q.queue.length > 0) {
+                    setTimeout(() => this._drainWriteQueue(), pauseFor + 1);
+                }
+            }
+
+            /**
+             * Gradually ramp concurrency after the pause window.
+             * @private
+             */
+            _maybeRampWriteConcurrency() {
+                const q = this._writeQueue;
+                if (!q || q.current >= q.max) return;
+                const now = Date.now();
+                if (q.last429At && (now - q.last429At) < q.rampDelayMs) return;
+                q.current = Math.min(q.max, q.current + 1);
+            }
+
+            /**
+             * Toggle the Knack spinner if configured.
+             * @param {boolean} show
+             * @private
+             */
+            _toggleSpinner(show) {
+                if (!this.options.showSpinner) return;
+                if (show) Knack.showSpinner();
+                else Knack.hideSpinner();
+            }
+
+            /**
+             * Build headers for Knack API calls.
+             * @returns {Object}
+             * @private
+             */
+            _buildHeaders() {
+                return {
+                    'Authorization': Knack.getUserToken(),
+                    'X-Knack-Application-Id': Knack.application_id,
+                    'X-Knack-REST-API-Key': 'knack',
+                    'Content-Type': 'application/json'
+                };
+            }
+
+            /**
+             * Format API URL for view-based operations.
+             * @param {string} viewId
+             * @param {string} [recordId]
+             * @returns {string}
+             * @private
+             */
+            _formatApiUrl(viewId, recordId = null) {
+                const sceneKey = ktl.scenes.getSceneKeyFromViewId(viewId);
+                if (!sceneKey) {
+                    throw new Error('KTL API error: invalid sceneKey');
+                }
+
+                const base = this._getApiBaseUrl().replace(/\/$/, '');
+                let apiURL = `${base}/pages/${sceneKey}/views/${viewId}/records/`;
+                if (recordId) apiURL += recordId;
+                return apiURL;
+            }
+
+            /**
+             * Resolve API base URL based on HIPAA settings.
+             * @returns {string}
+             * @private
+             */
+            _getApiBaseUrl() {
+                return Knack?.api_dev || 'https://api.knack.com/v1';
+            }
+
+            /**
+             * Perform an Ajax request with retries, backoff, and timeout.
+             * @param {string} url
+             * @param {Object} options
+             * @param {number} [timeoutOverride]
+             * @returns {Promise<Object>}
+             * @private
+             */
+            async _request(url, options = {}, timeoutOverride) {
+                const maxRetries = this.options.maxRetries;
+                const maxAttempts = 1 + maxRetries;
+                const retryOnStatus = this.options.retryOnStatus;
+                const baseDelay = this.options.retryDelayBase;
+                const maxDelay = this.options.retryDelayMax;
+                const timeoutMs = Number.isFinite(timeoutOverride) ? timeoutOverride : this.options.timeout;
+
+                let attempt = 0;
+                const { rateLimitHandler, ...ajaxOptions } = options || {};
+
+                this._toggleSpinner(true);
+
+                try {
+                    while (attempt < maxAttempts) {
+                        attempt += 1;
+
+                        try {
+                            const result = await new Promise((resolve, reject) => {
+                                $.ajax({
+                                    url: url,
+                                    type: ajaxOptions.method || 'GET',
+                                    crossDomain: true,
+                                    timeout: timeoutMs,
+                                    headers: this._buildHeaders(),
+                                    data: ajaxOptions.body,
+                                    success: function (data) {
+                                        resolve(data);
+                                    },
+                                    error: function (jqXHR) {
+                                        reject(jqXHR);
+                                    }
+                                });
+                            });
+
+                            this._log('API response', result);
+                            return result;
+                        } catch (jqXHR) {
+                            const status = jqXHR?.status;
+                            const isRetryable = retryOnStatus.includes(status);
+                            if (!isRetryable || attempt >= maxAttempts) {
+                                throw this._buildRequestError(jqXHR);
+                            }
+
+                            const retryIndex = attempt - 1;
+                            const delay = this._computeBackoffMs(baseDelay, maxDelay, retryIndex);
+
+                            if (status === 429 && typeof rateLimitHandler === 'function') {
+                                rateLimitHandler(delay);
+                            }
+
+                            this._log('Retrying request', { status, attempt, delay }, 'warn');
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        }
+                    }
+                } finally {
+                    this._toggleSpinner(false);
+                }
+
+                throw new Error('Max retries exceeded');
+            }
+
+            /**
+             * Build a structured error from a jQuery XHR object.
+             * @param {Object} jqXHR
+             * @returns {Error}
+             * @private
+             */
+            _buildRequestError(jqXHR) {
+                const status = jqXHR?.status || 0;
+                const responseText = jqXHR?.responseText || '';
+                let message = jqXHR?.statusText || 'Unknown error';
+
+                try {
+                    const json = responseText ? JSON.parse(responseText) : null;
+                    message = json?.message || json?.error || message;
+                } catch (e) {
+                    // ignore parse errors
+                }
+
+                const error = new Error(`API error ${status}: ${message}`);
+                error.status = status;
+                error.body = responseText || null;
+                return error;
+            }
+
+            /**
+             * Compute a jittered exponential backoff delay.
+             * @param {number} baseDelay
+             * @param {number} maxDelay
+             * @param {number} retryIndex
+             * @returns {number}
+             * @private
+             */
+            _computeBackoffMs(baseDelay, maxDelay, retryIndex) {
+                const exp = Math.pow(2, Math.max(0, retryIndex - 1));
+                const cap = Math.min(baseDelay * exp, maxDelay);
+                return Math.floor(Math.random() * cap);
+            }
+
+            /**
+             * Initialize logging behavior based on role settings.
+             * @private
+             */
+            _initLogSettings() {
+                this._canShowLogs = true;
+
+                if (!this.options.developerOnly) return;
+                if (typeof Knack?.getUserRoleNames !== 'function') {
+                    this._canShowLogs = false;
+                    return;
+                }
+
+                try {
+                    const userRoles = Knack.getUserRoleNames();
+                    this._canShowLogs = this.options.developerRoles.some(role => userRoles.includes(role));
+                } catch (error) {
+                    this._canShowLogs = false;
+                    console.warn('KTL API: Unable to determine user role. Logs disabled.');
+                }
+            }
+
+            /**
+             * Log API activity when enabled.
+             * @param {string} message
+             * @param {*} [data]
+             * @param {'info'|'warn'|'error'} [level='info']
+             * @private
+             */
+            _log(message, data, level = 'info') {
+                if (!this.options.debug || !this._canShowLogs) return;
+
+                const prefix = `[KTL API] ${message}`;
+                const payload = data === undefined ? '' : data;
+
+                if (level === 'warn') console.warn(prefix, payload);
+                else if (level === 'error') console.error(prefix, payload);
+                else console.log(prefix, payload);
+            }
+
+            /**
+             * Refresh views after write operations.
+             * @param {string|string[]} refreshViews
+             * @returns {Promise<void|void[]>}
+             * @private
+             */
+            async _refreshAfterWrite(refreshViews) {
+                if (!refreshViews) return;
+                await this.refreshView(refreshViews);
+            }
+
+            /**
+             * Refresh a single view with fallbacks.
+             * @param {string} viewId
+             * @returns {Promise<void>}
+             * @private
+             */
+            async _refreshSingleView(viewId) {
+                if (!viewId) return;
+                try {
+                    await ktl.views.refreshView(viewId);
+                } catch (error) {
+                    this._log('View refresh failed', { viewId, error }, 'warn');
+                }
+            }
+
+            /**
+             * Prepare a JSON body for requests.
+             * @param {Object} data
+             * @returns {string}
+             * @private
+             */
+            _prepareBody(data) {
+                if (!data) return null;
+                const converter = typeof convertDateTimeToIso === 'function' ? convertDateTimeToIso : (val) => val;
+                return JSON.stringify(converter(data));
+            }
+
+        }
+
+        const apiInstance = new KtlKnackApi();
+
+        return {
+            /**
+             * Create a new API instance with custom options.
+             * @param {KtlKnackApiOptions} [options]
+             * @returns {KtlKnackApi}
+             */
+            create: function (options = {}) {
+                return new KtlKnackApi(options);
+            },
+
+            /**
+             * Enable or disable debug logging on the shared instance.
+             * @param {boolean} enabled
+             */
+            setDebug: function (enabled) {
+                apiInstance.setDebug(enabled);
+            },
+
+            /**
+             * Whether logs are permitted for the shared instance.
+             * @returns {boolean}
+             */
+            canLog: function () {
+                return apiInstance.canLog();
+            },
+
+            getRecords: function (...args) {
+                return apiInstance.getRecords(...args);
+            },
+
+            getAllRecords: function (...args) {
+                return apiInstance.getAllRecords(...args);
+            },
+
+            getRecord: function (...args) {
+                return apiInstance.getRecord(...args);
+            },
+
+            getRecordChildren: function (...args) {
+                return apiInstance.getRecordChildren(...args);
+            },
+
+            getAllRecordChildren: function (...args) {
+                return apiInstance.getAllRecordChildren(...args);
+            },
+
+            createRecord: function (...args) {
+                return apiInstance.createRecord(...args);
+            },
+
+            updateRecord: function (...args) {
+                return apiInstance.updateRecord(...args);
+            },
+
+            deleteRecord: function (...args) {
+                return apiInstance.deleteRecord(...args);
+            },
+
+            refreshView: function (...args) {
+                return apiInstance.refreshView(...args);
+            },
+
+            buildFilters: function (...args) {
+                return apiInstance.buildFilters(...args);
+            },
+
+            buildSorters: function (...args) {
+                return apiInstance.buildSorters(...args);
+            },
+
+            getApplication: function (...args) {
+                return apiInstance.getApplication(...args);
+            }
+        };
+    })();
+
+    //====================================================
     //Storage feature
     //Utilities related to cookies and localStorage.
     var secureLs = null;
