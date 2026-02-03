@@ -20448,6 +20448,7 @@ function Ktl($, appInfo) {
              * @param {string} viewId - Knack view id for a table/search view.
              * @param {boolean|Object} [withMaster=true] - If boolean, toggles master checkbox. If object, treated as options.
              * @param {Object} [options={}] - Configuration for checkbox creation and handlers.
+             * @param {string} [options.selectionScope='ktlCheckbox'] - Shared scope name for checkbox grouping.
              * @param {string[]} [options.checkboxClasses=[]] - Classes added to all checkboxes.
              * @param {string[]} [options.masterCheckboxClasses=[]] - Classes added only to the master checkbox.
              * @param {string[]} [options.rowCheckboxClasses=[]] - Classes added only to row checkboxes.
@@ -20488,6 +20489,7 @@ function Ktl($, appInfo) {
                 cfg = cfg || {};
 
                 const {
+                    selectionScope = 'ktlCheckbox',
                     checkboxClasses = [],
                     masterCheckboxClasses = [],
                     rowCheckboxClasses = [],
@@ -20507,6 +20509,11 @@ function Ktl($, appInfo) {
                 if (!viewElement) return;
 
                 if (!ktl.views.tableHasData(viewElement)) return;
+
+                const scopedCheckboxDataAttrs = { ...(checkboxDataAttrs || {}) };
+                if (selectionScope && scopedCheckboxDataAttrs['data-ktl-selection'] == null) {
+                    scopedCheckboxDataAttrs['data-ktl-selection'] = selectionScope;
+                }
 
                 const applyDataAttrs = (el, attrs) => {
                     Object.entries(attrs || {}).forEach(([key, value]) => {
@@ -20612,14 +20619,14 @@ function Ktl($, appInfo) {
                             ariaLabel: 'Select all rows'
                         });
 
-                        applyDataAttrs(masterCheckbox, checkboxDataAttrs);
+                        applyDataAttrs(masterCheckbox, scopedCheckboxDataAttrs);
                         applyDataAttrs(masterCheckbox, masterCheckboxDataAttrs);
 
                         th.appendChild(masterCheckbox);
                         headerRow.prepend(th);
                     } else {
                         masterCheckbox.classList.add('masterSelector', 'ktlCheckbox', 'ktlCheckbox-master', 'ktlCheckbox-table', ...masterCheckboxClasses, ...checkboxClasses);
-                        applyDataAttrs(masterCheckbox, checkboxDataAttrs);
+                        applyDataAttrs(masterCheckbox, scopedCheckboxDataAttrs);
                         applyDataAttrs(masterCheckbox, masterCheckboxDataAttrs);
                     }
 
@@ -20654,7 +20661,7 @@ function Ktl($, appInfo) {
                                 ariaLabel: 'Select row'
                             });
 
-                            applyDataAttrs(rowCheckbox, checkboxDataAttrs);
+                            applyDataAttrs(rowCheckbox, scopedCheckboxDataAttrs);
                             applyDataAttrs(rowCheckbox, rowCheckboxDataAttrs);
 
                             td.appendChild(rowCheckbox);
@@ -20673,7 +20680,7 @@ function Ktl($, appInfo) {
                 if (existingRowCheckbox || enhanceExisting) {
                     viewElement.querySelectorAll('tbody tr td input[type="checkbox"]').forEach((cb) => {
                         cb.classList.add('bulkEditCb', 'ktlCheckbox', 'ktlCheckbox-row', 'ktlCheckbox-table', ...rowCheckboxClasses, ...checkboxClasses);
-                        applyDataAttrs(cb, checkboxDataAttrs);
+                        applyDataAttrs(cb, scopedCheckboxDataAttrs);
                         applyDataAttrs(cb, rowCheckboxDataAttrs);
                     });
                 }
@@ -28150,7 +28157,7 @@ function Ktl($, appInfo) {
         let bulkOpsDeleteAll = false;
         let previousScene = '';
         let apiData = {};
-        const bulkOpsCheckboxSelector = 'input[type="checkbox"].bulkEditCb[data-ktl-bulkops="1"]';
+        const bulkOpsCheckboxSelector = 'input[type="checkbox"].bulkEditCb.ktlCheckbox-row[data-ktl-selection="ktlCheckbox"]';
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (previousScene !== scene.key) {
@@ -28473,7 +28480,7 @@ function Ktl($, appInfo) {
             ktl.views.addCheckboxesToTable(viewId, {
                 withMaster: true,
                 checkboxClasses: ['bulkEditCb', 'ktlCheckbox-bulkops'],
-                checkboxDataAttrs: { 'data-ktl-bulkops': '1' },
+                checkboxDataAttrs: { 'data-ktl-selection': 'ktlCheckbox', 'data-ktl-bulkops': '1' },
                 enhanceExisting: true,
                 onMasterChange: ({ viewId }) => updateBulkOpsGuiElements(viewId),
                 onRowChange: ({ viewId, checkbox }) => {
