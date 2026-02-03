@@ -774,6 +774,13 @@ function Ktl($, appInfo) {
 
 
             /**
+             * @typedef {Object} WaitElementResult
+             * @property {Element[]} elements - All matched elements.
+             * @property {Element|null} first - First matched element (or null).
+             * @property {string|null} selector - Selector that matched (or null in 'all' mode).
+             * @property {number|null} index - Selector index that matched (or null in 'all' mode).
+             * @property {'single'|'all'|'race'} mode - Matching mode used.
+             * @property {number} elapsed - Elapsed time in milliseconds.
              * Waits for one or more DOM elements to meet specific conditions.
              * @param {string|string[]} selectors
              *        A CSS selector or array of selectors to wait for.
@@ -874,7 +881,8 @@ function Ktl($, appInfo) {
                         const sceneKey = Knack?.router?.current_scene_key || 'unknown';
 
                         if (opts.outcome === ktl.const.WAIT_SEL_LOG_WARN) {
-                            ktl.log.addLog(ktl.const.LS_WRN, `kEC_1012 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
+
+                            ktl.log.addLog(ktl.const.LS_WRN, `KEC_1012 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
                         } else if (opts.outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
                             ktl.log.addLog(ktl.const.LS_APP_ERROR, `KEC_1002 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
                         } else if (opts.outcome === ktl.const.WAIT_SEL_ALERT && ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
@@ -968,6 +976,7 @@ function Ktl($, appInfo) {
                                 });
                                 observerActive = true;
                             } catch {
+                                observer = null;
                                 // Will fall back to polling
                             }
                         }
@@ -1062,8 +1071,14 @@ function Ktl($, appInfo) {
                     }
 
                     const signal = options.signal;
-                    if (signal != null && typeof signal !== 'object') {
-                        throw new TypeError('waitElement: signal must be an AbortSignal or undefined');
+                    if (signal != null) {
+                        const isAbortSignal = (typeof AbortSignal !== 'undefined' && signal instanceof AbortSignal)
+                            || (typeof signal === 'object'
+                                && typeof signal.addEventListener === 'function'
+                                && typeof signal.aborted === 'boolean');
+                        if (!isAbortSignal) {
+                            throw new TypeError('waitElement: signal must be an AbortSignal or undefined');
+                        }
                     }
 
                     const abortOnSceneChange = options.abortOnSceneChange !== false;
@@ -1108,9 +1123,12 @@ function Ktl($, appInfo) {
 
                     if (opts.mode === 'all') {
                         const all = [];
+                        const seen = new Set();
                         for (const sel of opts.selectors) {
                             root.querySelectorAll(sel).forEach((el) => {
-                                if (el instanceof Element && passes(el, opts)) all.push(el);
+                                if (!(el instanceof Element) || !passes(el, opts) || seen.has(el)) return;
+                                seen.add(el);
+                                all.push(el);
                             });
                         }
                         return all.length ? { elements: all, meta: {} } : null;
@@ -20354,6 +20372,13 @@ function Ktl($, appInfo) {
                 const fullSelector = `#${viewId} ${selector}`;
 
                 if (viewElement.dataset.ktlShiftClickBound === fullSelector) return;
+
+                const existingHandler = viewElement._ktlShiftClickHandler;
+                if (existingHandler) {
+                    viewElement.removeEventListener('click', existingHandler);
+                    viewElement._ktlShiftClickHandler = null;
+                }
+
                 viewElement.dataset.ktlShiftClickBound = fullSelector;
 
                 const resetLastChecked = () => {
@@ -20377,7 +20402,7 @@ function Ktl($, appInfo) {
                 }
 
                 // Use event delegation on the view container
-                viewElement.addEventListener('click', function (e) {
+                const shiftClickHandler = function (e) {
                     const target = e.target;
 
                     // Check if clicked element is a checkbox in tbody tr td
@@ -20393,7 +20418,13 @@ function Ktl($, appInfo) {
                             const isChecked = target.checked;
 
                             for (let i = start; i <= end; i++) {
-                                checkboxes[i].checked = isChecked;
+                                const cb = checkboxes[i];
+                                if (i === currentIndex || !cb) continue;
+                                const wasChecked = cb.checked;
+                                cb.checked = isChecked;
+                                if (wasChecked !== isChecked) {
+                                    cb.dispatchEvent(new Event('change', { bubbles: true }));
+                                }
                             }
 
                             // Call the change handler after programmatic modifications
@@ -20404,7 +20435,10 @@ function Ktl($, appInfo) {
 
                         lastCheckedIndex = currentIndex;
                     }
-                });
+                };
+
+                viewElement.addEventListener('click', shiftClickHandler);
+                viewElement._ktlShiftClickHandler = shiftClickHandler;
             },
 
             /**
@@ -20574,13 +20608,16 @@ function Ktl($, appInfo) {
 
                 if (withMaster) {
                     ensureMasterCheckbox();
-                } else if (!existingRowCheckbox) {
-                    //Add blank cell to keep header properly aligned.
-                    const th = document.createElement('th');
-                    th.classList.add('blankCell', blankCellClass);
-                    th.style.backgroundColor = '#eee';
-                    th.style.borderTop = '1px solid #dadada';
-                    headerRow.prepend(th);
+                } else {
+                    const existingBlankCell = headerRow.querySelector('th.blankCell, th.' + blankCellClass);
+                    if (!existingBlankCell) {
+                        //Add blank cell to keep header properly aligned.
+                        const th = document.createElement('th');
+                        th.classList.add('blankCell', blankCellClass);
+                        th.style.backgroundColor = '#eee';
+                        th.style.borderTop = '1px solid #dadada';
+                        headerRow.prepend(th);
+                    }
                 }
 
                 if (!existingRowCheckbox) {
@@ -28156,8 +28193,6 @@ function Ktl($, appInfo) {
             const viewElement = getViewElement(viewId);
             if (!viewElement) return;
 
-            const rowCheckboxSelector = `tbody ${bulkOpsCheckboxSelector}`;
-
             if (e.target.closest('tr')) {
                 if (e.target.getAttribute('type') === 'checkbox') {
                     if (!bulkOpsActive[viewId] || !isBulkOpsCheckbox(e.target, viewId)) return;
@@ -28421,6 +28456,7 @@ function Ktl($, appInfo) {
                 enhanceExisting: true,
                 onMasterChange: ({ viewId }) => updateBulkOpsGuiElements(viewId),
                 onRowChange: ({ viewId, checkbox }) => {
+                    // Bulk Ops only: ignore non-bulk checkboxes even though addCheckboxesToTable is generic.
                     if (!checkbox || !checkbox.matches || !checkbox.matches(bulkOpsCheckboxSelector)) return;
 
                     //If check boxes spread across more than one view, discard all and start again in current target view.
@@ -28662,7 +28698,7 @@ function Ktl($, appInfo) {
                 }
 
                 updateBulkOpsGuiElements(viewId);
-            })
+            });
         }
 
         function addPasteButton(view) {
@@ -28675,7 +28711,7 @@ function Ktl($, appInfo) {
                     previewLastBulkEditData();
                 else
                     processBulkOps(viewId, e);
-            })
+            });
         }
 
         function addDuplicateButton(view) {
@@ -28686,7 +28722,7 @@ function Ktl($, appInfo) {
             duplicateBtn.addEventListener('click', function (e) {
                 apiData = {};
                 processBulkOps(viewId, e);
-            })
+            });
         }
 
         function updateDeleteButtonState(viewId = '', numChecked) {
