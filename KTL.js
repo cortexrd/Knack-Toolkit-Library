@@ -20335,12 +20335,13 @@ function Ktl($, appInfo) {
              *
              * @param {string} viewId - The ID of the view containing the checkboxes
              * @param {string} selector - CSS selector for the checkboxes (default: tbody tr td input[type="checkbox"])
+             * @param {Function} [changeHandler=null] - Optional callback function to call after shift-click modifies checkboxes
              *
              * @example
              * // After adding checkboxes to a table:
              * ktl.views.addShiftClickToCheckboxes('view_123');
              */
-            addShiftClickToCheckboxes: function (viewId, selector = 'tbody tr td input[type="checkbox"]') {
+            addShiftClickToCheckboxes: function (viewId, selector = 'tbody tr td input[type="checkbox"]', changeHandler = null) {
                 if (!viewId) return;
 
                 let lastCheckedIndex = null;
@@ -20370,6 +20371,11 @@ function Ktl($, appInfo) {
 
                             for (let i = start; i <= end; i++) {
                                 checkboxes[i].checked = isChecked;
+                            }
+
+                            // Call the change handler after programmatic modifications
+                            if (typeof changeHandler === 'function') {
+                                changeHandler({ viewId, viewElement, checkboxes });
                             }
                         }
 
@@ -20405,6 +20411,7 @@ function Ktl($, appInfo) {
                     blankCellClass = 'ktlCheckboxBlankCell',
                     enhanceExisting = false,
                     masterChangeHandler = null,
+                    shiftClickChangeHandler = null,
                 } = cfg;
 
                 const viewElement = document.getElementById(viewId);
@@ -20526,7 +20533,7 @@ function Ktl($, appInfo) {
                 }
 
                 // Add shift-click functionality for range selection
-                ktl.views.addShiftClickToCheckboxes(viewId);
+                ktl.views.addShiftClickToCheckboxes(viewId, 'tbody tr td input[type="checkbox"]', shiftClickChangeHandler);
             },
 
             /**
@@ -28340,7 +28347,8 @@ function Ktl($, appInfo) {
                 checkboxClasses: ['bulkEditCb', 'ktlCheckbox-bulkops'],
                 checkboxDataAttrs: { 'data-ktl-bulkops': '1' },
                 enhanceExisting: true,
-                masterChangeHandler: ({ viewId }) => updateBulkOpsGuiElements(viewId)
+                masterChangeHandler: ({ viewId }) => updateBulkOpsGuiElements(viewId),
+                shiftClickChangeHandler: ({ viewId }) => updateBulkOpsGuiElements(viewId)
             });
 
             const headerRow = viewElement.querySelector('.kn-table thead tr');
