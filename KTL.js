@@ -12743,7 +12743,7 @@ function Ktl($, appInfo) {
         }
 
         //_tags - Bulk add/remove tags in grid views
-        const TAGS_BULK_OPS_CHECKBOX_SELECTOR = 'input[type="checkbox"].bulkEditCb[data-ktl-bulkops="1"]';
+        const TAGS_BULK_OPS_CHECKBOX_SELECTOR = 'input[type="checkbox"].bulkEditCb.ktlCheckbox-row[data-ktl-selection="ktlCheckbox"][data-ktl-bulkops="1"]';
 
         function tagsNormalizeTag(tag) {
             if (!tag) return '';
@@ -28157,7 +28157,9 @@ function Ktl($, appInfo) {
         let bulkOpsDeleteAll = false;
         let previousScene = '';
         let apiData = {};
-        const bulkOpsCheckboxSelector = 'input[type="checkbox"].bulkEditCb.ktlCheckbox-row[data-ktl-selection="ktlCheckbox"]';
+        const bulkOpsRowCheckboxSelector = 'input[type="checkbox"].bulkEditCb.ktlCheckbox-row[data-ktl-selection="ktlCheckbox"][data-ktl-bulkops="1"]';
+        const bulkOpsHeaderCheckboxSelector = 'input[type="checkbox"].bulkEditHeaderCbox[data-ktl-bulkops="1"]';
+        const bulkOpsMasterCheckboxSelector = '.masterSelector[data-ktl-bulkops="1"]';
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (previousScene !== scene.key) {
@@ -28189,7 +28191,7 @@ function Ktl($, appInfo) {
             const viewElement = getViewElement(viewId);
             if (!viewElement) return;
 
-            const rowCheckboxSelector = `tbody ${bulkOpsCheckboxSelector}`;
+            const rowCheckboxSelector = `tbody ${bulkOpsRowCheckboxSelector}`;
 
             //Upon Ctrl+click on master checkbox, toggle all row checkboxes on or off.
             if (e.target.classList.contains('masterSelector')) {
@@ -28206,8 +28208,8 @@ function Ktl($, appInfo) {
             if (e.target.classList.contains('bulkEditHeaderCbox')) {
                 e.stopImmediatePropagation();
                 preventClick = true;
-                const shouldCheck = viewElement.querySelectorAll('.bulkEditHeaderCbox:checked').length === 0;
-                setCheckedForSelector(viewElement, '.bulkEditHeaderCbox', shouldCheck);
+                const shouldCheck = viewElement.querySelectorAll(`${bulkOpsHeaderCheckboxSelector}:checked`).length === 0;
+                setCheckedForSelector(viewElement, bulkOpsHeaderCheckboxSelector, shouldCheck);
                 updateBulkOpsGuiElements(viewId);
             }
         });
@@ -28233,7 +28235,7 @@ function Ktl($, appInfo) {
                         const fieldId = Array.from(e.target.closest('th').classList).find(className => className.startsWith('field_'));
                         //Also check/uncheck any duplicate columns, if any.
                         if (fieldId) {
-                            setCheckedForSelector(viewElement, `th.${fieldId} ${bulkOpsCheckboxSelector}`, e.target.checked);
+                            setCheckedForSelector(viewElement, `th.${fieldId} ${bulkOpsHeaderCheckboxSelector}`, e.target.checked);
                         }
                         updateBulkOpsGuiElements(viewId);
                     }
@@ -28272,7 +28274,7 @@ function Ktl($, appInfo) {
             const viewElement = document.getElementById(viewId);
             if (!viewElement) return;
 
-            const headerCheckboxes = viewElement.querySelectorAll('.bulkEditHeaderCbox');
+            const headerCheckboxes = viewElement.querySelectorAll(bulkOpsHeaderCheckboxSelector);
 
             bulkOpsHeaderArray = [];
             headerCheckboxes.forEach((cb) => {
@@ -28309,7 +28311,10 @@ function Ktl($, appInfo) {
 
         function isBulkOpsCheckbox(target, viewId) {
             if (!target || !viewId || !target.matches) return false;
-            return !!target.closest(`#${viewId}`) && target.matches(bulkOpsCheckboxSelector);
+            if (!target.closest(`#${viewId}`)) return false;
+            return target.matches(bulkOpsRowCheckboxSelector)
+                || target.matches(bulkOpsHeaderCheckboxSelector)
+                || target.matches(bulkOpsMasterCheckboxSelector);
         }
 
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
@@ -28328,14 +28333,14 @@ function Ktl($, appInfo) {
             if (viewId === bulkOpsViewId) {
                 //Rows
                 for (let i = 0; i < bulkOpsRecIdArray.length; i++) {
-                    const cb = document.querySelector(`#${viewId} tr[id="${bulkOpsRecIdArray[i]}"] ${bulkOpsCheckboxSelector}`);
+                    const cb = document.querySelector(`#${viewId} tr[id="${bulkOpsRecIdArray[i]}"] ${bulkOpsRowCheckboxSelector}`);
                     if (cb)
                         cb.checked = true;
                 }
 
                 //Columns
                 for (let i = 0; i < bulkOpsHeaderArray.length; i++) {
-                    const cb = document.querySelector(`#${viewId} th.${bulkOpsHeaderArray[i]} ${bulkOpsCheckboxSelector}`);
+                    const cb = document.querySelector(`#${viewId} th.${bulkOpsHeaderArray[i]} ${bulkOpsHeaderCheckboxSelector}`);
                     if (cb)
                         cb.checked = true;
                 }
@@ -28378,7 +28383,7 @@ function Ktl($, appInfo) {
                             for (const recId of bulkOpsRecIdArray) {
                                 const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
                                 if (!actionLink.length)
-                                    $(`#${viewId} tbody tr[id="${recId}"] td ${bulkOpsCheckboxSelector}`).prop('checked', false);
+                                    $(`#${viewId} tbody tr[id="${recId}"] td ${bulkOpsRowCheckboxSelector}`).prop('checked', false);
                                 else
                                     bulkOpsRecIdArrayCopy.push(recId);
                             }
@@ -28403,7 +28408,7 @@ function Ktl($, appInfo) {
 
                     //Put back selected checkboxes.
                     for (let i = 0; i < bulkOpsRecIdArray.length; i++) {
-                        const cb = $(`#${viewId} tr[id="${bulkOpsRecIdArray[i]}"] ${bulkOpsCheckboxSelector}`);
+                        const cb = $(`#${viewId} tr[id="${bulkOpsRecIdArray[i]}"] ${bulkOpsRowCheckboxSelector}`);
                         if (cb.length)
                             cb[0].checked = true;
                     }
@@ -28413,7 +28418,7 @@ function Ktl($, appInfo) {
                     const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
 
                     if (actionLink.length) {
-                        $(`#${viewId} tbody tr[id="${recId}"] td ${bulkOpsCheckboxSelector}`).prop('checked', false);
+                        $(`#${viewId} tbody tr[id="${recId}"] td ${bulkOpsRowCheckboxSelector}`).prop('checked', false);
 
                         $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).off('click.ktl_bulkaction');
 
@@ -28485,15 +28490,15 @@ function Ktl($, appInfo) {
                 onMasterChange: ({ viewId }) => updateBulkOpsGuiElements(viewId),
                 onRowChange: ({ viewId, checkbox }) => {
                     // Bulk Ops only: ignore non-bulk checkboxes even though addCheckboxesToTable is generic.
-                    if (!checkbox || !checkbox.matches || !checkbox.matches(bulkOpsCheckboxSelector)) return;
+                    if (!checkbox || !checkbox.matches || !checkbox.matches(bulkOpsRowCheckboxSelector)) return;
 
                     //If check boxes spread across more than one view, discard all and start again in current target view.
                     if (bulkOpsViewId !== viewId) {
                         if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
                             const prevViewElement = document.getElementById(bulkOpsViewId);
                             if (prevViewElement) {
-                                setCheckedForSelector(prevViewElement, '.masterSelector[data-ktl-bulkops="1"]', false);
-                                setCheckedForSelector(prevViewElement, `tbody ${bulkOpsCheckboxSelector}`, false);
+                                setCheckedForSelector(prevViewElement, bulkOpsMasterCheckboxSelector, false);
+                                setCheckedForSelector(prevViewElement, `tbody ${bulkOpsRowCheckboxSelector}`, false);
                             }
 
                             updateBulkOpsGuiElements(bulkOpsViewId);
@@ -28525,7 +28530,7 @@ function Ktl($, appInfo) {
 
                     if (!ktl.views.isEditableColumn(inlineCells)) return;
 
-                    if (idx > 0 && !el.querySelector('.bulkEditHeaderCbox')) {
+                    if (idx > 0 && !el.querySelector(bulkOpsHeaderCheckboxSelector)) {
                         const labelContainer = el.querySelector('.table-fixed-label');
                         if (labelContainer) {
                             labelContainer.style.display = 'inline-flex';
@@ -28585,7 +28590,7 @@ function Ktl($, appInfo) {
                 const deleteRecordsBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), '', '', ['kn-button'], 'ktl-bulk-delete-selected-' + viewId);
                 deleteRecordsBtn.addEventListener('click', function (event) {
                     const deleteArray = [];
-                    $(`#${viewId} tbody ${bulkOpsCheckboxSelector}:checked`).each(function () {
+                    $(`#${viewId} tbody ${bulkOpsRowCheckboxSelector}:checked`).each(function () {
                         if (!$(this).closest('.kn-table-totals').length) {
                             deleteArray.push($(this).closest('tr').attr('id'));
                         }
@@ -28676,8 +28681,8 @@ function Ktl($, appInfo) {
 
             // Note: Shift-click handler for selecting range is added in bulkOpsAddCheckboxesToTable
             // This handler is for the bulk delete all functionality
-            $(`#${viewId} tbody ${bulkOpsCheckboxSelector}`).on('click', function (e) {
-                const numChecked = $(`#${viewId} tbody ${bulkOpsCheckboxSelector}:checked`).length;
+            $(`#${viewId} tbody ${bulkOpsRowCheckboxSelector}`).on('click', function (e) {
+                const numChecked = $(`#${viewId} tbody ${bulkOpsRowCheckboxSelector}:checked`).length;
 
                 //If Delete All was used, just keep going!
                 if (numChecked && bulkOpsDeleteAll)
@@ -28692,9 +28697,9 @@ function Ktl($, appInfo) {
             if (document.querySelector('#ktl-bulk-copy-' + viewId)) return;
             const copyBtn = ktl.fields.addButton(document.querySelector('#' + viewId + ' .bulkOpsControlsDiv'), 'Copy', '', ['kn-button'], 'ktl-bulk-copy-' + viewId);
             copyBtn.addEventListener('click', function (e) {
-                let checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
+                let checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
                 if (!checkedFields.length)
-                    $('#' + viewId + ' .bulkEditHeaderCbox').prop('checked', true);
+                    $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}`).prop('checked', true);
 
                 apiData = {};
 
@@ -28703,7 +28708,7 @@ function Ktl($, appInfo) {
                     || Knack.views[viewId].model.data._byId[recId].attributes;
 
                 //TODO:  put the duplicate code below in a common function.
-                checkedFields = $('.bulkEditHeaderCbox:is(:checked)');
+                checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
                 checkedFields.each((idx, cbox) => {
                     const fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
                     if (fieldId.startsWith('field_')) {
@@ -28722,7 +28727,7 @@ function Ktl($, appInfo) {
                     ktl.core.timedPopup('No data found.  Please try again', 'error');
                 else {
                     ktl.core.timedPopup('Data copied successfully - ready to be pasted.', 'success');
-                    $(`#${viewId} tbody tr[id="${recId}"] ${bulkOpsCheckboxSelector}`)[0].checked = false;
+                    $(`#${viewId} tbody tr[id="${recId}"] ${bulkOpsRowCheckboxSelector}`)[0].checked = false;
                 }
 
                 updateBulkOpsGuiElements(viewId);
@@ -28828,17 +28833,17 @@ function Ktl($, appInfo) {
             const viewElement = document.getElementById(viewId);
             if (!viewElement) return;
             if (numChecked) {
-                viewElement.querySelectorAll('.bulkEditHeaderCbox').forEach((cb) => cb.classList.remove('ktlDisplayNone'));
+                viewElement.querySelectorAll(bulkOpsHeaderCheckboxSelector).forEach((cb) => cb.classList.remove('ktlDisplayNone'));
 
                 if (viewCanDoBulkOp(viewId, 'edit')) {
-                    if (viewElement.querySelectorAll('.bulkEditHeaderCbox:checked').length) {
+                    if (viewElement.querySelectorAll(`${bulkOpsHeaderCheckboxSelector}:checked`).length) {
                         viewElement.querySelectorAll('tbody tr td').forEach((td) => td.classList.add('bulkEditSelectSrc'));
                     } else {
                         viewElement.querySelectorAll('tbody tr td.cell-edit').forEach((td) => td.classList.add('bulkEditSelectSrc'));
                     }
                 }
             } else {
-                viewElement.querySelectorAll('.bulkEditHeaderCbox').forEach((cb) => cb.classList.add('ktlDisplayNone'));
+                viewElement.querySelectorAll(bulkOpsHeaderCheckboxSelector).forEach((cb) => cb.classList.add('ktlDisplayNone'));
                 viewElement.querySelectorAll('tbody tr td').forEach((td) => td.classList.remove('bulkEditSelectSrc'));
             }
         }
@@ -28851,7 +28856,7 @@ function Ktl($, appInfo) {
             const viewElement = document.getElementById(viewId);
             if (!viewElement) return 0;
             bulkOpsRecIdArray = [];
-            const rowCheckboxSelector = `tbody ${bulkOpsCheckboxSelector}`;
+            const rowCheckboxSelector = `tbody ${bulkOpsRowCheckboxSelector}`;
             viewElement.querySelectorAll('.bulkEditSelectedRow').forEach((el) => el.classList.remove('bulkEditSelectedRow'));
             viewElement.querySelectorAll(`${rowCheckboxSelector}:checked`).forEach((cb) => {
                 const row = cb.closest('tr');
@@ -28862,7 +28867,7 @@ function Ktl($, appInfo) {
                 const rowCells = row.querySelectorAll('td:not(.ktlNoInlineEdit)');
                 rowCells.forEach((cell) => cell.classList.add('bulkEditSelectedRow'));
 
-                row.querySelectorAll(`td ${bulkOpsCheckboxSelector}`).forEach((rowCb) => {
+                row.querySelectorAll(`td ${bulkOpsRowCheckboxSelector}`).forEach((rowCb) => {
                     if (rowCb.parentElement)
                         rowCb.parentElement.classList.remove('bulkEditSelectedRow');
                 });
@@ -28905,7 +28910,7 @@ function Ktl($, appInfo) {
                     const src = Knack.views[viewId].model.data._byId[recId].attributes;
 
                     //Add all selected fields from header.
-                    let checkedFields = $(`#${viewId} .bulkEditHeaderCbox:is(:checked)`);
+                    let checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
                     if (checkedFields.length) {
                         checkedFields.each((idx, cbox) => {
                             const fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
