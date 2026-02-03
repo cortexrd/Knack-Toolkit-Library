@@ -948,26 +948,35 @@ function Ktl($, appInfo) {
                         combinedSignal.addEventListener('abort', onAbort, { once: true });
                     }
 
-                    observer = new MutationObserver(tick);
+                    let observerActive = false;
 
-                    const observeTarget = opts.root === document
-                        ? document.documentElement
-                        : opts.root;
+                    // Try to use MutationObserver first
+                    if (typeof MutationObserver !== 'undefined') {
+                        observer = new MutationObserver(tick);
 
-                    if (observeTarget && observeTarget.nodeType) {
-                        try {
-                            observer.observe(observeTarget, {
-                                childList: true,
-                                subtree: true,
-                                attributes: true,
-                                characterData: !!opts.text
-                            });
-                        } catch {
-                            // polling fallback still works
+                        const observeTarget = opts.root === document
+                            ? document.documentElement
+                            : opts.root;
+
+                        if (observeTarget && observeTarget.nodeType) {
+                            try {
+                                observer.observe(observeTarget, {
+                                    childList: true,
+                                    subtree: true,
+                                    attributes: true,
+                                    characterData: !!opts.text
+                                });
+                                observerActive = true;
+                            } catch {
+                                // Will fall back to polling
+                            }
                         }
                     }
 
-                    pollTimer = setInterval(tick, opts.interval);
+                    // Only use polling as a fallback if MutationObserver is not active
+                    if (!observerActive) {
+                        pollTimer = setInterval(tick, opts.interval);
+                    }
 
                     if (opts.timeout > 0) {
                         timeoutTimer = setTimeout(rejectTimeout, opts.timeout);
