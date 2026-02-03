@@ -455,6 +455,8 @@ function Ktl($, appInfo) {
         */
     this.core = (function () {
         var dndOrgX, dndOrgY, dndFromX, dndFromY, dndToX, dndToY;
+        let knackSceneController;
+        let knackSceneHooked = false;
 
         const resizeSubscribers = [];
         window.addEventListener('resize', handleResize);
@@ -820,8 +822,6 @@ function Ktl($, appInfo) {
              *         If options are invalid.
              */
             waitElement: function(selectors, options = {}) {
-                let knackSceneController;
-                let knackSceneHooked = false;
 
                 const startTime = performance.now();
                 const opts = normaliseOptions(selectors, options);
@@ -5033,12 +5033,6 @@ function Ktl($, appInfo) {
                     cbLabel.setAttribute('id', id + '-label-id');
                     cbLabel.appendChild(document.createTextNode(label));
                 }
-
-                if (!checkBox.classList.contains('ktlCheckbox'))
-                    checkBox.classList.add('ktlCheckbox');
-
-                if (!checkBox.classList.contains('ktlCheckbox-field'))
-                    checkBox.classList.add('ktlCheckbox-field');
 
                 checkBox.setAttribute('style', 'margin-left: 5px; width: 15px; height: 15px; ' + cbStyle);
                 cbLabel.setAttribute('style', 'vertical-align: text-bottom; margin-left: 5px; margin-right: 20px; ' + lbStyle);
@@ -20362,6 +20356,26 @@ function Ktl($, appInfo) {
                 if (viewElement.dataset.ktlShiftClickBound === fullSelector) return;
                 viewElement.dataset.ktlShiftClickBound = fullSelector;
 
+                const resetLastChecked = () => {
+                    lastCheckedIndex = null;
+                };
+
+                const existingObserver = viewElement._ktlShiftClickObserver;
+                if (existingObserver && viewElement.dataset.ktlShiftClickObserverFor !== fullSelector) {
+                    existingObserver.disconnect();
+                    viewElement._ktlShiftClickObserver = null;
+                }
+
+                if (!viewElement._ktlShiftClickObserver) {
+                    const tbody = viewElement.querySelector('.kn-table tbody');
+                    if (tbody) {
+                        const observer = new MutationObserver(() => resetLastChecked());
+                        observer.observe(tbody, { childList: true, subtree: true });
+                        viewElement._ktlShiftClickObserver = observer;
+                        viewElement.dataset.ktlShiftClickObserverFor = fullSelector;
+                    }
+                }
+
                 // Use event delegation on the view container
                 viewElement.addEventListener('click', function (e) {
                     const target = e.target;
@@ -20393,6 +20407,37 @@ function Ktl($, appInfo) {
                 });
             },
 
+            /**
+             * Adds row checkboxes (and optional master checkbox) to a table or search view.
+             * Supports styling, data attributes, shift-click selection, and change callbacks.
+             *
+             * @param {string} viewId - Knack view id for a table/search view.
+             * @param {boolean|Object} [withMaster=true] - If boolean, toggles master checkbox. If object, treated as options.
+             * @param {Object} [options={}] - Configuration for checkbox creation and handlers.
+             * @param {string[]} [options.checkboxClasses=[]] - Classes added to all checkboxes.
+             * @param {string[]} [options.masterCheckboxClasses=[]] - Classes added only to the master checkbox.
+             * @param {string[]} [options.rowCheckboxClasses=[]] - Classes added only to row checkboxes.
+             * @param {Object} [options.checkboxDataAttrs={}] - Attributes applied to all checkboxes.
+             * @param {Object} [options.masterCheckboxDataAttrs={}] - Attributes applied to the master checkbox.
+             * @param {Object} [options.rowCheckboxDataAttrs={}] - Attributes applied to row checkboxes.
+             * @param {string} [options.headerCellClass='ktlCheckboxHeaderCell'] - Class for the master header cell.
+             * @param {string} [options.rowCellClass='ktlCheckboxCell'] - Class for row checkbox cells.
+             * @param {string} [options.blankCellClass='ktlCheckboxBlankCell'] - Class for blank header cell when master is disabled.
+             * @param {boolean} [options.enhanceExisting=false] - If true, enhance existing checkboxes instead of returning.
+             * @param {Function|null} [options.shiftClickChangeHandler=null] - Called after shift-click updates checkboxes.
+             * @param {Function|null} [options.onMasterChange=null] - Called after master checkbox toggles rows.
+             * @param {Function|null} [options.onRowChange=null] - Called when a row checkbox changes.
+             * @returns {void}
+             *
+             * @example
+             * ktl.views.addCheckboxesToTable('view_123', true, {
+             *   checkboxClasses: ['bulkEditCb'],
+             *   rowCheckboxClasses: ['ktlRowCheckbox'],
+             *   masterCheckboxClasses: ['ktlMasterCheckbox'],
+             *   onMasterChange: ({ viewId, checkedRows }) => console.log(viewId, checkedRows.length),
+             *   onRowChange: ({ row }) => row.classList.toggle('is-selected')
+             * });
+             */
             addCheckboxesToTable: function (viewId, withMaster = true, options = {}) {
                 if (!viewId) return;
                 const viewType = ktl.views.getViewType(viewId);
@@ -20419,7 +20464,6 @@ function Ktl($, appInfo) {
                     rowCellClass = 'ktlCheckboxCell',
                     blankCellClass = 'ktlCheckboxBlankCell',
                     enhanceExisting = false,
-                    masterChangeHandler = null,
                     shiftClickChangeHandler = null,
                     onMasterChange = null,
                     onRowChange = null,
@@ -20439,7 +20483,7 @@ function Ktl($, appInfo) {
 
                 const addMasterChangeHandler = (masterCheckbox) => {
                     if (!masterCheckbox) return;
-                    const resolvedMasterHandler = onMasterChange || masterChangeHandler;
+                    const resolvedMasterHandler = onMasterChange;
                     masterCheckbox._ktlMasterChangeHandler = resolvedMasterHandler;
 
                     if (masterCheckbox.dataset.ktlMasterChangeBound === '1') return;
@@ -20459,13 +20503,10 @@ function Ktl($, appInfo) {
                                 .filter(Boolean);
                             handler({ viewId, viewElement, masterCheckbox, rowCheckboxes, checkedRows, event: null });
                         }
-
-                        //TODO: onMasterCheckboxChange(viewId);
                     });
                 };
 
                 const addRowChangeHandler = () => {
-                    if (typeof onRowChange !== 'function') return;
                     viewElement._ktlRowChangeHandler = onRowChange;
 
                     if (viewElement.dataset.ktlRowChangeBound === '1') return;
@@ -20479,6 +20520,9 @@ function Ktl($, appInfo) {
 
                         const row = target.closest('tr');
                         if (!row) return;
+
+                        const masterCheckbox = viewElement.querySelector('.masterSelector');
+                        if (masterCheckbox) masterCheckbox.checked = false;
 
                         const checkedRows = Array.from(viewElement.querySelectorAll(`${rowSelector}:checked`))
                             .map((cb) => cb.closest('tr'))
@@ -28055,7 +28099,7 @@ function Ktl($, appInfo) {
                 previousScene = scene.key;
                 bulkOpsRecIdArray = [];
             }
-        })
+        });
 
         const getViewIdFromEvent = (e) => {
             const view = e.target.closest('[class*="view_"][id^="view_"]');
@@ -28101,7 +28145,7 @@ function Ktl($, appInfo) {
                 setCheckedForSelector(viewElement, '.bulkEditHeaderCbox', shouldCheck);
                 updateBulkOpsGuiElements(viewId);
             }
-        })
+        });
 
         document.addEventListener('click', function (e) {
             if (ktl.scenes.isiFrameWnd()) return;
@@ -28122,36 +28166,17 @@ function Ktl($, appInfo) {
                         e.preventDefault();
                         return;
                     }
-
-                    if (e.target.closest('td')) //If click in td row, uncheck master checkbox in header.
-                        (viewElement.querySelector('.masterSelector')) && (viewElement.querySelector('.masterSelector').checked = false);
-                    else if (e.target.closest('th')) {
+                    if (e.target.closest('th')) {
                         const fieldId = Array.from(e.target.closest('th').classList).find(className => className.startsWith('field_'));
                         //Also check/uncheck any duplicate columns, if any.
                         if (fieldId) {
                             setCheckedForSelector(viewElement, `th.${fieldId} ${bulkOpsCheckboxSelector}`, e.target.checked);
                         }
+                        updateBulkOpsGuiElements(viewId);
                     }
-
-                    //If check boxes spread across more than one view, discard all and start again in current target view.
-                    if (bulkOpsViewId !== viewId) {
-                        if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
-                            const prevViewElement = document.getElementById(bulkOpsViewId);
-                            if (prevViewElement) {
-                                setCheckedForSelector(prevViewElement, '.masterSelector[data-ktl-bulkops="1"]', false);
-                                setCheckedForSelector(prevViewElement, rowCheckboxSelector, false);
-                            }
-
-                            updateBulkOpsGuiElements(bulkOpsViewId);
-                        }
-
-                        bulkOpsViewId = viewId;
-                    }
-
-                    updateBulkOpsGuiElements(viewId);
                 }
             }
-        })
+        });
 
         // Override inline background for bulk edit selected cells, restore when deselected
         function updateBulkEditInlineStyles(viewId) {
@@ -28395,6 +28420,26 @@ function Ktl($, appInfo) {
                 checkboxDataAttrs: { 'data-ktl-bulkops': '1' },
                 enhanceExisting: true,
                 onMasterChange: ({ viewId }) => updateBulkOpsGuiElements(viewId),
+                onRowChange: ({ viewId, checkbox }) => {
+                    if (!checkbox || !checkbox.matches || !checkbox.matches(bulkOpsCheckboxSelector)) return;
+
+                    //If check boxes spread across more than one view, discard all and start again in current target view.
+                    if (bulkOpsViewId !== viewId) {
+                        if (bulkOpsViewId !== null) { //Uncheck all currently checked in old view.
+                            const prevViewElement = document.getElementById(bulkOpsViewId);
+                            if (prevViewElement) {
+                                setCheckedForSelector(prevViewElement, '.masterSelector[data-ktl-bulkops="1"]', false);
+                                setCheckedForSelector(prevViewElement, `tbody ${bulkOpsCheckboxSelector}`, false);
+                            }
+
+                            updateBulkOpsGuiElements(bulkOpsViewId);
+                        }
+
+                        bulkOpsViewId = viewId;
+                    }
+
+                    updateBulkOpsGuiElements(viewId);
+                },
                 shiftClickChangeHandler: ({ viewId }) => updateBulkOpsGuiElements(viewId)
             });
 
