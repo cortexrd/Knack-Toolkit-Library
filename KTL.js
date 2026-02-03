@@ -20421,6 +20421,8 @@ function Ktl($, appInfo) {
                     enhanceExisting = false,
                     masterChangeHandler = null,
                     shiftClickChangeHandler = null,
+                    onMasterChange = null,
+                    onRowChange = null,
                 } = cfg;
 
                 const viewElement = document.getElementById(viewId);
@@ -20437,7 +20439,8 @@ function Ktl($, appInfo) {
 
                 const addMasterChangeHandler = (masterCheckbox) => {
                     if (!masterCheckbox) return;
-                    masterCheckbox._ktlMasterChangeHandler = masterChangeHandler;
+                    const resolvedMasterHandler = onMasterChange || masterChangeHandler;
+                    masterCheckbox._ktlMasterChangeHandler = resolvedMasterHandler;
 
                     if (masterCheckbox.dataset.ktlMasterChangeBound === '1') return;
                     masterCheckbox.dataset.ktlMasterChangeBound = '1';
@@ -20449,10 +20452,42 @@ function Ktl($, appInfo) {
                         });
 
                         const handler = masterCheckbox._ktlMasterChangeHandler;
-                        if (typeof handler === 'function')
-                            handler({ viewId, viewElement, masterCheckbox, rowCheckboxes });
+                        if (typeof handler === 'function') {
+                            const checkedRows = Array.from(rowCheckboxes)
+                                .filter((cb) => cb.checked)
+                                .map((cb) => cb.closest('tr'))
+                                .filter(Boolean);
+                            handler({ viewId, viewElement, masterCheckbox, rowCheckboxes, checkedRows, event: null });
+                        }
 
                         //TODO: onMasterCheckboxChange(viewId);
+                    });
+                };
+
+                const addRowChangeHandler = () => {
+                    if (typeof onRowChange !== 'function') return;
+                    viewElement._ktlRowChangeHandler = onRowChange;
+
+                    if (viewElement.dataset.ktlRowChangeBound === '1') return;
+                    viewElement.dataset.ktlRowChangeBound = '1';
+
+                    const rowSelector = 'tbody tr td input[type="checkbox"]';
+                    viewElement.addEventListener('change', (event) => {
+                        const target = event.target;
+                        if (!(target instanceof HTMLInputElement)) return;
+                        if (!target.matches(rowSelector)) return;
+
+                        const row = target.closest('tr');
+                        if (!row) return;
+
+                        const checkedRows = Array.from(viewElement.querySelectorAll(`${rowSelector}:checked`))
+                            .map((cb) => cb.closest('tr'))
+                            .filter(Boolean);
+
+                        const handler = viewElement._ktlRowChangeHandler;
+                        if (typeof handler === 'function') {
+                            handler({ viewId, viewElement, checkbox: target, row, checkedRows, event });
+                        }
                     });
                 };
 
@@ -20543,6 +20578,9 @@ function Ktl($, appInfo) {
 
                 // Add shift-click functionality for range selection
                 ktl.views.addShiftClickToCheckboxes(viewId, 'tbody tr td input[type="checkbox"]', shiftClickChangeHandler);
+
+                // Add row change functionality for consumers
+                addRowChangeHandler();
             },
 
             /**
@@ -28356,7 +28394,7 @@ function Ktl($, appInfo) {
                 checkboxClasses: ['bulkEditCb', 'ktlCheckbox-bulkops'],
                 checkboxDataAttrs: { 'data-ktl-bulkops': '1' },
                 enhanceExisting: true,
-                masterChangeHandler: ({ viewId }) => updateBulkOpsGuiElements(viewId),
+                onMasterChange: ({ viewId }) => updateBulkOpsGuiElements(viewId),
                 shiftClickChangeHandler: ({ viewId }) => updateBulkOpsGuiElements(viewId)
             });
 
