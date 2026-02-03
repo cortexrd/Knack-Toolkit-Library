@@ -20517,8 +20517,13 @@ function Ktl($, appInfo) {
 
                 const addMasterChangeHandler = (masterCheckbox) => {
                     if (!masterCheckbox) return;
-                    const resolvedMasterHandler = onMasterChange;
-                    masterCheckbox._ktlMasterChangeHandler = resolvedMasterHandler;
+                    if (typeof onMasterChange === 'function') {
+                        const existingHandlers = masterCheckbox._ktlMasterChangeHandlers || [];
+                        if (!existingHandlers.includes(onMasterChange)) {
+                            existingHandlers.push(onMasterChange);
+                        }
+                        masterCheckbox._ktlMasterChangeHandlers = existingHandlers;
+                    }
 
                     if (masterCheckbox.dataset.ktlMasterChangeBound === '1') return;
                     masterCheckbox.dataset.ktlMasterChangeBound = '1';
@@ -20529,19 +20534,31 @@ function Ktl($, appInfo) {
                             cb.checked = masterCheckbox.checked;
                         });
 
-                        const handler = masterCheckbox._ktlMasterChangeHandler;
-                        if (typeof handler === 'function') {
+                        const handlers = Array.isArray(masterCheckbox._ktlMasterChangeHandlers)
+                            ? masterCheckbox._ktlMasterChangeHandlers
+                            : [];
+                        if (handlers.length) {
                             const checkedRows = Array.from(rowCheckboxes)
                                 .filter((cb) => cb.checked)
                                 .map((cb) => cb.closest('tr'))
                                 .filter(Boolean);
-                            handler({ viewId, viewElement, masterCheckbox, rowCheckboxes, checkedRows, event: null });
+                            handlers.forEach((handler) => {
+                                if (typeof handler === 'function') {
+                                    handler({ viewId, viewElement, masterCheckbox, rowCheckboxes, checkedRows, event: null });
+                                }
+                            });
                         }
                     });
                 };
 
                 const addRowChangeHandler = () => {
-                    viewElement._ktlRowChangeHandler = onRowChange;
+                    if (typeof onRowChange === 'function') {
+                        const existingHandlers = viewElement._ktlRowChangeHandlers || [];
+                        if (!existingHandlers.includes(onRowChange)) {
+                            existingHandlers.push(onRowChange);
+                        }
+                        viewElement._ktlRowChangeHandlers = existingHandlers;
+                    }
 
                     if (viewElement.dataset.ktlRowChangeBound === '1') return;
                     viewElement.dataset.ktlRowChangeBound = '1';
@@ -20562,10 +20579,14 @@ function Ktl($, appInfo) {
                             .map((cb) => cb.closest('tr'))
                             .filter(Boolean);
 
-                        const handler = viewElement._ktlRowChangeHandler;
-                        if (typeof handler === 'function') {
-                            handler({ viewId, viewElement, checkbox: target, row, checkedRows, event });
-                        }
+                        const handlers = Array.isArray(viewElement._ktlRowChangeHandlers)
+                            ? viewElement._ktlRowChangeHandlers
+                            : [];
+                        handlers.forEach((handler) => {
+                            if (typeof handler === 'function') {
+                                handler({ viewId, viewElement, checkbox: target, row, checkedRows, event });
+                            }
+                        });
                     });
                 };
 
