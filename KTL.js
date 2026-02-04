@@ -28157,6 +28157,10 @@ function Ktl($, appInfo) {
         let bulkOpsDeleteAll = false;
         let previousScene = '';
         let apiData = {};
+        const bulkActionStateByView = {};
+        const bulkActionRetryLimit = 20;
+        const bulkActionContinueDelayMs = 50;
+        const bulkActionObserverTimeoutMs = 500;
         const bulkOpsRowCheckboxSelector = 'input[type="checkbox"].bulkEditCb.ktlCheckbox-row[data-ktl-selection="ktlCheckbox"][data-ktl-bulkops="1"]';
         const bulkOpsHeaderCheckboxSelector = 'input[type="checkbox"].bulkEditHeaderCbox[data-ktl-bulkops="1"]';
         const bulkOpsMasterCheckboxSelector = '.masterSelector[data-ktl-bulkops="1"]';
@@ -28179,6 +28183,294 @@ function Ktl($, appInfo) {
             container.querySelectorAll(selector).forEach((cb) => {
                 cb.checked = shouldCheck;
             });
+        };
+
+        /**
+         * Calculate adaptive timing based on row count.
+         * @param {number} rowCount
+         * @returns {{ continueDelayMs: number, observerTimeoutMs: number }}
+         */
+        const calculateBulkActionTiming = (rowCount) => {
+            const safeCount = Math.max(0, Number(rowCount) || 0);
+            const continueDelayMs = bulkActionContinueDelayMs + Math.min(safeCount * 2, 300);
+            const observerTimeoutMs = bulkActionObserverTimeoutMs + Math.min(safeCount * 8, 3000);
+            return { continueDelayMs, observerTimeoutMs };
+        };
+
+        /**
+         * Get timing for a view (adaptive if available).
+         * @param {string} viewId
+         * @returns {{ continueDelayMs: number, observerTimeoutMs: number }}
+         */
+        const getBulkActionTiming = (viewId) => {
+            const state = getBulkActionState(viewId);
+            return (state && state.timing) ? state.timing : {
+                continueDelayMs: bulkActionContinueDelayMs,
+                observerTimeoutMs: bulkActionObserverTimeoutMs
+            };
+        };
+
+        /**
+         * Get or create bulk action state for a view.
+         * @param {string} viewId
+         * @returns {{ columnIndex: string, retryCount: number, rowCache: Map<string, any>|null, observer: MutationObserver|null, observerTimeout: any, clickHandler: Function|null, running: boolean }}
+         */
+        const getBulkActionState = (viewId) => {
+            if (!viewId) return null;
+            if (!bulkActionStateByView[viewId]) {
+                bulkActionStateByView[viewId] = {
+                    columnIndex: '',
+                    retryCount: bulkActionRetryLimit,
+                    rowCache: null,
+                    observer: null,
+                    observerTimeout: null,
+                    clickHandler: null,
+                    running: false,
+                    timing: null
+                };
+            }
+            return bulkActionStateByView[viewId];
+        };
+
+        /**
+         * Clear bulk action state for a view.
+         * @param {string} viewId
+         */
+        const clearBulkActionState = (viewId) => {
+            if (!viewId) return;
+            delete bulkActionStateByView[viewId];
+        };
+
+        /**
+         * Build a cache of row elements and action links for a view.
+         * @param {string} viewId
+         * @param {string} bulkActionColumnIndex
+         * @returns {Map<string, { rowEl: HTMLElement|null, cellEl: HTMLElement|null, actionLinkEl: HTMLElement|null }>}
+         */
+        const buildBulkActionRowCache = (viewId, bulkActionColumnIndex) => {
+            const cache = new Map();
+            if (!viewId || !bulkActionColumnIndex) return cache;
+            const viewElement = document.getElementById(viewId);
+            if (!viewElement) return cache;
+
+            viewElement.querySelectorAll('tbody tr[id]').forEach((rowEl) => {
+                const recId = rowEl.getAttribute('id');
+                if (!recId) return;
+                const cellEl = rowEl.querySelector(`.${bulkActionColumnIndex}`);
+                const actionLinkEl = cellEl ? cellEl.querySelector('.kn-action-link') : null;
+                cache.set(recId, { rowEl, cellEl, actionLinkEl });
+            });
+
+            return cache;
+        };
+
+        /**
+         * Get cached row/action info or query DOM if missing.
+         * @param {string} viewId
+         * @param {string} recId
+         * @param {string} bulkActionColumnIndex
+         * @returns {{ rowEl: HTMLElement|null, cellEl: HTMLElement|null, actionLinkEl: HTMLElement|null }}
+         */
+        const getBulkActionRowInfo = (viewId, recId, bulkActionColumnIndex) => {
+            const state = getBulkActionState(viewId);
+            if (!state) return null;
+            if (!state.rowCache)
+                state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
+
+            const cache = state.rowCache;
+            if (cache && cache.has(recId)) {
+                const cached = cache.get(recId);
+                if (cached && cached.rowEl && cached.rowEl.isConnected && cached.actionLinkEl && cached.actionLinkEl.isConnected)
+                    return cached;
+            }
+
+            const rowEl = document.querySelector(`#${viewId} tbody tr[id="${recId}"]`);
+            const cellEl = rowEl ? rowEl.querySelector(`.${bulkActionColumnIndex}`) : null;
+            const actionLinkEl = cellEl ? cellEl.querySelector('.kn-action-link') : null;
+            const info = { rowEl, cellEl, actionLinkEl };
+            if (cache)
+                cache.set(recId, info);
+            return info;
+        };
+
+        /**
+         * Clear any existing observer for a view.
+         * @param {string} viewId
+         */
+        const clearBulkActionObserver = (viewId) => {
+            const state = getBulkActionState(viewId);
+            if (!state) return;
+            if (state.observer) {
+                state.observer.disconnect();
+                state.observer = null;
+            }
+            if (state.observerTimeout) {
+                clearTimeout(state.observerTimeout);
+                state.observerTimeout = null;
+            }
+        };
+
+        /**
+         * Wait for an action link to become enabled, then invoke callback.
+         * @param {string} viewId
+         * @param {HTMLElement} actionLinkEl
+         * @param {Function} onReady
+         */
+        const waitForActionLinkEnabled = (viewId, actionLinkEl, onReady, onTimeout) => {
+            if (!actionLinkEl) return;
+            clearBulkActionObserver(viewId);
+
+            if (!actionLinkEl.isConnected) {
+                onTimeout && onTimeout('detached');
+                return;
+            }
+
+            if (!actionLinkEl.classList.contains('disabled')) {
+                onReady();
+                return;
+            }
+
+            const observer = new MutationObserver(() => {
+                if (!actionLinkEl.classList.contains('disabled')) {
+                    clearBulkActionObserver(viewId);
+                    onReady();
+                }
+            });
+
+            observer.observe(actionLinkEl, { attributes: true, attributeFilter: ['class'] });
+            const state = getBulkActionState(viewId);
+            if (state) state.observer = observer;
+            const timing = getBulkActionTiming(viewId);
+            if (state) state.observerTimeout = setTimeout(() => {
+                clearBulkActionObserver(viewId);
+                if (!actionLinkEl.classList.contains('disabled')) {
+                    onReady();
+                    return;
+                }
+                onTimeout && onTimeout('timeout');
+            }, timing.observerTimeoutMs);
+        };
+
+        /**
+         * Ensure bulk action checkboxes stay checked for remaining records.
+         * @param {string} viewId
+         * @param {string[]} recIds
+         */
+        const ensureBulkActionChecked = (viewId, recIds) => {
+            if (!viewId || !Array.isArray(recIds)) return;
+            recIds.forEach((recId) => {
+                const cb = document.querySelector(`#${viewId} tr[id="${recId}"] ${bulkOpsRowCheckboxSelector}`);
+                if (cb && !cb.checked) cb.checked = true;
+            });
+        };
+
+        /**
+         * Rehydrate bulk ops UI if the table was re-rendered.
+         * @param {string} viewId
+         */
+        const ensureBulkOpsUi = (viewId) => {
+            if (!viewId) return;
+            const viewElement = document.getElementById(viewId);
+            if (!viewElement) return;
+            const hasBulkCheckboxes = viewElement.querySelector(bulkOpsRowCheckboxSelector);
+            if (!hasBulkCheckboxes) {
+                bulkOpsAddCheckboxesToTable(viewId);
+                updateBulkOpsGuiElements(viewId);
+            }
+
+            const state = getBulkActionState(viewId);
+            if (state && state.clickHandler)
+                attachBulkActionHandler(viewId, state.clickHandler);
+        };
+
+        /**
+         * Sync bulk action UI (checkboxes + bulk ops UI).
+         * @param {string} viewId
+         * @param {string[]} recIds
+         */
+        const syncBulkActionUi = (viewId, recIds) => {
+            ensureBulkOpsUi(viewId);
+            ensureBulkActionChecked(viewId, recIds || []);
+        };
+
+        /**
+         * Schedule next bulk action step.
+         * @param {Function} fn
+         */
+        const scheduleBulkActionNext = (fn, viewId) => {
+            const timing = getBulkActionTiming(viewId);
+            setTimeout(fn, timing.continueDelayMs);
+        };
+
+        /**
+         * Finish a bulk action run for a view.
+         * @param {string} viewId
+         * @param {boolean} refreshView
+         */
+        const finishBulkAction = (viewId, refreshView = true) => {
+            const state = getBulkActionState(viewId);
+            if (state) {
+                state.columnIndex = '';
+                state.retryCount = bulkActionRetryLimit;
+                state.rowCache = null;
+                state.running = false;
+            }
+            clearBulkActionObserver(viewId);
+
+            if (refreshView) {
+                ktl.views.refreshView(viewId).then(() => {
+                    ensureBulkOpsUi(viewId);
+                    updateBulkOpsGuiElements(viewId);
+                });
+            }
+
+            ktl.views.autoRefresh();
+        };
+
+        /**
+         * Set a single bulk action checkbox.
+         * @param {string} viewId
+         * @param {string} recId
+         * @param {boolean} checked
+         */
+        const setBulkActionChecked = (viewId, recId, checked) => {
+            const cb = document.querySelector(`#${viewId} tr[id="${recId}"] ${bulkOpsRowCheckboxSelector}`);
+            if (cb) cb.checked = checked;
+        };
+
+        /**
+         * Get action link targets in a view.
+         * @param {string} viewId
+         * @returns {HTMLElement[]}
+         */
+        const getBulkActionTargets = (viewId) => {
+            if (!viewId) return [];
+            return Array.from(document.querySelectorAll(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`));
+        };
+
+        /**
+         * Attach bulk action click handler for a view (capture phase to run first).
+         * @param {string} viewId
+         * @param {Function} handler
+         */
+        const attachBulkActionHandler = (viewId, handler) => {
+            if (!viewId || typeof handler !== 'function') return;
+            detachBulkActionHandler(viewId);
+            const state = getBulkActionState(viewId);
+            if (state) state.clickHandler = handler;
+            getBulkActionTargets(viewId).forEach((el) => el.addEventListener('click', handler, true));
+        };
+
+        /**
+         * Detach bulk action click handler for a view.
+         * @param {string} viewId
+         */
+        const detachBulkActionHandler = (viewId) => {
+            const state = getBulkActionState(viewId);
+            const handler = state ? state.clickHandler : null;
+            if (!handler) return;
+            getBulkActionTargets(viewId).forEach((el) => el.removeEventListener('click', handler, true));
+            if (state) state.clickHandler = null;
         };
 
         let preventClick = false;
@@ -28319,7 +28611,6 @@ function Ktl($, appInfo) {
 
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
         //Called upon each view rendering.
-        let bulkActionColumnIndex = null;
         function enableBulkOperations(view, data) {
             const viewId = view.key;
 
@@ -28363,86 +28654,118 @@ function Ktl($, appInfo) {
 
             if (viewCanDoBulkOp(viewId, 'action')) {
                 //When user clicks on an action link.
-                if (!bulkActionColumnIndex) {
-                    $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).bindFirst('click.ktl_bulkaction', e => {
-                        //When process is triggered the first time by a manual click.
-                        if (bulkOpsRecIdArray.length) {
-                            const tableLink = e.target.closest('.kn-table-link');
-                            if (!tableLink) return;
+                attachBulkActionHandler(viewId, (e) => {
+                    const state = getBulkActionState(viewId);
+                    if (!state) return;
+                    if (state.running) {
+                        return;
+                    }
+                    //When process is triggered the first time by a manual click.
+                    if (bulkOpsRecIdArray.length) {
+                        const tableLink = e.target.closest('.kn-table-link');
+                        if (!tableLink) return;
 
-                            const columnElement = tableLink.querySelector('[class^="col-"]');
-                            if (!columnElement) return;
+                        const columnElement = tableLink.querySelector('[class^="col-"]');
+                        if (!columnElement) return;
 
-                            e.preventDefault();
-                            e.stopImmediatePropagation();
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
 
-                            bulkActionColumnIndex = columnElement.classList[0];
+                        state.columnIndex = columnElement.classList[0];
+                        state.retryCount = bulkActionRetryLimit;
+                        state.running = true;
+                        ktl.views.autoRefresh(false);
+                        bulkOpsViewId = viewId;
+                        state.timing = calculateBulkActionTiming(Array.isArray(data) ? data.length : 0);
 
-                            //Clean array to include only those with an action.
-                            bulkOpsRecIdArrayCopy = [];
-                            for (const recId of bulkOpsRecIdArray) {
-                                const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
-                                if (!actionLink.length)
-                                    $(`#${viewId} tbody tr[id="${recId}"] td ${bulkOpsRowCheckboxSelector}`).prop('checked', false);
-                                else
-                                    bulkOpsRecIdArrayCopy.push(recId);
+                        state.rowCache = buildBulkActionRowCache(viewId, state.columnIndex);
+
+                        //Clean array to include only those with an action.
+                        bulkOpsRecIdArrayCopy = [];
+                        for (const recId of bulkOpsRecIdArray) {
+                            const rowInfo = getBulkActionRowInfo(viewId, recId, state.columnIndex);
+                            if (!rowInfo || !rowInfo.actionLinkEl) {
+                                const rowCb = document.querySelector(`#${viewId} tbody tr[id="${recId}"] td ${bulkOpsRowCheckboxSelector}`);
+                                if (rowCb) rowCb.checked = false;
+                            } else {
+                                bulkOpsRecIdArrayCopy.push(recId);
                             }
-
-                            //console.log('bulkOpsRecIdArrayCopy =', bulkOpsRecIdArrayCopy);
-                            processBulkAction();
                         }
-                    })
-                }
+
+                        processBulkAction();
+                    }
+                });
 
                 function processBulkAction() {
-                    //console.log('processBulkAction');
-                    //console.log('bulkOpsRecIdArray = ', bulkOpsRecIdArray);
-                    //console.log('bulkOpsRecIdArrayCopy =', bulkOpsRecIdArrayCopy);
+                    const state = getBulkActionState(viewId);
+                    const bulkActionColumnIndex = state ? state.columnIndex : '';
+                    syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
+                    if (!bulkActionColumnIndex) return;
                     if (!bulkOpsRecIdArrayCopy.length) {
-                        bulkActionColumnIndex = null;
-                        ktl.views.refreshView(viewId);
+                        finishBulkAction(viewId, true);
                         return;
                     }
 
                     bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
+                    syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
 
-                    //Put back selected checkboxes.
-                    for (let i = 0; i < bulkOpsRecIdArray.length; i++) {
-                        const cb = $(`#${viewId} tr[id="${bulkOpsRecIdArray[i]}"] ${bulkOpsRowCheckboxSelector}`);
-                        if (cb.length)
-                            cb[0].checked = true;
-                    }
+                    const recId = bulkOpsRecIdArrayCopy[0];
+                    const rowInfo = getBulkActionRowInfo(viewId, recId, bulkActionColumnIndex);
+                    const actionLinkEl = rowInfo && rowInfo.actionLinkEl ? rowInfo.actionLinkEl : null;
+                    if (actionLinkEl && actionLinkEl.isConnected) {
+                        waitForActionLinkEnabled(viewId, actionLinkEl, () => {
+                            const outlineElement = actionLinkEl.closest('.kn-table-link');
+                            if (outlineElement) outlineElement.classList.add('ktlOutline');
+                            //console.log('click', actionLinkEl);
+                            bulkOpsRecIdArrayCopy = bulkOpsRecIdArrayCopy.slice(1);
+                            bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
+                            if (state && state.rowCache)
+                                state.rowCache.delete(recId);
+                            actionLinkEl.click();
+                            setBulkActionChecked(viewId, recId, false);
 
-                    const recId = bulkOpsRecIdArray.shift();
-                    bulkOpsRecIdArrayCopy = bulkOpsRecIdArray;
-                    const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
+                            setTimeout(() => {
+                                syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
+                            }, 200);
 
-                    if (actionLink.length) {
-                        $(`#${viewId} tbody tr[id="${recId}"] td ${bulkOpsRowCheckboxSelector}`).prop('checked', false);
-
-                        $(`#${viewId} tbody tr td i, #${viewId} tbody tr td .kn-action-link`).off('click.ktl_bulkaction');
-
-                        //Wait until link is enabled
-                        const intervalId = setInterval(() => {
-                            //console.log('Wait until link is enabled', bulkActionColumnIndex);
-                            const actionLink = $(`#${viewId} tbody tr[id="${recId}"] .${bulkActionColumnIndex} .kn-action-link`);
-                            if (!actionLink.hasClass('disabled')) {
-                                clearInterval(intervalId);
-                                const outlineElement = actionLink.closest('.kn-table-link');
-                                outlineElement.addClass('ktlOutline');
-                                //console.log('click', actionLink);
-                                actionLink.click();
-
-                                setTimeout(() => {
-                                    processBulkAction();
-                                }, 1000);
+                            scheduleBulkActionNext(processBulkAction, viewId);
+                        }, () => {
+                            if (state)
+                                state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
+                            syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
+                            scheduleBulkActionNext(processBulkAction, viewId);
+                        });
+                    } else if (actionLinkEl && !actionLinkEl.isConnected) {
+                        if (state)
+                            state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
+                        scheduleBulkActionNext(processBulkAction, viewId);
+                    } else if (rowInfo && rowInfo.rowEl && rowInfo.cellEl) {
+                        // Row exists but no action link (action not available) -> skip and continue.
+                        bulkOpsRecIdArrayCopy = bulkOpsRecIdArrayCopy.slice(1);
+                        bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
+                        setBulkActionChecked(viewId, recId, false);
+                        if (state && state.rowCache)
+                            state.rowCache.delete(recId);
+                        scheduleBulkActionNext(processBulkAction, viewId);
+                    } else {
+                        // Row not found (view refresh or paging) -> retry a few times.
+                        const retriesLeft = state ? state.retryCount : bulkActionRetryLimit;
+                        if (retriesLeft > 0) {
+                            if (state) {
+                                state.retryCount = retriesLeft - 1;
+                                state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
                             }
-                        }, 100);
+                            scheduleBulkActionNext(processBulkAction, viewId);
+                        } else {
+                            finishBulkAction(viewId, false);
+                            ktl.core.timedPopup('Bulk Action stopped: row not found. Try again after the view finishes reloading.', 'warning', 4000);
+                        }
                     }
                 }
             }
 
-            if (!bulkActionColumnIndex) {
+            const state = getBulkActionState(viewId);
+            if (!state || !state.columnIndex) {
                 //console.log('updateBulkOpsGuiElements');
                 updateBulkOpsGuiElements(viewId);
 
