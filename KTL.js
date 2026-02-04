@@ -2393,7 +2393,11 @@ function Ktl($, appInfo) {
                     } else if (viewType === 'details' || viewType === 'list')
                         targetSel += ` .${targetFieldId} .kn-detail-body`;
                     else if (viewType === 'form') {
-                        targetSel += ` input#${targetFieldId}`;
+                        const fieldType = ktl.fields.getFieldType(targetFieldId);
+                        if (fieldType === 'paragraph_text')
+                            targetSel += ` textarea#${targetFieldId}`;
+                        else
+                            targetSel += ` input#${targetFieldId}`;
                     }
                     //TODO: Support all view types.
                 }
