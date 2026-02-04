@@ -28169,6 +28169,8 @@ function Ktl($, appInfo) {
             if (previousScene !== scene.key) {
                 previousScene = scene.key;
                 bulkOpsRecIdArray = [];
+                bulkOpsViewId = null;
+                Object.keys(bulkActionStateByView).forEach((viewId) => clearBulkActionState(viewId));
             }
         });
 
@@ -28192,8 +28194,10 @@ function Ktl($, appInfo) {
          */
         const calculateBulkActionTiming = (rowCount) => {
             const safeCount = Math.max(0, Number(rowCount) || 0);
-            const continueDelayMs = bulkActionContinueDelayMs + Math.min(safeCount * 2, 300);
-            const observerTimeoutMs = bulkActionObserverTimeoutMs + Math.min(safeCount * 8, 3000);
+            const smallCountThreshold = 40;
+            const scaledCount = Math.max(0, safeCount - smallCountThreshold);
+            const continueDelayMs = bulkActionContinueDelayMs + Math.min(scaledCount * 1.5, 300);
+            const observerTimeoutMs = bulkActionObserverTimeoutMs + Math.min(scaledCount * 8, 3000);
             return { continueDelayMs, observerTimeoutMs };
         };
 
@@ -28416,12 +28420,10 @@ function Ktl($, appInfo) {
                 state.running = false;
             }
             clearBulkActionObserver(viewId);
+            clearBulkActionState(viewId);
 
             if (refreshView) {
-                ktl.views.refreshView(viewId).then(() => {
-                    ensureBulkOpsUi(viewId);
-                    updateBulkOpsGuiElements(viewId);
-                });
+                ktl.views.refreshView(viewId);
             }
 
             ktl.views.autoRefresh();
@@ -28702,7 +28704,7 @@ function Ktl($, appInfo) {
                     syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
                     if (!bulkActionColumnIndex) return;
                     if (!bulkOpsRecIdArrayCopy.length) {
-                        finishBulkAction(viewId, true);
+                        finishBulkAction(viewId, false);
                         return;
                     }
 
