@@ -28196,8 +28196,10 @@ function Ktl($, appInfo) {
             const safeCount = Math.max(0, Number(rowCount) || 0);
             const smallCountThreshold = 40;
             const scaledCount = Math.max(0, safeCount - smallCountThreshold);
-            const continueDelayMs = bulkActionContinueDelayMs + Math.min(scaledCount * 1.5, 300);
-            const observerTimeoutMs = bulkActionObserverTimeoutMs + Math.min(scaledCount * 8, 3000);
+            const extraDelayMs = scaledCount ? Math.min(scaledCount * 2, 300) : 0;
+            const extraObserverMs = scaledCount ? Math.min(scaledCount * 8, 3000) : 0;
+            const continueDelayMs = bulkActionContinueDelayMs + extraDelayMs;
+            const observerTimeoutMs = bulkActionObserverTimeoutMs + extraObserverMs;
             return { continueDelayMs, observerTimeoutMs };
         };
 
@@ -28709,7 +28711,6 @@ function Ktl($, appInfo) {
                     }
 
                     bulkOpsRecIdArray = bulkOpsRecIdArrayCopy;
-                    syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
 
                     const recId = bulkOpsRecIdArrayCopy[0];
                     const rowInfo = getBulkActionRowInfo(viewId, recId, bulkActionColumnIndex);
@@ -28726,19 +28727,14 @@ function Ktl($, appInfo) {
                             actionLinkEl.click();
                             setBulkActionChecked(viewId, recId, false);
 
-                            setTimeout(() => {
-                                syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
-                            }, 200);
-
                             scheduleBulkActionNext(processBulkAction, viewId);
                         }, () => {
-                            if (state)
+                            if (state && !state.rowCache)
                                 state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
-                            syncBulkActionUi(viewId, bulkOpsRecIdArrayCopy);
                             scheduleBulkActionNext(processBulkAction, viewId);
                         });
                     } else if (actionLinkEl && !actionLinkEl.isConnected) {
-                        if (state)
+                        if (state && !state.rowCache)
                             state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
                         scheduleBulkActionNext(processBulkAction, viewId);
                     } else if (rowInfo && rowInfo.rowEl && rowInfo.cellEl) {
@@ -28755,7 +28751,8 @@ function Ktl($, appInfo) {
                         if (retriesLeft > 0) {
                             if (state) {
                                 state.retryCount = retriesLeft - 1;
-                                state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
+                                if (!state.rowCache)
+                                    state.rowCache = buildBulkActionRowCache(viewId, bulkActionColumnIndex);
                             }
                             scheduleBulkActionNext(processBulkAction, viewId);
                         } else {
@@ -29089,8 +29086,6 @@ function Ktl($, appInfo) {
                 deleteRecordsBtn.disabled = !numChecked;
                 deleteRecordsBtn.textContent = 'Delete Selected: ' + numChecked;
             }
-
-            ktl.views.autoRefresh(!numChecked); //If a checkbox is clicked, pause auto-refresh otherwise user will lose all selections.
         }
 
         function updateCopyButtonState(viewId, numChecked) {
