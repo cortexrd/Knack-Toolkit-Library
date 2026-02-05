@@ -45,6 +45,44 @@ if (result === 0) { // Yes was selected
 
 The function returns the index of the selected option (0-based), or -1 if cancelled.
 
+## jQuery vs Vanilla JavaScript
+
+**IMPORTANT**: For all new code, use plain vanilla JavaScript instead of jQuery.
+
+### Rules
+1. **New code**: Always use vanilla JS (e.g., `document.querySelector()`, `element.addEventListener()`, `fetch()`)
+2. **Existing code**: Leave as-is unless explicitly asked to convert
+3. **Mixed context**: If modifying a function that already uses jQuery, continue with jQuery for consistency within that function
+
+### Examples
+
+Instead of:
+```javascript
+$('#myElement').hide();
+$('#myButton').on('click', handler);
+$.ajax({ url: '/api', success: callback });
+```
+
+Use:
+```javascript
+document.getElementById('myElement').style.display = 'none';
+document.getElementById('myButton').addEventListener('click', handler);
+fetch('/api').then(response => response.json()).then(callback);
+```
+
+### Common Conversions
+| jQuery | Vanilla JS |
+|--------|------------|
+| `$(selector)` | `document.querySelector(selector)` |
+| `$(selector).hide()` | `element.style.display = 'none'` |
+| `$(selector).show()` | `element.style.display = ''` |
+| `$(selector).on('click', fn)` | `element.addEventListener('click', fn)` |
+| `$(selector).val()` | `element.value` |
+| `$(selector).text()` | `element.textContent` |
+| `$(selector).html()` | `element.innerHTML` |
+| `$(selector).addClass('x')` | `element.classList.add('x')` |
+| `$(selector).removeClass('x')` | `element.classList.remove('x')` |
+
 ## Additional Guidelines
 
 (Add more KTL-specific guidelines here as needed)
