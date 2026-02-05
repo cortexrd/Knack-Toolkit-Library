@@ -38,7 +38,7 @@ function Ktl($, appInfo) {
 
     const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1027
+    //KEC stands for "KTL Event Code".  Next:  KEC_1028
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
@@ -781,6 +781,9 @@ function Ktl($, appInfo) {
              * @property {number|null} index - Selector index that matched (or null in 'all' mode).
              * @property {'single'|'all'|'race'} mode - Matching mode used.
              * @property {number} elapsed - Elapsed time in milliseconds.
+             */
+
+            /**
              * Waits for one or more DOM elements to meet specific conditions.
              * @param {string|string[]} selectors
              *        A CSS selector or array of selectors to wait for.
@@ -882,7 +885,7 @@ function Ktl($, appInfo) {
 
                         if (opts.outcome === ktl.const.WAIT_SEL_LOG_WARN) {
 
-                            ktl.log.addLog(ktl.const.LS_WRN, `KEC_1012 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
+                            ktl.log.addLog(ktl.const.LS_WRN, `KEC_1027 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
                         } else if (opts.outcome === ktl.const.WAIT_SEL_LOG_ERROR) {
                             ktl.log.addLog(ktl.const.LS_APP_ERROR, `KEC_1002 - waitElement timed out for ${selectorsStr} in ${sceneKey}`);
                         } else if (opts.outcome === ktl.const.WAIT_SEL_ALERT && ktl.core.getCfg().developerNames.includes(Knack.getUserAttributes().name)) {
@@ -20543,6 +20546,8 @@ function Ktl($, appInfo) {
                         const rowCheckboxes = viewElement.querySelectorAll('tbody tr td input[type="checkbox"]');
                         rowCheckboxes.forEach((cb) => {
                             cb.checked = masterCheckbox.checked;
+                            // Dispatch change event so other listeners can respond
+                            cb.dispatchEvent(new Event('change', { bubbles: true }));
                         });
 
                         const handlers = Array.isArray(masterCheckbox._ktlMasterChangeHandlers)
@@ -20584,7 +20589,11 @@ function Ktl($, appInfo) {
                         if (!row) return;
 
                         const masterCheckbox = viewElement.querySelector('.masterSelector');
-                        if (masterCheckbox) masterCheckbox.checked = false;
+                        if (masterCheckbox) {
+                            masterCheckbox.checked = false;
+                            // Dispatch change event so onMasterChange callback can be triggered
+                            masterCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
 
                         const checkedRows = Array.from(viewElement.querySelectorAll(`${rowSelector}:checked`))
                             .map((cb) => cb.closest('tr'))
@@ -28426,6 +28435,7 @@ function Ktl($, appInfo) {
                 state.running = false;
             }
             clearBulkActionObserver(viewId);
+            detachBulkActionHandler(viewId);
             clearBulkActionState(viewId);
 
             if (refreshView) {
@@ -28457,7 +28467,7 @@ function Ktl($, appInfo) {
         };
 
         /**
-         * Attach bulk action click handler for a view (capture phase to run first).
+         * Attach bulk action click handler for a view using event delegation (capture phase to run first).
          * @param {string} viewId
          * @param {Function} handler
          */
@@ -28465,8 +28475,22 @@ function Ktl($, appInfo) {
             if (!viewId || typeof handler !== 'function') return;
             detachBulkActionHandler(viewId);
             const state = getBulkActionState(viewId);
-            if (state) state.clickHandler = handler;
-            getBulkActionTargets(viewId).forEach((el) => el.addEventListener('click', handler, true));
+            if (!state) return;
+
+            // Create a delegated handler that checks if the target matches action links
+            const delegatedHandler = (event) => {
+                const target = event.target;
+                // Check if target is an action link element or an icon inside one
+                if (target.matches('i, .kn-action-link') || target.closest('i, .kn-action-link')) {
+                    handler(event);
+                }
+            };
+
+            state.clickHandler = delegatedHandler;
+            const viewElement = document.getElementById(viewId);
+            if (viewElement) {
+                viewElement.addEventListener('click', delegatedHandler, true);
+            }
         };
 
         /**
@@ -28477,7 +28501,10 @@ function Ktl($, appInfo) {
             const state = getBulkActionState(viewId);
             const handler = state ? state.clickHandler : null;
             if (!handler) return;
-            getBulkActionTargets(viewId).forEach((el) => el.removeEventListener('click', handler, true));
+            const viewElement = document.getElementById(viewId);
+            if (viewElement) {
+                viewElement.removeEventListener('click', handler, true);
+            }
             if (state) state.clickHandler = null;
         };
 
@@ -28865,7 +28892,7 @@ function Ktl($, appInfo) {
                             createBulkOpsHeaderCheckbox(labelContainer);
                         }
                     }
-                })
+                });
 
             }
 
