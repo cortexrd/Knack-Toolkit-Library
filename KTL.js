@@ -4304,9 +4304,9 @@ function Ktl($, appInfo) {
          * @property {number} [retryDelayBase=300] - Base delay for backoff in milliseconds.
          * @property {number} [retryDelayMax=20000] - Max delay for backoff in milliseconds.
          * @property {number[]} [retryOnStatus=[429,500,502,503,504]] - HTTP status codes to retry.
-         * @property {number} [writeConcurrency=4] - Max concurrent create/update requests.
+         * @property {number} [writeConcurrency=5] - Max concurrent create/update requests.
          * @property {number} [writeMinConcurrency=1] - Min concurrency after rate limiting.
-         * @property {number} [writeMaxConcurrency=4] - Upper bound for adaptive concurrency.
+         * @property {number} [writeMaxConcurrency=5] - Upper bound for adaptive concurrency.
          * @property {number} [writeRampDelayMs=2000] - Delay before ramping concurrency.
          */
 
@@ -4562,6 +4562,55 @@ function Ktl($, appInfo) {
                     await this._refreshAfterWrite(refreshViews);
                     return result;
                 });
+            }
+
+            /**
+             * Update multiple records in a view using write concurrency.
+             * @param {string} viewId
+             * @param {string[]} recordIds
+             * @param {Object} recordData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @param {Function} [options.onProgress]
+             * @param {boolean} [options.continueOnError=false]
+             * @returns {Promise<{ total: number, updated: number, failed: number }>} 
+             */
+            async updateRecords(viewId, recordIds, recordData, refreshViews, options = {}) {
+                const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
+                const total = ids.length;
+                if (!total) return { total: 0, updated: 0, failed: 0 };
+
+                const opts = options || {};
+                let updated = 0;
+                let failed = 0;
+                let firstError = null;
+
+                const tasks = ids.map((recordId) => this.updateRecord(viewId, recordId, recordData, [], opts)
+                    .then(() => {
+                        updated += 1;
+                        if (typeof opts.onProgress === 'function')
+                            opts.onProgress({ updated, failed, total, recordId });
+                    })
+                    .catch((error) => {
+                        failed += 1;
+                        if (!firstError) firstError = error;
+                        if (typeof opts.onProgress === 'function')
+                            opts.onProgress({ updated, failed, total, recordId });
+                        if (!opts.continueOnError) throw error;
+                    }));
+
+                if (opts.continueOnError) {
+                    await Promise.allSettled(tasks);
+                } else {
+                    await Promise.all(tasks);
+                }
+
+                await this._refreshAfterWrite(refreshViews);
+
+                if (firstError && !opts.continueOnError)
+                    throw firstError;
+
+                return { total, updated, failed };
             }
 
             /**
@@ -5088,6 +5137,10 @@ function Ktl($, appInfo) {
 
             updateRecord: function (...args) {
                 return apiInstance.updateRecord(...args);
+            },
+
+            updateRecords: function (...args) {
+                return apiInstance.updateRecords(...args);
             },
 
             deleteRecord: function (...args) {
@@ -30138,44 +30191,31 @@ function Ktl($, appInfo) {
                     ktl.scenes.spinnerWatchdog(false);
                     Knack.showSpinner();
 
-                    let idx = 0;
-                    let countDone = 0;
-                    let errorEncountered = 0;
-                    const arrayLen = bulkOpsRecIdArray.length;
+                    const recordIds = bulkOpsRecIdArray.slice();
+                    const arrayLen = recordIds.length;
 
-                    const itv = setInterval(() => {
-                        if (!errorEncountered && idx < arrayLen)
-                            updateRecord(bulkOpsRecIdArray[idx++]);
-                        else
-                            clearInterval(itv);
-                    }, 150);
+                    const showProgress = (updatedCount) => {
+                        const done = Number.isFinite(updatedCount) ? updatedCount : 0;
+                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - done));
+                    };
 
-                    function updateRecord(recId) {
-                        showProgress();
-                        ktl.core.knAPI(bulkOpsViewId, recId, apiData, 'PUT', [], false)
-                            .then(function () {
-                                if (++countDone === bulkOpsRecIdArray.length) {
-                                    bulkOpsRecIdArray = [];
-                                    postBulkOpsRestoreState();
-                                    ktl.views.refreshView(bulkOpsViewId).then(function () {
-                                        setTimeout(() => {
-                                            alert('Bulk Edit completed successfully');
-                                        }, 500);
-                                    })
-                                } else
-                                    showProgress();
-                            })
-                            .catch(function (reason) {
-                                errorEncountered++;
-                                clearInterval(itv);
-                                if (errorEncountered === 1)
-                                    postBulkOpsRestoreState('Bulk Edit Error:', reason);
-                            })
-
-                        function showProgress() {
-                            ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
-                        }
-                    }
+                    showProgress(0);
+                    ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                        onProgress: ({ updated }) => showProgress(updated),
+                        continueOnError: false
+                    })
+                        .then(() => {
+                            bulkOpsRecIdArray = [];
+                            postBulkOpsRestoreState();
+                            ktl.views.refreshView(bulkOpsViewId).then(function () {
+                                setTimeout(() => {
+                                    alert('Bulk Edit completed successfully');
+                                }, 500);
+                            });
+                        })
+                        .catch((reason) => {
+                            postBulkOpsRestoreState('Bulk Edit Error:', reason);
+                        });
                 }
 
                 function processBulkDuplicate() {
