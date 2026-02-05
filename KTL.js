@@ -28161,6 +28161,7 @@ function Ktl($, appInfo) {
         let bulkOpsDeleteAll = false;
         let previousScene = '';
         let apiData = {};
+        const bulkOpsCfgWarnedViews = new Set();
         const bulkActionStateByView = {};
         const bulkActionRetryLimit = 20;
         const bulkActionContinueDelayMs = 50;
@@ -28615,6 +28616,37 @@ function Ktl($, appInfo) {
             return target.matches(bulkOpsRowCheckboxSelector)
                 || target.matches(bulkOpsHeaderCheckboxSelector)
                 || target.matches(bulkOpsMasterCheckboxSelector);
+        }
+
+        function logBulkOpsCfgMismatch(viewId) {
+            if (!viewId || bulkOpsCfgWarnedViews.has(viewId)) return;
+            const ebo = ktlKeywords[viewId] && ktlKeywords[viewId]._ebo;
+            if (ebo === undefined) return;
+
+            if (ebo.length && ebo[0].options) {
+                const options = ebo[0].options;
+                if (!ktl.core.hasRoleAccess(options)) return;
+            }
+
+            const requestedOps = (!ebo.length || !ebo[0].params[0].length)
+                ? ['edit', 'copy', 'delete', 'action']
+                : ebo[0].params[0].map(op => String(op).toLowerCase());
+
+            const cfg = ktl.core.getCfg().enabled.bulkOps || {};
+            const cfgMap = {
+                edit: 'bulkEdit',
+                copy: 'bulkCopy',
+                delete: 'bulkDelete',
+                action: 'bulkAction'
+            };
+
+            const missingOps = requestedOps.filter(op => cfgMap[op] && !cfg[cfgMap[op]]);
+            if (!missingOps.length) return;
+
+            const label = missingOps.join(' & ');
+            const cfgNames = missingOps.map(op => `enabled.bulkOps.${cfgMap[op]}`).join(' & ');
+            ktl.log.clog('purple', `[KTL][bulkOps] ${viewId}: Bulk ${label} need${missingOps.length > 1 ? '' : 's'} to be set to true in the config ${cfgNames}.`);
+            bulkOpsCfgWarnedViews.add(viewId);
         }
 
         //The entry point of the feature, where Bulk Ops is enabled per view, depending on account role permission.
@@ -29518,6 +29550,8 @@ function Ktl($, appInfo) {
                 const viewType = ktl.views.getViewType(view.key);
                 if (ktl.scenes.isiFrameWnd() || ktl.core.isKiosk() || !(viewType === 'table' || viewType === 'search') || !data.length)
                     return;
+
+                logBulkOpsCfgMismatch(view.key);
 
                 if (!viewCanDoBulkOp(view.key, 'edit') && !viewCanDoBulkOp(view.key, 'copy') && !viewCanDoBulkOp(view.key, 'delete') && !viewCanDoBulkOp(view.key, 'action'))
                     return;
