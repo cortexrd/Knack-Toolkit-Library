@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.40.1';
+    const KTL_VERSION = '0.40.2';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -11056,10 +11056,9 @@ function Ktl($, appInfo) {
 
             const parts = withNewlines
                 .split(/\r?\n/)
-                .map((p) => p.replace(/\s+/g, ' ').trim())
-                .filter(Boolean);
+                .map((p) => p.replace(/\s+/g, ' ').trim());
 
-            return parts.join(', ');
+            return parts.join('\n').trim();
         }
 
         function applyDataTooltips(viewId, mappings = []) {
