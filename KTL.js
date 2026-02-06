@@ -4335,9 +4335,9 @@ function Ktl($, appInfo) {
                     retryOnStatus: Array.isArray(options.retryOnStatus)
                         ? options.retryOnStatus
                         : [429, 500, 502, 503, 504],
-                    writeConcurrency: Number.isFinite(options.writeConcurrency) ? options.writeConcurrency : 5,
+                    writeConcurrency: Number.isFinite(options.writeConcurrency) ? options.writeConcurrency : 4,
                     writeMinConcurrency: Number.isFinite(options.writeMinConcurrency) ? options.writeMinConcurrency : 1,
-                    writeMaxConcurrency: Number.isFinite(options.writeMaxConcurrency) ? options.writeMaxConcurrency : 5,
+                    writeMaxConcurrency: Number.isFinite(options.writeMaxConcurrency) ? options.writeMaxConcurrency : 4,
                     writeRampDelayMs: Number.isFinite(options.writeRampDelayMs) ? options.writeRampDelayMs : 2000
                 };
 
@@ -4572,8 +4572,9 @@ function Ktl($, appInfo) {
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
              * @param {Function} [options.onProgress]
+             * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
-             * @returns {Promise<{ total: number, updated: number, failed: number }>} 
+             * @returns {Promise<{ total: number, updated: number, failed: number }>}
              */
             async updateRecords(viewId, recordIds, recordData, refreshViews, options = {}) {
                 const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
@@ -4581,11 +4582,13 @@ function Ktl($, appInfo) {
                 if (!total) return { total: 0, updated: 0, failed: 0 };
 
                 const opts = options || {};
+                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let updated = 0;
                 let failed = 0;
                 let firstError = null;
 
-                const tasks = ids.map((recordId) => this.updateRecord(viewId, recordId, recordData, [], opts)
+                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.updateRecord(viewId, recordId, recordData, [], opts))
                     .then(() => {
                         updated += 1;
                         if (typeof opts.onProgress === 'function')
@@ -30202,7 +30205,8 @@ function Ktl($, appInfo) {
                     showProgress(0);
                     ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
                         onProgress: ({ updated }) => showProgress(updated),
-                        continueOnError: false
+                        continueOnError: false,
+                        staggerMs: 40
                     })
                         .then(() => {
                             bulkOpsRecIdArray = [];
