@@ -38,7 +38,7 @@ function Ktl($, appInfo) {
 
     const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1027
+    //KEC stands for "KTL Event Code".  Next:  KEC_1028
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
@@ -4587,6 +4587,7 @@ function Ktl($, appInfo) {
                 let updated = 0;
                 let failed = 0;
                 let firstError = null;
+                const failedRecordIds = [];
 
                 const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.updateRecord(viewId, recordId, recordData, [], opts))
                     .then(() => {
@@ -4596,6 +4597,7 @@ function Ktl($, appInfo) {
                     })
                     .catch((error) => {
                         failed += 1;
+                        failedRecordIds.push(recordId);
                         if (!firstError) firstError = error;
                         if (typeof opts.onProgress === 'function')
                             opts.onProgress({ updated, failed, total, recordId });
@@ -4609,6 +4611,13 @@ function Ktl($, appInfo) {
                 }
 
                 await this._refreshAfterWrite(refreshViews);
+
+                // Log failed records if any (only after all retries exhausted)
+                if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
+                    const recordList = failedRecordIds.join(', ');
+                    const errorMsg = `KEC_1027 - API update failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
+                    ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+                }
 
                 if (firstError && !opts.continueOnError)
                     throw firstError;
@@ -4663,6 +4672,7 @@ function Ktl($, appInfo) {
                 let deleted = 0;
                 let failed = 0;
                 let firstError = null;
+                const failedRecordIds = [];
 
                 const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.deleteRecord(viewId, recordId, [], opts))
                     .then(() => {
@@ -4672,6 +4682,7 @@ function Ktl($, appInfo) {
                     })
                     .catch((error) => {
                         failed += 1;
+                        failedRecordIds.push(recordId);
                         if (!firstError) firstError = error;
                         if (typeof opts.onProgress === 'function')
                             opts.onProgress({ deleted, failed, total, recordId });
@@ -4685,6 +4696,13 @@ function Ktl($, appInfo) {
                 }
 
                 await this._refreshAfterWrite(refreshViews);
+
+                // Log failed records if any (only after all retries exhausted)
+                if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
+                    const recordList = failedRecordIds.join(', ');
+                    const errorMsg = `KEC_1027 - API delete failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
+                    ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+                }
 
                 if (firstError && !opts.continueOnError)
                     throw firstError;
@@ -13918,6 +13936,7 @@ function Ktl($, appInfo) {
 
             let successCount = 0;
             let errorCount = 0;
+            const failedRecordIds = [];
 
             // First, fetch all records concurrently to get current tag values
             const recordsToUpdate = [];
@@ -13972,6 +13991,7 @@ function Ktl($, appInfo) {
                     }
                 } else if (result.status === 'fulfilled' && result.value.error) {
                     errorCount++;
+                    failedRecordIds.push(result.value.recId);
                 } else {
                     errorCount++;
                 }
@@ -14004,12 +14024,22 @@ function Ktl($, appInfo) {
                         successCount++;
                     } else {
                         errorCount++;
+                        if (result.status === 'fulfilled' && result.value.recId) {
+                            failedRecordIds.push(result.value.recId);
+                        }
                     }
                 }
             }
 
             ktl.core.removeInfoPopup();
             await ktl.views.refreshView(viewId);
+
+            // Log failed records if any (only after all retries exhausted)
+            if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
+                const recordList = failedRecordIds.join(', ');
+                const errorMsg = `KEC_1027 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${recordIds.length}): ${recordList}`;
+                ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+            }
 
             if (errorCount === 0) {
                 ktl.core.timedPopup(`Tag ${mode === 'add' ? 'added to' : 'removed from'} ${successCount} record(s)`, 'success');
@@ -30438,13 +30468,13 @@ function Ktl($, appInfo) {
                             .then(() => {
                                 countDone++;
                                 showProgress();
-                                return { success: true };
+                                return { success: true, index: i };
                             })
                             .catch((error) => {
                                 countDone++;
                                 showProgress();
                                 ktl.log.clog('red', 'Bulk Copy Error:', error);
-                                return { success: false, error };
+                                return { success: false, error, index: i };
                             })
                     );
 
@@ -30452,9 +30482,18 @@ function Ktl($, appInfo) {
                         .then((results) => {
                             const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
                             const failureCount = results.length - successCount;
+                            const failedIndices = results
+                                .filter(r => r.status === 'fulfilled' && !r.value.success)
+                                .map(r => r.value.index);
 
                             bulkOpsRecIdArray = [];
                             postBulkOpsRestoreState();
+
+                            // Log failed records if any (only after all retries exhausted)
+                            if (failureCount > 0 && typeof ktl?.log?.addLog === 'function') {
+                                const errorMsg = `KEC_1027 - API create (bulk copy) failed for view ${bulkOpsViewId}. Failed records: ${failureCount}/${numToProcess} (indices: ${failedIndices.join(', ')})`;
+                                ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+                            }
 
                             ktl.views.refreshView(bulkOpsViewId).then(function () {
                                 ktl.views.autoRefresh();
