@@ -4304,9 +4304,9 @@ function Ktl($, appInfo) {
          * @property {number} [retryDelayBase=300] - Base delay for backoff in milliseconds.
          * @property {number} [retryDelayMax=20000] - Max delay for backoff in milliseconds.
          * @property {number[]} [retryOnStatus=[429,500,502,503,504]] - HTTP status codes to retry.
-         * @property {number} [writeConcurrency=4] - Max concurrent create/update/delete requests.
+         * @property {number} [writeConcurrency=6] - Max concurrent create/update/delete requests. Knack allows 10 API/sec, default 6 uses 60% of limit leaving headroom for retries.
          * @property {number} [writeMinConcurrency=1] - Min concurrency after rate limiting.
-         * @property {number} [writeMaxConcurrency=4] - Upper bound for adaptive concurrency.
+         * @property {number} [writeMaxConcurrency=8] - Upper bound for adaptive concurrency. Max 8 allows scaling to 80% of Knack's 10 API/sec limit.
          * @property {number} [writeRampDelayMs=2000] - Delay before ramping concurrency.
          */
 
@@ -4335,9 +4335,9 @@ function Ktl($, appInfo) {
                     retryOnStatus: Array.isArray(options.retryOnStatus)
                         ? options.retryOnStatus
                         : [429, 500, 502, 503, 504],
-                    writeConcurrency: Number.isFinite(options.writeConcurrency) ? options.writeConcurrency : 4,
+                    writeConcurrency: Number.isFinite(options.writeConcurrency) ? options.writeConcurrency : 6,
                     writeMinConcurrency: Number.isFinite(options.writeMinConcurrency) ? options.writeMinConcurrency : 1,
-                    writeMaxConcurrency: Number.isFinite(options.writeMaxConcurrency) ? options.writeMaxConcurrency : 4,
+                    writeMaxConcurrency: Number.isFinite(options.writeMaxConcurrency) ? options.writeMaxConcurrency : 8,
                     writeRampDelayMs: Number.isFinite(options.writeRampDelayMs) ? options.writeRampDelayMs : 2000
                 };
 
