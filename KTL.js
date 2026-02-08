@@ -13919,12 +13919,31 @@ function Ktl($, appInfo) {
             let successCount = 0;
             let errorCount = 0;
 
-            for (let i = 0; i < recordIds.length; i++) {
-                const recId = recordIds[i];
-                ktl.core.setInfoPopupText(`Processing record ${i + 1} of ${recordIds.length}...`);
+            // First, fetch all records concurrently to get current tag values
+            const recordsToUpdate = [];
+            let fetchedCount = 0;
 
+            // Fetch records in parallel using Promise.allSettled for resilience
+            const fetchPromises = recordIds.map(async (recId) => {
                 try {
-                    const record = await ktl.core.knAPI(viewId, recId, {}, 'GET', [], false);
+                    const record = await ktl.api.getRecord(viewId, recId);
+                    fetchedCount++;
+                    ktl.core.setInfoPopupText(`Fetching record ${fetchedCount} of ${recordIds.length}...`);
+                    return { recId, record, error: null };
+                } catch (error) {
+                    fetchedCount++;
+                    ktl.core.setInfoPopupText(`Fetching record ${fetchedCount} of ${recordIds.length}...`);
+                    ktl.log.clog('red', `_tags: Error fetching record ${recId}:`, error);
+                    return { recId, record: null, error };
+                }
+            });
+
+            const fetchResults = await Promise.allSettled(fetchPromises);
+
+            // Process fetched records and determine which need updates
+            for (const result of fetchResults) {
+                if (result.status === 'fulfilled' && result.value.record) {
+                    const { recId, record } = result.value;
                     const currentTags = tagsParseTagsFromField(record[fieldId + '_raw'] || record[fieldId] || '');
 
                     let newTags;
@@ -13943,16 +13962,49 @@ function Ktl($, appInfo) {
 
                     const currentSorted = currentTags.map(t => t.toLowerCase()).sort().join(',');
                     const newSorted = newTags.map(t => t.toLowerCase()).sort().join(',');
+                    
                     if (currentSorted !== newSorted) {
                         const apiData = {};
                         apiData[fieldId] = newTags.join(', ');
-                        await ktl.core.knAPI(viewId, recId, apiData, 'PUT', [], false);
+                        recordsToUpdate.push({ recId, apiData });
+                    } else {
+                        successCount++; // No change needed, count as success
                     }
-
-                    successCount++;
-                } catch (error) {
+                } else if (result.status === 'fulfilled' && result.value.error) {
                     errorCount++;
-                    ktl.log.clog('red', `_tags: Error updating record ${recId}:`, error);
+                } else {
+                    errorCount++;
+                }
+            }
+
+            // Update records concurrently if there are any to update
+            if (recordsToUpdate.length > 0) {
+                ktl.core.setInfoPopupText(`Updating ${recordsToUpdate.length} records...`);
+                let updatedCount = 0;
+
+                const updatePromises = recordsToUpdate.map(async ({ recId, apiData }) => {
+                    try {
+                        await ktl.api.updateRecord(viewId, recId, apiData, []);
+                        updatedCount++;
+                        ktl.core.setInfoPopupText(`Updated ${updatedCount} of ${recordsToUpdate.length} records...`);
+                        return { recId, success: true };
+                    } catch (error) {
+                        updatedCount++;
+                        ktl.core.setInfoPopupText(`Updated ${updatedCount} of ${recordsToUpdate.length} records...`);
+                        ktl.log.clog('red', `_tags: Error updating record ${recId}:`, error);
+                        return { recId, success: false, error };
+                    }
+                });
+
+                const updateResults = await Promise.allSettled(updatePromises);
+
+                // Count successes and failures
+                for (const result of updateResults) {
+                    if (result.status === 'fulfilled' && result.value.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
                 }
             }
 
