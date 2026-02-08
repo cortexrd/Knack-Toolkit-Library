@@ -30425,38 +30425,53 @@ function Ktl($, appInfo) {
                     ktl.scenes.spinnerWatchdog(false);
 
                     let countDone = 0;
-                    let countInprocess = 0;
-                    let errorEncountered = false;
-                    const itv = setInterval(() => {
-                        if (!errorEncountered && countInprocess++ < numToProcess)
-                            createRecord();
-                        else
-                            clearInterval(itv);
-                    }, 150);
 
-                    function createRecord() {
-                        showProgress();
-                        ktl.core.knAPI(bulkOpsViewId, null, apiData, 'POST', [], false)
-                            .then(function () {
-                                if (++countDone === numToProcess) {
-                                    postBulkOpsRestoreState();
-                                    ktl.views.refreshView(bulkOpsViewId).then(function () {
-                                        ktl.views.autoRefresh();
-                                        alert('Bulk Copy completed successfully');
-                                    })
-                                } else
-                                    showProgress();
-                            })
-                            .catch(function (reason) {
-                                errorEncountered = true;
-                                clearInterval(itv);
-                                postBulkOpsRestoreState('Bulk Copy Error:', reason);
-                            })
-
-                        function showProgress() {
-                            ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + objName + ((numToProcess > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (numToProcess - countDone));
-                        }
+                    function showProgress() {
+                        ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + objName + ((numToProcess > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records created: ' + countDone);
                     }
+
+                    showProgress();
+
+                    // Create all records concurrently using ktl.api.createRecord
+                    const createPromises = Array.from({ length: numToProcess }, (_, i) => 
+                        ktl.api.createRecord(bulkOpsViewId, apiData, [], { staggerMs: 40 * i })
+                            .then(() => {
+                                countDone++;
+                                showProgress();
+                                return { success: true };
+                            })
+                            .catch((error) => {
+                                countDone++;
+                                showProgress();
+                                ktl.log.clog('red', 'Bulk Copy Error:', error);
+                                return { success: false, error };
+                            })
+                    );
+
+                    Promise.allSettled(createPromises)
+                        .then((results) => {
+                            const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+                            const failureCount = results.length - successCount;
+
+                            bulkOpsRecIdArray = [];
+                            postBulkOpsRestoreState();
+
+                            ktl.views.refreshView(bulkOpsViewId).then(function () {
+                                ktl.views.autoRefresh();
+                                if (failureCount === 0) {
+                                    setTimeout(() => {
+                                        alert('Bulk Copy completed successfully');
+                                    }, 500);
+                                } else {
+                                    setTimeout(() => {
+                                        alert(`Bulk Copy completed with ${failureCount} error(s). ${successCount} records created successfully.`);
+                                    }, 500);
+                                }
+                            });
+                        })
+                        .catch((reason) => {
+                            postBulkOpsRestoreState('Bulk Copy Error:', reason);
+                        });
                 }
             }
         }
