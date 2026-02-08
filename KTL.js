@@ -4304,9 +4304,9 @@ function Ktl($, appInfo) {
          * @property {number} [retryDelayBase=300] - Base delay for backoff in milliseconds.
          * @property {number} [retryDelayMax=20000] - Max delay for backoff in milliseconds.
          * @property {number[]} [retryOnStatus=[429,500,502,503,504]] - HTTP status codes to retry.
-         * @property {number} [writeConcurrency=5] - Max concurrent create/update requests.
+         * @property {number} [writeConcurrency=4] - Max concurrent create/update/delete requests.
          * @property {number} [writeMinConcurrency=1] - Min concurrency after rate limiting.
-         * @property {number} [writeMaxConcurrency=5] - Upper bound for adaptive concurrency.
+         * @property {number} [writeMaxConcurrency=4] - Upper bound for adaptive concurrency.
          * @property {number} [writeRampDelayMs=2000] - Delay before ramping concurrency.
          */
 
@@ -4627,9 +4627,69 @@ function Ktl($, appInfo) {
             async deleteRecord(viewId, recordId, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
-                const result = await this._request(url, { method: 'DELETE' }, opts.timeout);
+                return await this._enqueueWrite(async () => {
+                    const result = await this._request(
+                        url,
+                        {
+                            method: 'DELETE',
+                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs)
+                        },
+                        opts.timeout
+                    );
+                    await this._refreshAfterWrite(refreshViews);
+                    return result;
+                });
+            }
+
+            /**
+             * Delete multiple records in a view using write concurrency.
+             * @param {string} viewId
+             * @param {string[]} recordIds
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @param {Function} [options.onProgress]
+             * @param {number} [options.staggerMs=0]
+             * @param {boolean} [options.continueOnError=false]
+             * @returns {Promise<{ total: number, deleted: number, failed: number }>}
+             */
+            async deleteRecords(viewId, recordIds, refreshViews, options = {}) {
+                const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
+                const total = ids.length;
+                if (!total) return { total: 0, deleted: 0, failed: 0 };
+
+                const opts = options || {};
+                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                let deleted = 0;
+                let failed = 0;
+                let firstError = null;
+
+                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.deleteRecord(viewId, recordId, [], opts))
+                    .then(() => {
+                        deleted += 1;
+                        if (typeof opts.onProgress === 'function')
+                            opts.onProgress({ deleted, failed, total, recordId });
+                    })
+                    .catch((error) => {
+                        failed += 1;
+                        if (!firstError) firstError = error;
+                        if (typeof opts.onProgress === 'function')
+                            opts.onProgress({ deleted, failed, total, recordId });
+                        if (!opts.continueOnError) throw error;
+                    }));
+
+                if (opts.continueOnError) {
+                    await Promise.allSettled(tasks);
+                } else {
+                    await Promise.all(tasks);
+                }
+
                 await this._refreshAfterWrite(refreshViews);
-                return result;
+
+                if (firstError && !opts.continueOnError)
+                    throw firstError;
+
+                return { total, deleted, failed };
             }
 
             /**
@@ -4826,7 +4886,7 @@ function Ktl($, appInfo) {
 
                 q.pausedUntil = Math.max(q.pausedUntil, pauseUntil);
                 q.last429At = now;
-                q.current = Math.max(q.min, Math.min(q.current, q.min));
+                q.current = q.min;
 
                 if (q.queue.length > 0) {
                     setTimeout(() => this._drainWriteQueue(), pauseFor + 1);
@@ -5148,6 +5208,10 @@ function Ktl($, appInfo) {
 
             deleteRecord: function (...args) {
                 return apiInstance.deleteRecord(...args);
+            },
+
+            deleteRecords: function (...args) {
+                return apiInstance.deleteRecords(...args);
             },
 
             refreshView: function (...args) {
@@ -22208,13 +22272,87 @@ function Ktl($, appInfo) {
                     }
 
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
+                    const queue = automatedBulkOpsQueue[bulkOpsViewId];
+                    const arrayLen = queue.length;
 
                     enableShowProgress && ktl.core.infoPopup();
                     ktl.views.autoRefresh(false);
                     ktl.scenes.spinnerWatchdog(false);
 
-                    var arrayLen = automatedBulkOpsQueue[bulkOpsViewId].length;
+                    // Determine request type (allow per-record override)
+                    const defaultRequestType = (requestType || 'PUT').toUpperCase();
+                    
+                    // Check if all requests are PUT operations
+                    const allPutOps = queue.every(item => {
+                        const reqType = (item.requestType || defaultRequestType).toUpperCase();
+                        return reqType === 'PUT';
+                    });
 
+                    // Use the new concurrent API for PUT-only bulk operations
+                    if (allPutOps) {
+                        // Extract record IDs and prepare consolidated API data
+                        const recordIds = queue.map(item => item.id).filter(Boolean);
+                        
+                        // For bulk updates, we need to handle the case where each record might have different data
+                        // Check if all records have the same apiData (common case)
+                        const firstApiData = queue[0].apiData || queue[0];
+                        const allSameData = queue.every(item => {
+                            const itemData = item.apiData || item;
+                            return JSON.stringify(itemData) === JSON.stringify(firstApiData);
+                        });
+
+                        if (allSameData && recordIds.length > 0) {
+                            // All records get same data - use efficient batch update
+                            const apiData = { ...firstApiData };
+                            delete apiData.id;
+                            delete apiData.requestType;
+
+                            function showProgress(countDone) {
+                                enableShowProgress && ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                            }
+
+                            showProgress(0);
+                            ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                                onProgress: ({ updated }) => showProgress(updated),
+                                continueOnError: false,
+                                staggerMs: 40
+                            })
+                                .then(async (result) => {
+                                    automatedBulkOpsQueue[bulkOpsViewId] = [];
+                                    delete automatedBulkOpsQueue[bulkOpsViewId];
+
+                                    await restoreDefaultPageState();
+
+                                    if (document.querySelector(`#${bulkOpsViewId}`)) {
+                                        if (showSpinner)
+                                            Knack.showSpinner();
+
+                                        if (viewsToRefresh.length) {
+                                            await ktl.views.refreshViewArray(viewsToRefresh);
+                                        }
+                                    }
+
+                                    resolve(result.updated);
+                                })
+                                .catch(async (error) => {
+                                    await restoreDefaultPageState();
+                                    const errorMessage = error.message || 'processAutomatedBulkOps error';
+                                    reject(errorMessage);
+                                });
+
+                            async function restoreDefaultPageState() {
+                                ktl.core.removeInfoPopup();
+                                ktl.core.removeTimedPopup();
+                                ktl.scenes.spinnerWatchdog();
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                ktl.views.autoRefresh();
+                                Knack.hideSpinner();
+                            }
+                            return;
+                        }
+                    }
+
+                    // Fall back to original implementation for non-PUT, mixed types, or per-record data
                     var idx = 0;
                     var countDone = 0;
                     let results = []; //For GET requests.
@@ -30370,7 +30508,7 @@ function Ktl($, appInfo) {
                 return new Promise(function (resolve, reject) {
                     const arrayLen = deleteArray.length;
                     if (arrayLen === 0)
-                        reject('Called deleteRecords with empty array.');
+                        return reject('Called deleteRecords with empty array.');
 
                     const objName = ktl.views.getViewSourceName(view.key);
 
@@ -30378,36 +30516,26 @@ function Ktl($, appInfo) {
                     Knack.showSpinner();
                     ktl.core.infoPopup();
 
-                    let idx = 0;
-                    let countDone = 0;
-                    const itv = setInterval(() => {
-                        if (idx < arrayLen)
-                            deleteRecord(deleteArray[idx++]);
-                        else
-                            clearInterval(itv);
-                    }, 150);
-
-                    function deleteRecord(recId) {
-                        showProgress();
-                        ktl.core.knAPI(view.key, recId, {}, 'DELETE', [], false)
-                            .then(function () {
-                                if (++countDone === deleteArray.length) {
-                                    postBulkOpsRestoreState();
-                                    resolve();
-                                } else
-                                    showProgress();
-                            })
-                            .catch(function (reason) {
-                                const errorMessage = `deleteRecords - Failed to delete record ${recId}`;
-                                postBulkOpsRestoreState(errorMessage, reason);
-                                reject('deleteRecords - Failed to delete record ' + recId + ', reason: ' + JSON.stringify(reason));
-                            })
-
-                        function showProgress() {
-                            ktl.core.setInfoPopupText('Deleting ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
-                        }
+                    function showProgress(countDone) {
+                        ktl.core.setInfoPopupText('Deleting ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
                     }
-                })
+
+                    showProgress(0);
+                    ktl.api.deleteRecords(view.key, deleteArray, [], {
+                        onProgress: ({ deleted }) => showProgress(deleted),
+                        continueOnError: false,
+                        staggerMs: 40
+                    })
+                        .then(() => {
+                            postBulkOpsRestoreState();
+                            resolve();
+                        })
+                        .catch(function (error) {
+                            const errorMessage = 'deleteRecords - Failed to delete records';
+                            postBulkOpsRestoreState(errorMessage, error);
+                            reject('deleteRecords - Error: ' + (error.message || JSON.stringify(error)));
+                        });
+                });
             },
 
             getBulkOpsActive: function (viewId) {
