@@ -4300,10 +4300,10 @@ function Ktl($, appInfo) {
          * @property {boolean} [debug=false] - Enable console logging for API activity.
          * @property {boolean} [developerOnly=false] - Restrict logs to developer roles when true.
          * @property {string[]} [developerRoles=['Developer']] - Roles considered developers.
-         * @property {number} [maxRetries=2] - Max retry attempts for retryable errors. Note: Failed calls count towards Knack's rate limit, so total attempts = 1 + maxRetries (default 3 total attempts).
+         * @property {number} [maxRetries=2] - Max retry attempts for retryable errors. Note: Failed calls count towards BOTH Knack's rate limit (10/sec) AND daily quota (e.g., 5000/day). Total attempts = 1 + maxRetries (default 3 total). With 2 retries instead of 3, saves 25% on daily quota in failure scenarios.
          * @property {number} [retryDelayBase=300] - Base delay for backoff in milliseconds.
          * @property {number} [retryDelayMax=20000] - Max delay for backoff in milliseconds.
-         * @property {number[]} [retryOnStatus=[429,500,502,503,504]] - HTTP status codes to retry. Note: All these failed requests count towards Knack's rate limit.
+         * @property {number[]} [retryOnStatus=[429,500,502,503,504]] - HTTP status codes to retry. Note: All these failed requests count towards both rate limit and daily API quota.
          * @property {number} [writeConcurrency=6] - Max concurrent create/update/delete requests. Knack allows 10 API/sec, default 6 uses 60% of limit leaving headroom for retries.
          * @property {number} [writeMinConcurrency=1] - Min concurrency after rate limiting.
          * @property {number} [writeMaxConcurrency=8] - Upper bound for adaptive concurrency. Max 8 allows scaling to 80% of Knack's 10 API/sec limit.
