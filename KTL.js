@@ -13930,7 +13930,7 @@ function Ktl($, appInfo) {
             });
         }
 
-        async function tagsUpdateRecords(viewId, fieldId, recordIds, tag, mode) {
+        async function tagsUpdateRecords(viewId, fieldId, recordIds, tag, mode, data) {
             ktl.core.infoPopup();
             ktl.core.setInfoPopupText(`Processing ${recordIds.length} records...`);
 
@@ -13938,31 +13938,34 @@ function Ktl($, appInfo) {
             let errorCount = 0;
             const failedRecordIds = [];
 
-            // First, fetch all records concurrently to get current tag values
+            // Create a Map of records by ID from the data array for fast lookup
+            const recordsById = new Map();
+            if (data && Array.isArray(data)) {
+                data.forEach(record => {
+                    if (record.id) {
+                        recordsById.set(record.id, record);
+                    }
+                });
+            }
+
             const recordsToUpdate = [];
-            let fetchedCount = 0;
 
-            // Fetch records in parallel using Promise.allSettled for resilience
-            const fetchPromises = recordIds.map(async (recId) => {
+            // Process records using the data array (no API calls needed)
+            ktl.core.setInfoPopupText(`Processing ${recordIds.length} records...`);
+            
+            for (const recId of recordIds) {
                 try {
-                    const record = await ktl.api.getRecord(viewId, recId);
-                    fetchedCount++;
-                    ktl.core.setInfoPopupText(`Fetching record ${fetchedCount} of ${recordIds.length}...`);
-                    return { recId, record, error: null };
-                } catch (error) {
-                    fetchedCount++;
-                    ktl.core.setInfoPopupText(`Fetching record ${fetchedCount} of ${recordIds.length}...`);
-                    ktl.log.clog('red', `_tags: Error fetching record ${recId}:`, error);
-                    return { recId, record: null, error };
-                }
-            });
+                    // Look up record from the data array
+                    const record = recordsById.get(recId);
 
-            const fetchResults = await Promise.allSettled(fetchPromises);
+                    if (!record) {
+                        // If record not in data array, skip it
+                        errorCount++;
+                        failedRecordIds.push(recId);
+                        ktl.log.clog('red', `_tags: Record not found in data array: ${recId}`);
+                        continue;
+                    }
 
-            // Process fetched records and determine which need updates
-            for (const result of fetchResults) {
-                if (result.status === 'fulfilled' && result.value.record) {
-                    const { recId, record } = result.value;
                     const currentTags = tagsParseTagsFromField(record[fieldId + '_raw'] || record[fieldId] || '');
 
                     let newTags;
@@ -13989,11 +13992,10 @@ function Ktl($, appInfo) {
                     } else {
                         successCount++; // No change needed, count as success
                     }
-                } else if (result.status === 'fulfilled' && result.value.error) {
+                } catch (error) {
                     errorCount++;
-                    failedRecordIds.push(result.value.recId);
-                } else {
-                    errorCount++;
+                    failedRecordIds.push(recId);
+                    ktl.log.clog('red', `_tags: Error processing record ${recId}:`, error);
                 }
             }
 
@@ -14088,7 +14090,7 @@ function Ktl($, appInfo) {
                 return;
             }
 
-            await tagsUpdateRecords(viewId, fieldId, recordIds, tag, mode);
+            await tagsUpdateRecords(viewId, fieldId, recordIds, tag, mode, data);
         }
 
         function tagsUpdateButtonsState(viewId) {
