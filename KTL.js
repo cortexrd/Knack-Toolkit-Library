@@ -11104,14 +11104,14 @@ function Ktl($, appInfo) {
                 if (sourceIdx < 0) continue;
 
                 const sourceHeader = headerCells[sourceIdx];
-                if (mapping.hideSource && sourceHeader) sourceHeader.style.display = 'none';
+                if (mapping.hideSource && sourceHeader) sourceHeader.classList.add(`ktlDisplayNone_dttip`);
 
                 const targetIdx = findColumnIndex(mapping.targetFieldKey);
 
                 for (const row of rows) {
                     const cells = Array.from(row.querySelectorAll('td'));
                     const sourceCell = cells[sourceIdx];
-                    if (mapping.hideSource && sourceCell) sourceCell.style.display = 'none';
+                    if (mapping.hideSource && sourceCell) sourceCell.classList.add(`ktlDisplayNone_dttip`);
 
                     if (targetIdx < 0) continue;
 
