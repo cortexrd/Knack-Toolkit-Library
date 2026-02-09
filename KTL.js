@@ -29353,6 +29353,47 @@ function Ktl($, appInfo) {
         };
 
         /**
+         * Add LUD (Last Updated Date) and LUB (Last Updated By) fields to API data.
+         * @param {Object} apiData - The API data object to modify
+         */
+        const addLudLubFieldsToApiData = (apiData) => {
+            if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
+                apiData[bulkOpsLudFieldId] = ktl.core.getFormattedCurrentDateTime(Knack.fields[bulkOpsLudFieldId].attributes.format.date_format);
+                apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
+            }
+        };
+
+        /**
+         * Initialize a bulk operation by setting up progress UI.
+         */
+        const initializeBulkOperation = () => {
+            ktl.core.infoPopup();
+            ktl.views.autoRefresh(false);
+            ktl.scenes.spinnerWatchdog(false);
+        };
+
+        /**
+         * Pluralize object name if count is greater than 1.
+         * @param {string} objName - The object name
+         * @param {number} count - The count of objects
+         * @returns {string} - Pluralized name
+         */
+        const pluralizeObjectName = (objName, count) => {
+            return objName + ((count > 1 && objName.slice(-1) !== 's') ? 's' : '');
+        };
+
+        /**
+         * Finalize bulk operation and cleanup.
+         * @param {boolean} clearRecordIds - Whether to clear the record IDs array
+         */
+        const finalizeBulkOperation = (clearRecordIds = true) => {
+            if (clearRecordIds) {
+                bulkOpsRecIdArray = [];
+            }
+            postBulkOpsRestoreState();
+        };
+
+        /**
          * Build a cache of row elements and action links for a view.
          * @param {string} viewId
          * @param {string} bulkActionColumnIndex
@@ -30404,14 +30445,9 @@ function Ktl($, appInfo) {
                 function processBulkEdit() {
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
-                    if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
-                        apiData[bulkOpsLudFieldId] = ktl.core.getFormattedCurrentDateTime(Knack.fields[bulkOpsLudFieldId].attributes.format.date_format)
-                        apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
-                    }
+                    addLudLubFieldsToApiData(apiData);
 
-                    ktl.core.infoPopup();
-                    ktl.views.autoRefresh(false);
-                    ktl.scenes.spinnerWatchdog(false);
+                    initializeBulkOperation();
                     Knack.showSpinner();
 
                     const recordIds = bulkOpsRecIdArray.slice();
@@ -30419,7 +30455,7 @@ function Ktl($, appInfo) {
 
                     const showProgress = (updatedCount) => {
                         const done = Number.isFinite(updatedCount) ? updatedCount : 0;
-                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - done));
+                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + pluralizeObjectName(objName, arrayLen) + '.    Records left: ' + (arrayLen - done));
                     };
 
                     showProgress(0);
@@ -30429,8 +30465,7 @@ function Ktl($, appInfo) {
                         staggerMs: 40
                     })
                         .then(() => {
-                            bulkOpsRecIdArray = [];
-                            postBulkOpsRestoreState();
+                            finalizeBulkOperation();
                             ktl.views.refreshView(bulkOpsViewId).then(function () {
                                 setTimeout(() => {
                                     alert('Bulk Edit completed successfully');
@@ -30445,19 +30480,14 @@ function Ktl($, appInfo) {
                 function processBulkDuplicate() {
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
-                    if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
-                        apiData[bulkOpsLudFieldId] = ktl.core.getFormattedCurrentDateTime(Knack.fields[bulkOpsLudFieldId].attributes.format.date_format);
-                        apiData[bulkOpsLubFieldId] = [Knack.getUserAttributes().id];
-                    }
+                    addLudLubFieldsToApiData(apiData);
 
-                    ktl.core.infoPopup();
-                    ktl.views.autoRefresh(false);
-                    ktl.scenes.spinnerWatchdog(false);
+                    initializeBulkOperation();
 
                     let countDone = 0;
 
                     function showProgress() {
-                        ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + objName + ((numToProcess > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records created: ' + countDone);
+                        ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + pluralizeObjectName(objName, numToProcess) + '.    Records created: ' + countDone);
                     }
 
                     showProgress();
@@ -30486,8 +30516,7 @@ function Ktl($, appInfo) {
                                 .filter(r => r.status === 'fulfilled' && !r.value.success)
                                 .map(r => r.value.index);
 
-                            bulkOpsRecIdArray = [];
-                            postBulkOpsRestoreState();
+                            finalizeBulkOperation();
 
                             // Log failed records if any (only after all retries exhausted)
                             if (failureCount > 0 && typeof ktl?.log?.addLog === 'function') {
@@ -30552,38 +30581,36 @@ function Ktl($, appInfo) {
                 }
             }
 
-            let tableHasInlineEditing = ktl.views.viewHasInlineEdit(viewId);
-
-            //Bulk Edit
-            if (bulkOp === 'edit' && ktl.core.getCfg().enabled.bulkOps.bulkEdit) {
-                if ((Knack.getUserRoleNames().includes('Bulk Edit') || bulkOpEnabled)
-                    && tableHasInlineEditing
-                    && !bulkOpDisabled)
-                    return true;
-            }
-
-            //Bulk Copy
-            if (bulkOp === 'copy' && ktl.core.getCfg().enabled.bulkOps.bulkCopy) {
-                if ((Knack.getUserRoleNames().includes('Bulk Copy') || bulkOpEnabled)
-                    && tableHasInlineEditing
-                    && !bulkOpDisabled)
-                    return true;
-            }
-
-            //Bulk Delete
-            if (bulkOp === 'delete' && ktl.core.getCfg().enabled.bulkOps.bulkDelete && document.querySelector(`#${viewId} .kn-link-delete`)) {
-                if ((Knack.getUserRoleNames().includes('Bulk Delete') || bulkOpEnabled)
-                    && !bulkOpDisabled)
-                    return true;
-            }
-
-            //Bulk Action
-            const viewHasActionLinks = document.querySelector(`#${viewId} tbody tr td .kn-action-link`);
-            if (bulkOp === 'action' && ktl.core.getCfg().enabled.bulkOps.bulkAction) {
-                if ((Knack.getUserRoleNames().includes('Bulk Action') || bulkOpEnabled)
+            // Helper to check bulk operation permission
+            const checkBulkOpPermission = (roleName, configEnabled, additionalChecks = true) => {
+                return configEnabled 
+                    && (Knack.getUserRoleNames().includes(roleName) || bulkOpEnabled)
                     && !bulkOpDisabled
-                    && viewHasActionLinks)
-                    return true;
+                    && additionalChecks;
+            };
+
+            const tableHasInlineEditing = ktl.views.viewHasInlineEdit(viewId);
+
+            // Bulk Edit
+            if (bulkOp === 'edit') {
+                return checkBulkOpPermission('Bulk Edit', ktl.core.getCfg().enabled.bulkOps.bulkEdit, tableHasInlineEditing);
+            }
+
+            // Bulk Copy
+            if (bulkOp === 'copy') {
+                return checkBulkOpPermission('Bulk Copy', ktl.core.getCfg().enabled.bulkOps.bulkCopy, tableHasInlineEditing);
+            }
+
+            // Bulk Delete
+            if (bulkOp === 'delete') {
+                const hasDeleteLink = document.querySelector(`#${viewId} .kn-link-delete`);
+                return checkBulkOpPermission('Bulk Delete', ktl.core.getCfg().enabled.bulkOps.bulkDelete, hasDeleteLink);
+            }
+
+            // Bulk Action
+            if (bulkOp === 'action') {
+                const viewHasActionLinks = document.querySelector(`#${viewId} tbody tr td .kn-action-link`);
+                return checkBulkOpPermission('Bulk Action', ktl.core.getCfg().enabled.bulkOps.bulkAction, viewHasActionLinks);
             }
 
             return false;
@@ -30623,7 +30650,7 @@ function Ktl($, appInfo) {
                     ktl.core.infoPopup();
 
                     function showProgress(countDone) {
-                        ktl.core.setInfoPopupText('Deleting ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                        ktl.core.setInfoPopupText('Deleting ' + arrayLen + ' ' + pluralizeObjectName(objName, arrayLen) + '.    Records left: ' + (arrayLen - countDone));
                     }
 
                     showProgress(0);
