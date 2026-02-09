@@ -13938,31 +13938,31 @@ function Ktl($, appInfo) {
             let errorCount = 0;
             const failedRecordIds = [];
 
-            // Get view type and access cached data from Knack.views
-            const viewType = ktl.views.getViewType(viewId);
+            // First, fetch all records concurrently to get current tag values
             const recordsToUpdate = [];
+            let fetchedCount = 0;
 
-            // Process records using cached data from Knack.views (no API calls needed)
-            ktl.core.setInfoPopupText(`Processing ${recordIds.length} records...`);
-            
-            for (const recId of recordIds) {
+            // Fetch records in parallel using Promise.allSettled for resilience
+            const fetchPromises = recordIds.map(async (recId) => {
                 try {
-                    // Access cached record data from Knack.views
-                    let record;
-                    if (viewType === 'search') {
-                        record = Knack.views[viewId]?.model?.results_model?.data?._byId?.[recId]?.attributes;
-                    } else {
-                        record = Knack.views[viewId]?.model?.data?._byId?.[recId]?.attributes;
-                    }
+                    const record = await ktl.api.getRecord(viewId, recId);
+                    fetchedCount++;
+                    ktl.core.setInfoPopupText(`Fetching record ${fetchedCount} of ${recordIds.length}...`);
+                    return { recId, record, error: null };
+                } catch (error) {
+                    fetchedCount++;
+                    ktl.core.setInfoPopupText(`Fetching record ${fetchedCount} of ${recordIds.length}...`);
+                    ktl.log.clog('red', `_tags: Error fetching record ${recId}:`, error);
+                    return { recId, record: null, error };
+                }
+            });
 
-                    if (!record) {
-                        // If record not in cache, skip it
-                        errorCount++;
-                        failedRecordIds.push(recId);
-                        ktl.log.clog('red', `_tags: Record not found in cache: ${recId}`);
-                        continue;
-                    }
+            const fetchResults = await Promise.allSettled(fetchPromises);
 
+            // Process fetched records and determine which need updates
+            for (const result of fetchResults) {
+                if (result.status === 'fulfilled' && result.value.record) {
+                    const { recId, record } = result.value;
                     const currentTags = tagsParseTagsFromField(record[fieldId + '_raw'] || record[fieldId] || '');
 
                     let newTags;
@@ -13989,10 +13989,11 @@ function Ktl($, appInfo) {
                     } else {
                         successCount++; // No change needed, count as success
                     }
-                } catch (error) {
+                } else if (result.status === 'fulfilled' && result.value.error) {
                     errorCount++;
-                    failedRecordIds.push(recId);
-                    ktl.log.clog('red', `_tags: Error processing record ${recId}:`, error);
+                    failedRecordIds.push(result.value.recId);
+                } else {
+                    errorCount++;
                 }
             }
 
