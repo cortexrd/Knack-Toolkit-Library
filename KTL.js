@@ -22424,7 +22424,7 @@ function Ktl($, appInfo) {
             if (!isPreviewMode && !userId && cachedThemeMode === 'KnackDefault') {
                 // Ensure light logo is shown for default theme
                 if (ktlKeywords._theme?.lightLogo) {
-                    const logoEl = document.querySelector('.knHeader__logo-image');
+                    const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                     if (logoEl && logoEl.src !== ktlKeywords._theme.lightLogo) {
                         logoEl.src = ktlKeywords._theme.lightLogo;
                     }
@@ -22468,7 +22468,7 @@ function Ktl($, appInfo) {
                     clearThemeCssVariables();
                     // Restore light logo when switching to default theme
                     if (ktlKeywords._theme?.lightLogo) {
-                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                         if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                     }
                     return;
@@ -22501,7 +22501,7 @@ function Ktl($, appInfo) {
                 document.body.classList.remove('ktlUserTheme');
                 clearThemeCssVariables();
                 if (ktlKeywords._theme?.lightLogo) {
-                    const logoEl = document.querySelector('.knHeader__logo-image');
+                    const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                     if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                 }
                 // Reset bulk edit colors for light theme
@@ -23163,7 +23163,7 @@ function Ktl($, appInfo) {
 
                     // Swap logo based on header luminance (< 50% = dark header, use light logo)
                     if (ktlKeywords._theme?.darkLogo || ktlKeywords._theme?.lightLogo) {
-                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                         if (logoEl) {
                             const rgb = ktl.systemColors.hexToRgb(headerRgb);
                             const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
@@ -23894,7 +23894,7 @@ function Ktl($, appInfo) {
                     clearThemeCssVariables();
                     // Restore light logo for default theme preview
                     if (ktlKeywords._theme?.lightLogo) {
-                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                         if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                     }
                     // Reset bulk edit colors for light theme
