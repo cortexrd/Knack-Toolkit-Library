@@ -1,6 +1,11 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.40.3    *2026-02-11*
+
+- `_arh`: Add `[identifier]` group parameter to manually specify the identifier field via Universal Selectors
+- `_dttip`: Replace display none style with `ktlDisplayNone_dttip` class
+
 ## 0.40.2    *2026-02-06*
 
 - Checkbox system refactor: unified `addCheckboxesToTable` function with customizable callbacks
