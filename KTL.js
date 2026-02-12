@@ -15141,8 +15141,7 @@ function Ktl($, appInfo) {
 
             let context = `${Knack.views[viewId].model.view.title} (${Knack.views[viewId].model.view.type})`;
             let expiry = '';
-            let identifierViewId = '';
-            let identifierFieldIdOverride = '';
+            let identifierOverride = '';
 
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
@@ -15165,33 +15164,7 @@ function Ktl($, appInfo) {
                         } else if (group[0] === 'expiry') {
                             expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
                         } else if (group[0] === 'identifier') {
-                            const paramString = (keywords[kw][0].paramStr.match(/\[identifier,([^[]*)\]/) || [])[1] || '';
-                            const parts = ktl.core.splitAndTrimToArray(paramString);
-                            if (parts.length >= 2) {
-                                let idViewId = '';
-                                let idFieldId = '';
-                                const unresolvedParts = [];
-
-                                for (const part of parts) {
-                                    if (part.startsWith('view_'))
-                                        idViewId = part;
-                                    else if (part.startsWith('field_'))
-                                        idFieldId = part;
-                                    else
-                                        unresolvedParts.push(part);
-                                }
-
-                                if (!idViewId && unresolvedParts.length > 0)
-                                    idViewId = ktl.scenes.findViewWithTitle(unresolvedParts.pop());
-
-                                if (!idFieldId && idViewId && unresolvedParts.length > 0)
-                                    idFieldId = ktl.fields.getFieldIdFromLabel(idViewId, unresolvedParts[0]);
-
-                                if (idViewId && idFieldId) {
-                                    identifierViewId = idViewId;
-                                    identifierFieldIdOverride = idFieldId;
-                                }
-                            }
+                            identifierOverride = ((keywords[kw][0].paramStr.match(/\[identifier,([^[]*)\]/) || [])[1] || '').trim();
                         }
                     }
                 }
@@ -15201,6 +15174,12 @@ function Ktl($, appInfo) {
             let changeLog = {};
             let recordId;
             let identifier;
+
+            if (identifierOverride) {
+                ktl.core.getTextFromSelector(identifierOverride, viewId)
+                    .then(value => { identifier = value; })
+                    .catch(e => { ktl.log.clog('purple', 'Failed reading identifier override in _arh', viewId, e); })
+            }
 
             const sourceObjectId = ktl.views.getViewSourceObjectId(viewId);
             if (!sourceObjectId) return;
@@ -15401,12 +15380,8 @@ function Ktl($, appInfo) {
             $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
                 //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
 
-                if (identifierViewId && identifierFieldIdOverride) {
-                    const el = document.querySelector(`#${identifierViewId} .${identifierFieldIdOverride} .kn-detail-body`);
-                    if (el) identifier = el.textContent.trim();
-                } else {
+                if (!identifierOverride)
                     identifier = record[identifierFieldId];
-                }
                 updateDataAndLogDeltas(viewId, record);
 
                 //$(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, (event, view, data) => {
@@ -15437,12 +15412,8 @@ function Ktl($, appInfo) {
 
             $(document).off(`knack-record-delete.${viewId}.ktl_arh`).on(`knack-record-delete.${viewId}.ktl_arh`, function (event, view, record) {
                 formActionText = 'Deleted';
-                if (identifierViewId && identifierFieldIdOverride) {
-                    const el = document.querySelector(`#${identifierViewId} .${identifierFieldIdOverride} .kn-detail-body`);
-                    if (el) identifier = el.textContent.trim();
-                } else {
+                if (!identifierOverride)
                     identifier = record[identifierFieldId];
-                }
                 updateDataAndLogDeltas(viewId, record);
             });
         }
