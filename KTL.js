@@ -30163,10 +30163,10 @@ function Ktl($, appInfo) {
                                             $('#ktl-bulk-delete-all-' + viewId).click();
                                         } else {
                                             bulkOpsDeleteAll = false;
-                                            alert('Delete All has completed successfully');
+                                            ktl.core.selectOption('Delete All has completed successfully', 'OK');
                                         }
                                     } else
-                                        alert('Deleted Selected has completed successfully');
+                                        ktl.core.selectOption('Deleted Selected has completed successfully', 'OK');
                                 }, 500);
                             });
                         })
@@ -30174,7 +30174,7 @@ function Ktl($, appInfo) {
                             $.unblockUI();
                             ktl.log.addLog(ktl.const.LS_APP_ERROR, 'KEC_1024 - Bulk Delete failed, reason: ' + response);
                             setTimeout(() => {
-                                alert('Failed deleting record.\n' + response);
+                                ktl.core.selectOption('Failed deleting record.\n' + response, 'Close');
                             }, 500);
                         })
                 });
@@ -30368,7 +30368,7 @@ function Ktl($, appInfo) {
 
         function previewLastBulkEditData() {
             const lastData = JSON.stringify(apiData, null, 4);
-            alert(lastData);
+            ktl.core.selectOption(lastData, 'Close');
         }
 
         function updateHeaderCheckboxes(viewId, numChecked = 0) {
@@ -30432,7 +30432,7 @@ function Ktl($, appInfo) {
                 numToProcess = prompt('How many copies do you want to create?', 0);
                 numToProcess = parseInt(numToProcess);
                 if (isNaN(numToProcess) || numToProcess <= 0) {
-                    alert('Must chose a numeric value higher than zero.');
+                    ktl.core.selectOption('Must chose a numeric value higher than zero.', 'Close');
                     return;
                 }
 
@@ -30514,7 +30514,7 @@ function Ktl($, appInfo) {
                             finalizeBulkOperation();
                             ktl.views.refreshView(bulkOpsViewId).then(function () {
                                 setTimeout(() => {
-                                    alert('Bulk Edit completed successfully');
+                                    ktl.core.selectOption('Bulk Edit completed successfully', 'OK');
                                 }, 500);
                             });
                         })
@@ -30574,11 +30574,11 @@ function Ktl($, appInfo) {
                                 ktl.views.autoRefresh();
                                 if (failureCount === 0) {
                                     setTimeout(() => {
-                                        alert('Bulk Copy completed successfully');
+                                        ktl.core.selectOption('Bulk Copy completed successfully', 'OK');
                                     }, 500);
                                 } else {
                                     setTimeout(() => {
-                                        alert(`Bulk Copy completed with ${failureCount} error(s). ${successCount} records created successfully.`);
+                                        ktl.core.selectOption(`Bulk Copy completed with ${failureCount} error(s). ${successCount} records created successfully.`, 'Close');
                                     }, 500);
                                 }
                             });
@@ -30673,7 +30673,7 @@ function Ktl($, appInfo) {
                 setTimeout(() => {
                     try {
                         const reasonMessage = JSON.parse(reason.responseText).errors[0].message;
-                        alert(`${messageText} ${reasonMessage}`);
+                        ktl.core.selectOption(`${messageText} ${reasonMessage}`, 'Close');
                     } catch (err) {
                         ktl.core.timedPopup(`Undefined Bulk Operation Error: ${messageText} - ${err}`, 'error', 2000);
                     }
@@ -30866,7 +30866,7 @@ function Ktl($, appInfo) {
                         ktl.log.clog('orange', 'Updating versions in table...');
                         ktl.core.knAPI(cfg.appBcstSWUpdateViewId, data[0].id, apiData, 'PUT', [cfg.appBcstSWUpdateViewId])
                             .then(function (response) { ktl.log.clog('green', 'Versions updated successfully!'); })
-                            .catch(function (reason) { alert('An error occurred while updating versions in table, reason: ' + JSON.stringify(reason)); })
+                            .catch(function (reason) { ktl.core.selectOption('An error occurred while updating versions in table, reason: ' + JSON.stringify(reason), 'Close'); })
                     });
                 }
             }
