@@ -22039,7 +22039,8 @@ function Ktl($, appInfo) {
 
                 bookmarks[sceneKey] = {
                     url: pageUrl,
-                    name: sceneName
+                    name: sceneName,
+                    order: Object.keys(bookmarks).length
                 };
             } else {
                 icon.removeClass('fa-bookmark').addClass('fa-bookmark-o');
@@ -22129,10 +22130,15 @@ function Ktl($, appInfo) {
             };
 
             // Render bookmarks or helper text
-            const bookmarkEntries = Object.values(bookmarks);
+            const bookmarkEntries = Object.entries(bookmarks);
             if (bookmarkEntries.length > 0) {
-                bookmarkEntries.sort((a, b) => a.name.localeCompare(b.name))
-                    .forEach(bookmark => createBookmarkButton(bookmark, buttonsContainer));
+                const sorted = bookmarkEntries.sort((a, b) => {
+                    const orderA = a[1].order !== undefined ? a[1].order : Infinity;
+                    const orderB = b[1].order !== undefined ? b[1].order : Infinity;
+                    return orderA - orderB || a[1].name.localeCompare(b[1].name);
+                });
+                const promises = sorted.map(([sceneKey, bookmark]) => createBookmarkButton(bookmark, buttonsContainer, sceneKey));
+                Promise.all(promises).then(() => setupBookmarksDragAndDrop(buttonsContainer));
             } else {
                 const helperText = document.createElement('div');
                 helperText.className = 'ktlBookmarksHelperText';
@@ -22150,12 +22156,13 @@ function Ktl($, appInfo) {
             }
         }
 
-        function createBookmarkButton(bookmark, container) {
-            ktl.systemColors.getSystemColors()
+        function createBookmarkButton(bookmark, container, sceneKey) {
+            return ktl.systemColors.getSystemColors()
                 .then((sysColors) => {
                     const button = document.createElement('a');
                     button.className = 'kn-button ktlBookmarkButton';
                     button.href = bookmark.url;
+                    if (sceneKey) button.dataset.sceneKey = sceneKey;
 
                     // Only dynamic styles remain here:
                     const newSaturation = 0.7;
@@ -22306,6 +22313,35 @@ function Ktl($, appInfo) {
                     ktl.core.timedPopup('Bookmark renamed', 'success', 1500);
                 }
             }
+        }
+
+        function setupBookmarksDragAndDrop(buttonsContainer) {
+            if (!buttonsContainer || buttonsContainer.children.length < 2) return;
+
+            new Sortable(buttonsContainer, {
+                swapThreshold: 0.96,
+                animation: 250,
+                easing: "cubic-bezier(1, 0, 0, 1)",
+                onEnd: function (evt) {
+                    if (evt.oldIndex !== evt.newIndex) {
+                        const userPrefsObj = ktl.userPrefs.getUserPrefs();
+                        const bookmarks = userPrefsObj.bookmarks || {};
+
+                        const children = buttonsContainer.children;
+                        for (let i = 0; i < children.length; i++) {
+                            const sceneKey = children[i].dataset.sceneKey;
+                            if (sceneKey && bookmarks[sceneKey])
+                                bookmarks[sceneKey].order = i;
+                        }
+
+                        userPrefsObj.bookmarks = bookmarks;
+                        userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+                        ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+                        ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+                        uploadUserPrefs(userPrefsObj);
+                    }
+                }
+            });
         }
 
         function refreshBookmarksList(bookmarks) {

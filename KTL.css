@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.12.1*/
+/* KTL CSS version: 0.12.2*/
 
 /************ KTL Spacing Constants **************/
 :root {
@@ -375,6 +375,11 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
     text-decoration: none;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     margin: 2px 4px;
+    cursor: grab;
+}
+
+.ktlBookmarkButton:active {
+    cursor: grabbing;
 }
 
 .ktlBookmarkButton .icon.is-small {
