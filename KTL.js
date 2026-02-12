@@ -13931,14 +13931,14 @@ function Ktl($, appInfo) {
         }
 
         async function tagsUpdateRecords(viewId, fieldId, recordIds, tag, mode, data) {
+            const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
             ktl.core.infoPopup();
-            ktl.core.setInfoPopupText(`Processing ${recordIds.length} records...`);
+            ktl.core.setInfoPopupText(`Fetching ${ids.length} records...`);
 
             let successCount = 0;
             let errorCount = 0;
             const failedRecordIds = [];
 
-            // Create a Map of records by ID from the data array for fast lookup
             const recordsById = new Map();
             if (data && Array.isArray(data)) {
                 data.forEach(record => {
@@ -13948,21 +13948,65 @@ function Ktl($, appInfo) {
                 });
             }
 
+            if (ids.length === 0) {
+                ktl.core.removeInfoPopup();
+                ktl.core.timedPopup('No records to update', 'warning');
+                return;
+            }
+
+            try {
+                const filters = {
+                    match: 'and',
+                    rules: [
+                        {
+                            field: 'id',
+                            operator: 'in',
+                            value: ids
+                        }
+                    ]
+                };
+
+                const fetchedRecords = await ktl.api.getAllRecords(viewId, {
+                    filters,
+                    rows: Math.min(1000, Math.max(ids.length, 1))
+                });
+
+                if (Array.isArray(fetchedRecords)) {
+                    fetchedRecords.forEach(record => {
+                        if (record?.id) {
+                            recordsById.set(record.id, record);
+                        }
+                    });
+                }
+            } catch (error) {
+                errorCount += ids.length;
+                failedRecordIds.push(...ids);
+                ktl.log.clog('red', '_tags: Error fetching records for tag update:', error);
+
+                ktl.core.removeInfoPopup();
+
+                if (typeof ktl?.log?.addLog === 'function') {
+                    const recordList = failedRecordIds.join(', ');
+                    const errorMsg = `KEC_1027 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${ids.length}): ${recordList}`;
+                    ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+                }
+
+                ktl.core.timedPopup(`Completed with ${errorCount} error(s)`, 'warning');
+                return;
+            }
+
             const recordsToUpdate = [];
 
-            // Process records using the data array (no API calls needed)
-            ktl.core.setInfoPopupText(`Processing ${recordIds.length} records...`);
-            
-            for (const recId of recordIds) {
+            ktl.core.setInfoPopupText(`Processing ${ids.length} records...`);
+
+            for (const recId of ids) {
                 try {
-                    // Look up record from the data array
                     const record = recordsById.get(recId);
 
                     if (!record) {
-                        // If record not in data array, skip it
                         errorCount++;
                         failedRecordIds.push(recId);
-                        ktl.log.clog('red', `_tags: Record not found in data array: ${recId}`);
+                        ktl.log.clog('red', `_tags: Record not found in fetched data: ${recId}`);
                         continue;
                     }
 
@@ -13984,13 +14028,13 @@ function Ktl($, appInfo) {
 
                     const currentSorted = currentTags.map(t => t.toLowerCase()).sort().join(',');
                     const newSorted = newTags.map(t => t.toLowerCase()).sort().join(',');
-                    
+
                     if (currentSorted !== newSorted) {
                         const apiData = {};
                         apiData[fieldId] = newTags.join(', ');
                         recordsToUpdate.push({ recId, apiData });
                     } else {
-                        successCount++; // No change needed, count as success
+                        successCount++;
                     }
                 } catch (error) {
                     errorCount++;
@@ -22365,7 +22409,7 @@ function Ktl($, appInfo) {
 
                     // Determine request type (allow per-record override)
                     const defaultRequestType = (requestType || 'PUT').toUpperCase();
-                    
+
                     // Check if all requests are PUT operations
                     const allPutOps = queue.every(item => {
                         const reqType = (item.requestType || defaultRequestType).toUpperCase();
@@ -22376,7 +22420,7 @@ function Ktl($, appInfo) {
                     if (allPutOps) {
                         // Extract record IDs and prepare consolidated API data
                         const recordIds = queue.map(item => item.id).filter(Boolean);
-                        
+
                         // For bulk updates, we need to handle the case where each record might have different data
                         // Check if all records have the same apiData (common case)
                         const firstApiData = queue[0].apiData || queue[0];
@@ -30495,7 +30539,7 @@ function Ktl($, appInfo) {
                     showProgress();
 
                     // Create all records concurrently using ktl.api.createRecord
-                    const createPromises = Array.from({ length: numToProcess }, (_, i) => 
+                    const createPromises = Array.from({ length: numToProcess }, (_, i) =>
                         ktl.api.createRecord(bulkOpsViewId, apiData, [], { staggerMs: 40 * i })
                             .then(() => {
                                 countDone++;
@@ -30585,7 +30629,7 @@ function Ktl($, appInfo) {
 
             // Helper to check bulk operation permission
             const checkBulkOpPermission = (roleName, configEnabled, additionalChecks = true) => {
-                return configEnabled 
+                return configEnabled
                     && (Knack.getUserRoleNames().includes(roleName) || bulkOpEnabled)
                     && !bulkOpDisabled
                     && additionalChecks;
