@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.40.3';
+    const KTL_VERSION = '0.40.4a';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -26339,12 +26339,9 @@ function Ktl($, appInfo) {
                             ...(newer.userTheme?.savedThemes || {})
                         };
                     }
-                    // Merge bookmarks from both sources
+                    // Bookmarks: newer wins entirely (spread merge would resurrect deleted bookmarks)
                     if (newer.bookmarks || older.bookmarks) {
-                        merged.bookmarks = {
-                            ...(older.bookmarks || {}),
-                            ...(newer.bookmarks || {})
-                        };
+                        merged.bookmarks = newer.bookmarks || {};
                     }
                     // Merge userFilters from both sources
                     if (newer.userFilters || older.userFilters) {
