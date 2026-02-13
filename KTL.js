@@ -4303,8 +4303,10 @@ function Ktl($, appInfo) {
          * @property {number} [maxRetries=2] - Max retry attempts for retryable errors. Note: Failed calls count towards BOTH Knack's rate limit (10/sec) AND daily quota (e.g., 5000/day). Total attempts = 1 + maxRetries (default 3 total). With 2 retries instead of 3, saves 25% on daily quota in failure scenarios.
          * @property {number} [retryDelayBase=300] - Base delay for backoff in milliseconds.
          * @property {number} [retryDelayMax=20000] - Max delay for backoff in milliseconds.
+         * @property {number} [retryDelayMin429=1000] - Minimum delay for HTTP 429 retries in milliseconds.
          * @property {number[]} [retryOnStatus=[429,500,502,503,504]] - HTTP status codes to retry. Note: All these failed requests count towards both rate limit and daily API quota.
          * @property {number} [writeConcurrency=6] - Max concurrent create/update/delete requests. Knack allows 10 API/sec, default 6 uses 60% of limit leaving headroom for retries.
+         * @property {number} [writeRatePerSecond=9] - Max write dispatches per rolling second to smooth bursts while maintaining high throughput.
          * @property {number} [writeMinConcurrency=1] - Min concurrency after rate limiting.
          * @property {number} [writeMaxConcurrency=8] - Upper bound for adaptive concurrency. Max 8 allows scaling to 80% of Knack's 10 API/sec limit.
          * @property {number} [writeRampDelayMs=2000] - Delay before ramping concurrency.
@@ -4332,10 +4334,12 @@ function Ktl($, appInfo) {
                     maxRetries: Number.isFinite(options.maxRetries) ? options.maxRetries : 2,
                     retryDelayBase: Number.isFinite(options.retryDelayBase) ? options.retryDelayBase : 300,
                     retryDelayMax: Number.isFinite(options.retryDelayMax) ? options.retryDelayMax : 20000,
+                    retryDelayMin429: Number.isFinite(options.retryDelayMin429) ? options.retryDelayMin429 : 1000,
                     retryOnStatus: Array.isArray(options.retryOnStatus)
                         ? options.retryOnStatus
                         : [429, 500, 502, 503, 504],
                     writeConcurrency: Number.isFinite(options.writeConcurrency) ? options.writeConcurrency : 6,
+                    writeRatePerSecond: Number.isFinite(options.writeRatePerSecond) ? options.writeRatePerSecond : 9,
                     writeMinConcurrency: Number.isFinite(options.writeMinConcurrency) ? options.writeMinConcurrency : 1,
                     writeMaxConcurrency: Number.isFinite(options.writeMaxConcurrency) ? options.writeMaxConcurrency : 8,
                     writeRampDelayMs: Number.isFinite(options.writeRampDelayMs) ? options.writeRampDelayMs : 2000
@@ -4522,6 +4526,10 @@ function Ktl($, appInfo) {
             async createRecord(viewId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId);
+                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
+                if (staggerMs > 0) {
+                    await new Promise(resolve => setTimeout(resolve, staggerMs));
+                }
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
                         url,
@@ -4536,6 +4544,78 @@ function Ktl($, appInfo) {
                     await this._refreshAfterWrite(refreshViews);
                     return result;
                 });
+            }
+
+            /**
+             * Create multiple records in a view using write concurrency.
+             * @param {string} viewId
+             * @param {Object[]} recordsData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @param {Function} [options.onProgress]
+             * @param {number} [options.staggerMs=0]
+             * @param {boolean} [options.continueOnError=false]
+             * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
+             */
+            async createRecords(viewId, recordsData, refreshViews, options = {}) {
+                const payloads = Array.isArray(recordsData) ? recordsData.filter(Boolean) : [];
+                const total = payloads.length;
+                if (!total) return { total: 0, created: 0, failed: 0, records: [] };
+
+                const opts = options || {};
+                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                let created = 0;
+                let failed = 0;
+                let rateLimit429Count = 0;
+                let firstError = null;
+                const failedIndices = [];
+                const createdRecords = [];
+                const requestOptions = {
+                    ...opts,
+                    _on429: () => {
+                        rateLimit429Count += 1;
+                    }
+                };
+
+                const tasks = payloads.map((recordData, index) => delay(staggerMs * index).then(() => this.createRecord(viewId, recordData, [], requestOptions))
+                    .then((record) => {
+                        created += 1;
+                        createdRecords[index] = record;
+                        if (typeof opts.onProgress === 'function')
+                            opts.onProgress({ created, failed, total, index, record });
+                    })
+                    .catch((error) => {
+                        failed += 1;
+                        failedIndices.push(index);
+                        if (!firstError) firstError = error;
+                        if (typeof opts.onProgress === 'function')
+                            opts.onProgress({ created, failed, total, index, error });
+                        if (!opts.continueOnError) throw error;
+                    }));
+
+                try {
+                    if (opts.continueOnError) {
+                        await Promise.allSettled(tasks);
+                    } else {
+                        await Promise.all(tasks);
+                    }
+
+                    await this._refreshAfterWrite(refreshViews);
+
+                    if (failedIndices.length > 0 && typeof ktl?.log?.addLog === 'function') {
+                        const errorMsg = `KEC_1027 - API create failed for view ${viewId}. Failed records (${failedIndices.length}/${total}) at indices: ${failedIndices.join(', ')}`;
+                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+                    }
+
+                    if (firstError && !opts.continueOnError)
+                        throw firstError;
+
+                    return { total, created, failed, records: createdRecords.filter(Boolean) };
+                } finally {
+                    const processed = created + failed;
+                    console.log(`[KTL API] Concurrent create summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                }
             }
 
             /**
@@ -4860,12 +4940,56 @@ function Ktl($, appInfo) {
                     max,
                     min,
                     current: start,
+                    maxPerSecond: Math.max(1, Math.floor(this.options.writeRatePerSecond || 1)),
                     active: 0,
                     pausedUntil: 0,
                     last429At: 0,
                     rampDelayMs: Math.max(0, Math.floor(this.options.writeRampDelayMs || 0)),
+                    dispatchTimestamps: [],
+                    drainTimerId: null,
+                    nextDrainAt: 0,
                     queue: []
                 };
+            }
+
+            /**
+             * Remove dispatch timestamps outside the rolling 1-second window.
+             * @param {number} now
+             * @private
+             */
+            _pruneWriteDispatchTimestamps(now = Date.now()) {
+                const q = this._writeQueue;
+                if (!q) return;
+                const cutoff = now - 1000;
+                while (q.dispatchTimestamps.length && q.dispatchTimestamps[0] <= cutoff) {
+                    q.dispatchTimestamps.shift();
+                }
+            }
+
+            /**
+             * Schedule a queue drain while avoiding timer storms.
+             * @param {number} delayMs
+             * @private
+             */
+            _scheduleWriteDrain(delayMs) {
+                const q = this._writeQueue;
+                if (!q) return;
+
+                const wait = Math.max(1, Math.floor(delayMs || 1));
+                const target = Date.now() + wait;
+
+                if (q.drainTimerId && q.nextDrainAt && q.nextDrainAt <= target) return;
+
+                if (q.drainTimerId) {
+                    clearTimeout(q.drainTimerId);
+                }
+
+                q.nextDrainAt = target;
+                q.drainTimerId = setTimeout(() => {
+                    q.drainTimerId = null;
+                    q.nextDrainAt = 0;
+                    this._drainWriteQueue();
+                }, wait);
             }
 
             /**
@@ -4892,13 +5016,26 @@ function Ktl($, appInfo) {
                 const now = Date.now();
                 if (q.pausedUntil > now) {
                     const delay = Math.max(0, q.pausedUntil - now);
-                    setTimeout(() => this._drainWriteQueue(), delay + 1);
+                    this._scheduleWriteDrain(delay + 1);
                     return;
                 }
 
+                this._pruneWriteDispatchTimestamps(now);
+
                 while (q.active < q.current && q.queue.length > 0) {
+                    const dispatchNow = Date.now();
+                    this._pruneWriteDispatchTimestamps(dispatchNow);
+
+                    if (q.dispatchTimestamps.length >= q.maxPerSecond) {
+                        const oldest = q.dispatchTimestamps[0];
+                        const waitMs = Math.max(1, 1000 - (dispatchNow - oldest) + 1);
+                        this._scheduleWriteDrain(waitMs);
+                        return;
+                    }
+
                     const job = q.queue.shift();
                     q.active += 1;
+                    q.dispatchTimestamps.push(dispatchNow);
 
                     Promise.resolve()
                         .then(job.task)
@@ -4934,7 +5071,7 @@ function Ktl($, appInfo) {
                 q.current = q.min;
 
                 if (q.queue.length > 0) {
-                    setTimeout(() => this._drainWriteQueue(), pauseFor + 1);
+                    this._scheduleWriteDrain(pauseFor + 1);
                 }
             }
 
@@ -5017,6 +5154,7 @@ function Ktl($, appInfo) {
                 const retryOnStatus = this.options.retryOnStatus;
                 const baseDelay = this.options.retryDelayBase;
                 const maxDelay = this.options.retryDelayMax;
+                const min429Delay = this.options.retryDelayMin429;
                 const timeoutMs = Number.isFinite(timeoutOverride) ? timeoutOverride : this.options.timeout;
 
                 let attempt = 0;
@@ -5061,7 +5199,11 @@ function Ktl($, appInfo) {
                             }
 
                             const retryIndex = attempt - 1;
-                            const delay = this._computeBackoffMs(baseDelay, maxDelay, retryIndex);
+                            const backoffDelay = this._computeBackoffMs(baseDelay, maxDelay, retryIndex);
+                            const retryAfterDelay = this._getRetryAfterDelayMs(jqXHR);
+                            const delay = status === 429
+                                ? Math.max(backoffDelay, Number(min429Delay) || 0, retryAfterDelay)
+                                : backoffDelay;
 
                             if (status === 429 && typeof rateLimitHandler === 'function') {
                                 rateLimitHandler(delay);
@@ -5111,9 +5253,35 @@ function Ktl($, appInfo) {
              * @private
              */
             _computeBackoffMs(baseDelay, maxDelay, retryIndex) {
-                const exp = Math.pow(2, Math.max(0, retryIndex - 1));
+                const exp = Math.pow(2, Math.max(0, retryIndex));
                 const cap = Math.min(baseDelay * exp, maxDelay);
-                return Math.floor(Math.random() * cap);
+                const min = Math.floor(cap / 2);
+                return min + Math.floor(Math.random() * (cap - min + 1));
+            }
+
+            /**
+             * Parse Retry-After header (seconds or date) into milliseconds.
+             * @param {Object} jqXHR
+             * @returns {number}
+             * @private
+             */
+            _getRetryAfterDelayMs(jqXHR) {
+                if (!jqXHR || typeof jqXHR.getResponseHeader !== 'function') return 0;
+
+                const retryAfter = jqXHR.getResponseHeader('Retry-After');
+                if (!retryAfter) return 0;
+
+                const seconds = Number(retryAfter);
+                if (Number.isFinite(seconds) && seconds >= 0) {
+                    return Math.floor(seconds * 1000);
+                }
+
+                const retryAt = Date.parse(retryAfter);
+                if (!Number.isNaN(retryAt)) {
+                    return Math.max(0, retryAt - Date.now());
+                }
+
+                return 0;
             }
 
             /**
@@ -5246,6 +5414,10 @@ function Ktl($, appInfo) {
 
             createRecord: function (...args) {
                 return apiInstance.createRecord(...args);
+            },
+
+            createRecords: function (...args) {
+                return apiInstance.createRecords(...args);
             },
 
             updateRecord: function (...args) {
@@ -30580,37 +30752,21 @@ function Ktl($, appInfo) {
 
                     showProgress();
 
-                    // Create all records concurrently using ktl.api.createRecord
-                    const createPromises = Array.from({ length: numToProcess }, (_, i) =>
-                        ktl.api.createRecord(bulkOpsViewId, apiData, [], { staggerMs: 40 * i })
-                            .then(() => {
-                                countDone++;
-                                showProgress();
-                                return { success: true, index: i };
-                            })
-                            .catch((error) => {
-                                countDone++;
-                                showProgress();
-                                ktl.log.clog('red', 'Bulk Copy Error:', error);
-                                return { success: false, error, index: i };
-                            })
-                    );
+                    const recordsToCreate = Array.from({ length: numToProcess }, () => ({ ...apiData }));
 
-                    Promise.allSettled(createPromises)
-                        .then((results) => {
-                            const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-                            const failureCount = results.length - successCount;
-                            const failedIndices = results
-                                .filter(r => r.status === 'fulfilled' && !r.value.success)
-                                .map(r => r.value.index);
+                    ktl.api.createRecords(bulkOpsViewId, recordsToCreate, [], {
+                        onProgress: ({ created, failed }) => {
+                            countDone = created + failed;
+                            showProgress();
+                        },
+                        continueOnError: true,
+                        staggerMs: 40
+                    })
+                        .then(({ created, failed }) => {
+                            const successCount = created;
+                            const failureCount = failed;
 
                             finalizeBulkOperation();
-
-                            // Log failed records if any (only after all retries exhausted)
-                            if (failureCount > 0 && typeof ktl?.log?.addLog === 'function') {
-                                const errorMsg = `KEC_1027 - API create (bulk copy) failed for view ${bulkOpsViewId}. Failed records: ${failureCount}/${numToProcess} (indices: ${failedIndices.join(', ')})`;
-                                ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                            }
 
                             ktl.views.refreshView(bulkOpsViewId).then(function () {
                                 ktl.views.autoRefresh();
