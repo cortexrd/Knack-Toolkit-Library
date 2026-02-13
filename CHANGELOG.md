@@ -1,6 +1,28 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.40.3    *2026-02-11*
+
+- `_arh`: Add `[identifier]` group parameter to manually specify the identifier field via Universal Selectors
+- `_dttip`: Replace display none style with `ktlDisplayNone_dttip` class
+
+## 0.40.2    *2026-02-06*
+
+- Checkbox system refactor: unified `addCheckboxesToTable` function with customizable callbacks
+  - Added `onRowChange` callback: `(viewId, checkbox, row, checkedRows) => {}`
+  - Enhanced `onMasterChange` callback with `checkedRows` parameter
+  - Supports multiple change handlers without duplicates
+- Add shift-click functionality for checkbox range selection in tables
+- `waitElement` improvements:
+  - Add logging support with `outcome` parameter
+  - Use MutationObserver with polling fallback
+  - Improved abort signal handling and element deduplication
+- Bulk operations improvements:
+  - Better state reset when changing scenes
+  - Refined delay scaling for small row counts
+  - Config mismatch warnings for disabled actions
+- Fix paragraph_text field selector for form views
+
 ## 0.40.1    *2026-01-29*
 
 - KTL Search: Add object search capability

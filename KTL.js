@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.40.1';
+    const KTL_VERSION = '0.40.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -12050,10 +12050,9 @@ function Ktl($, appInfo) {
 
             const parts = withNewlines
                 .split(/\r?\n/)
-                .map((p) => p.replace(/\s+/g, ' ').trim())
-                .filter(Boolean);
+                .map((p) => p.replace(/\s+/g, ' ').trim());
 
-            return parts.join(', ');
+            return parts.join('\n').trim();
         }
 
         function applyDataTooltips(viewId, mappings = []) {
@@ -12099,14 +12098,14 @@ function Ktl($, appInfo) {
                 if (sourceIdx < 0) continue;
 
                 const sourceHeader = headerCells[sourceIdx];
-                if (mapping.hideSource && sourceHeader) sourceHeader.style.display = 'none';
+                if (mapping.hideSource && sourceHeader) sourceHeader.classList.add(`ktlDisplayNone_dttip`);
 
                 const targetIdx = findColumnIndex(mapping.targetFieldKey);
 
                 for (const row of rows) {
                     const cells = Array.from(row.querySelectorAll('td'));
                     const sourceCell = cells[sourceIdx];
-                    if (mapping.hideSource && sourceCell) sourceCell.style.display = 'none';
+                    if (mapping.hideSource && sourceCell) sourceCell.classList.add(`ktlDisplayNone_dttip`);
 
                     if (targetIdx < 0) continue;
 
@@ -16246,6 +16245,7 @@ function Ktl($, appInfo) {
 
             let context = `${Knack.views[viewId].model.view.title} (${Knack.views[viewId].model.view.type})`;
             let expiry = '';
+            let identifierOverride = '';
 
             if (keywords[kw].length && keywords[kw][0].params && keywords[kw][0].params.length) {
                 const groups = keywords[kw][0].params;
@@ -16267,6 +16267,8 @@ function Ktl($, appInfo) {
                             );
                         } else if (group[0] === 'expiry') {
                             expiry = (keywords[kw][0].paramStr.match(/\[expiry,([^[]*)\]/) || [])[1].trim() || '';
+                        } else if (group[0] === 'identifier') {
+                            identifierOverride = ((keywords[kw][0].paramStr.match(/\[identifier,([^[]*)\]/) || [])[1] || '').trim();
                         }
                     }
                 }
@@ -16276,6 +16278,12 @@ function Ktl($, appInfo) {
             let changeLog = {};
             let recordId;
             let identifier;
+
+            if (identifierOverride) {
+                ktl.core.getTextFromSelector(identifierOverride, viewId)
+                    .then(value => { identifier = value; })
+                    .catch(e => { ktl.log.clog('purple', 'Failed reading identifier override in _arh', viewId, e); })
+            }
 
             const sourceObjectId = ktl.views.getViewSourceObjectId(viewId);
             if (!sourceObjectId) return;
@@ -16476,7 +16484,8 @@ function Ktl($, appInfo) {
             $(document).off(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`).on(`knack-form-submit.${viewId}.ktl_arh, knack-cell-update.${viewId}.ktl_arh`, function (event, view, record) {
                 //$.blockUI({ message: '', overlayCSS: { backgroundColor: '#fff', opacity: 0, } });
 
-                identifier = record[identifierFieldId];
+                if (!identifierOverride)
+                    identifier = record[identifierFieldId];
                 updateDataAndLogDeltas(viewId, record);
 
                 //$(document).off(`knack-view-render.${viewId}.ktl_arhRender`).one(`knack-view-render.${viewId}.ktl_arhRender`, (event, view, data) => {
@@ -16507,7 +16516,8 @@ function Ktl($, appInfo) {
 
             $(document).off(`knack-record-delete.${viewId}.ktl_arh`).on(`knack-record-delete.${viewId}.ktl_arh`, function (event, view, record) {
                 formActionText = 'Deleted';
-                identifier = record[identifierFieldId];
+                if (!identifierOverride)
+                    identifier = record[identifierFieldId];
                 updateDataAndLogDeltas(viewId, record);
             });
         }
@@ -23603,7 +23613,7 @@ function Ktl($, appInfo) {
             if (!isPreviewMode && !userId && cachedThemeMode === 'KnackDefault') {
                 // Ensure light logo is shown for default theme
                 if (ktlKeywords._theme?.lightLogo) {
-                    const logoEl = document.querySelector('.knHeader__logo-image');
+                    const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                     if (logoEl && logoEl.src !== ktlKeywords._theme.lightLogo) {
                         logoEl.src = ktlKeywords._theme.lightLogo;
                     }
@@ -23647,7 +23657,7 @@ function Ktl($, appInfo) {
                     clearThemeCssVariables();
                     // Restore light logo when switching to default theme
                     if (ktlKeywords._theme?.lightLogo) {
-                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                         if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                     }
                     return;
@@ -23680,7 +23690,7 @@ function Ktl($, appInfo) {
                 document.body.classList.remove('ktlUserTheme');
                 clearThemeCssVariables();
                 if (ktlKeywords._theme?.lightLogo) {
-                    const logoEl = document.querySelector('.knHeader__logo-image');
+                    const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                     if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                 }
                 // Reset bulk edit colors for light theme
@@ -24342,7 +24352,7 @@ function Ktl($, appInfo) {
 
                     // Swap logo based on header luminance (< 50% = dark header, use light logo)
                     if (ktlKeywords._theme?.darkLogo || ktlKeywords._theme?.lightLogo) {
-                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                         if (logoEl) {
                             const rgb = ktl.systemColors.hexToRgb(headerRgb);
                             const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
@@ -25073,7 +25083,7 @@ function Ktl($, appInfo) {
                     clearThemeCssVariables();
                     // Restore light logo for default theme preview
                     if (ktlKeywords._theme?.lightLogo) {
-                        const logoEl = document.querySelector('.knHeader__logo-image');
+                        const logoEl = document.querySelector('.knHeader__logo-image') || document.querySelector('#knack-logo img');
                         if (logoEl) logoEl.src = ktlKeywords._theme.lightLogo;
                     }
                     // Reset bulk edit colors for light theme
