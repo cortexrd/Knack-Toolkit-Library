@@ -4528,7 +4528,8 @@ function Ktl($, appInfo) {
                         {
                             method: 'POST',
                             body: this._prepareBody(recordData),
-                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs)
+                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
+                            onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
                         },
                         opts.timeout
                     );
@@ -4555,7 +4556,8 @@ function Ktl($, appInfo) {
                         {
                             method: 'PUT',
                             body: this._prepareBody(recordData),
-                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs)
+                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
+                            onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
                         },
                         opts.timeout
                     );
@@ -4586,10 +4588,17 @@ function Ktl($, appInfo) {
                 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let updated = 0;
                 let failed = 0;
+                let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
+                const requestOptions = {
+                    ...opts,
+                    _on429: () => {
+                        rateLimit429Count += 1;
+                    }
+                };
 
-                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.updateRecord(viewId, recordId, recordData, [], opts))
+                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.updateRecord(viewId, recordId, recordData, [], requestOptions))
                     .then(() => {
                         updated += 1;
                         if (typeof opts.onProgress === 'function')
@@ -4604,25 +4613,30 @@ function Ktl($, appInfo) {
                         if (!opts.continueOnError) throw error;
                     }));
 
-                if (opts.continueOnError) {
-                    await Promise.allSettled(tasks);
-                } else {
-                    await Promise.all(tasks);
+                try {
+                    if (opts.continueOnError) {
+                        await Promise.allSettled(tasks);
+                    } else {
+                        await Promise.all(tasks);
+                    }
+
+                    await this._refreshAfterWrite(refreshViews);
+
+                    // Log failed records if any (only after all retries exhausted)
+                    if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
+                        const recordList = failedRecordIds.join(', ');
+                        const errorMsg = `KEC_1027 - API update failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
+                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+                    }
+
+                    if (firstError && !opts.continueOnError)
+                        throw firstError;
+
+                    return { total, updated, failed };
+                } finally {
+                    const processed = updated + failed;
+                    console.log(`[KTL API] Concurrent update summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
                 }
-
-                await this._refreshAfterWrite(refreshViews);
-
-                // Log failed records if any (only after all retries exhausted)
-                if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                    const recordList = failedRecordIds.join(', ');
-                    const errorMsg = `KEC_1027 - API update failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
-                    ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                }
-
-                if (firstError && !opts.continueOnError)
-                    throw firstError;
-
-                return { total, updated, failed };
             }
 
             /**
@@ -4641,7 +4655,8 @@ function Ktl($, appInfo) {
                         url,
                         {
                             method: 'DELETE',
-                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs)
+                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
+                            onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
                         },
                         opts.timeout
                     );
@@ -4671,10 +4686,17 @@ function Ktl($, appInfo) {
                 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let deleted = 0;
                 let failed = 0;
+                let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
+                const requestOptions = {
+                    ...opts,
+                    _on429: () => {
+                        rateLimit429Count += 1;
+                    }
+                };
 
-                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.deleteRecord(viewId, recordId, [], opts))
+                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.deleteRecord(viewId, recordId, [], requestOptions))
                     .then(() => {
                         deleted += 1;
                         if (typeof opts.onProgress === 'function')
@@ -4689,25 +4711,30 @@ function Ktl($, appInfo) {
                         if (!opts.continueOnError) throw error;
                     }));
 
-                if (opts.continueOnError) {
-                    await Promise.allSettled(tasks);
-                } else {
-                    await Promise.all(tasks);
+                try {
+                    if (opts.continueOnError) {
+                        await Promise.allSettled(tasks);
+                    } else {
+                        await Promise.all(tasks);
+                    }
+
+                    await this._refreshAfterWrite(refreshViews);
+
+                    // Log failed records if any (only after all retries exhausted)
+                    if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
+                        const recordList = failedRecordIds.join(', ');
+                        const errorMsg = `KEC_1027 - API delete failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
+                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+                    }
+
+                    if (firstError && !opts.continueOnError)
+                        throw firstError;
+
+                    return { total, deleted, failed };
+                } finally {
+                    const processed = deleted + failed;
+                    console.log(`[KTL API] Concurrent delete summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
                 }
-
-                await this._refreshAfterWrite(refreshViews);
-
-                // Log failed records if any (only after all retries exhausted)
-                if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                    const recordList = failedRecordIds.join(', ');
-                    const errorMsg = `KEC_1027 - API delete failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
-                    ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                }
-
-                if (firstError && !opts.continueOnError)
-                    throw firstError;
-
-                return { total, deleted, failed };
             }
 
             /**
@@ -4993,7 +5020,7 @@ function Ktl($, appInfo) {
                 const timeoutMs = Number.isFinite(timeoutOverride) ? timeoutOverride : this.options.timeout;
 
                 let attempt = 0;
-                const { rateLimitHandler, ...ajaxOptions } = options || {};
+                const { rateLimitHandler, onRateLimit429, ...ajaxOptions } = options || {};
 
                 this._toggleSpinner(true);
 
@@ -5023,6 +5050,11 @@ function Ktl($, appInfo) {
                             return result;
                         } catch (jqXHR) {
                             const status = jqXHR?.status;
+
+                            if (status === 429 && typeof onRateLimit429 === 'function') {
+                                onRateLimit429();
+                            }
+
                             const isRetryable = retryOnStatus.includes(status);
                             if (!isRetryable || attempt >= maxAttempts) {
                                 throw this._buildRequestError(jqXHR);
