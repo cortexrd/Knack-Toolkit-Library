@@ -13850,14 +13850,9 @@ function Ktl($, appInfo) {
 
             async function waitSourceDataReady(srcViewId) {
                 try {
-                    //!@#
-                    const data = await ktl.views.waitViewDataReady(srcViewId);
-                    if (data.length) {
-                        //await proceed(srcViewId);
-                    } else {
-                        console.log(`copyRecordsFromView - No data found in source view: ${srcViewId}`);
-                        debugger;
-                    }
+                    const srcData = await ktl.views.waitViewDataReady(srcViewId);
+                    if (srcData.length)
+                        await proceed(srcViewId);
                 } catch (error) {
                     ktl.log.clog('purple', `copyRecordsFromView - Timeout waiting for data: ${srcViewId}`);
                     throw error;
@@ -13978,7 +13973,6 @@ function Ktl($, appInfo) {
                             const srcFieldId = headersMapping[header].src;
                             const dstFieldId = headersMapping[header].dst;
 
-                            //!@#
                             if (srcFieldId.startsWith('field_')) {
                                 const rawData = srcRecord.attributes[`${srcFieldId}_raw`];
                                 const dstFieldType = ktl.fields.getFieldType(dstFieldId);
@@ -21494,8 +21488,8 @@ function Ktl($, appInfo) {
 
                     const getData = () => {
                         return Knack.views[viewId]?.record ||
-                            Knack.views[viewId]?.model?.data?.models ||
-                            null;
+                            (Knack.views[viewId]?.model?.data?.models?.length ?
+                                Knack.views[viewId].model.data.models : null);
                     };
 
                     const data = getData();
