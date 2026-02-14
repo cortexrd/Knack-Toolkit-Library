@@ -13809,15 +13809,18 @@ function Ktl($, appInfo) {
                         }
                     }
 
-                    if (params[0].length >= 5 && params[0][4] === 'refresh')
-                        forceRefresh = true;
+                    forceRefresh = (params[0].length >= 5 && params[0][4] === 'refresh');
 
                     if (params[0].length >= 3 && params[0][2]) {
                         //Add a start button
                         const buttonLabel = params[0][2];
                         let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
                         const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
+                        const capturedForceRefresh = forceRefresh;
+                        const capturedMode = mode;
                         $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', async e => {
+                            forceRefresh = capturedForceRefresh;
+                            mode = capturedMode;
                             if (needConfirm) {
                                 if (await ktl.core.selectOption('Proceed with copy?', 'Yes,No') === 0)
                                     await waitSourceDataReady();
@@ -13869,7 +13872,7 @@ function Ktl($, appInfo) {
                 let requestType = (mode === 'add') ? 'POST' : 'PUT';
                 try {
                     const countDone = await ktl.views.processAutomatedBulkOps(dstViewId, bulkApiDataArray, requestType, [], false, false)
-                    needsRefresh = !!countDone;
+                    needsRefresh = needsRefresh || !!countDone;
                     if (forceRefresh && needsRefresh)
                         ktl.views.refreshView(dstViewId);
 
