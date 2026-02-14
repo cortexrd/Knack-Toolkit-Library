@@ -13768,6 +13768,7 @@ function Ktl($, appInfo) {
             let params;
             let mode;
             let needsRefresh = false;
+            let forceRefresh = false;
 
             const kwList = ktl.core.getKeywordsByType(dstViewId, kw);
             processKwList(kwList).then(() => {
@@ -13808,6 +13809,9 @@ function Ktl($, appInfo) {
                         }
                     }
 
+                    if (params[0].length >= 5 && params[0][4] === 'refresh')
+                        forceRefresh = true;
+
                     if (params[0].length >= 3 && params[0][2]) {
                         //Add a start button
                         const buttonLabel = params[0][2];
@@ -13815,14 +13819,14 @@ function Ktl($, appInfo) {
                         const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
                         $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', async e => {
                             if (needConfirm) {
-                                if (confirm(`Proceed with copy?`))
+                                if (await ktl.core.selectOption('Proceed with copy?', 'Yes,No') === 0)
                                     await waitSourceDataReady();
                             } else
                                 await waitSourceDataReady();
                         });
                     } else { //No button
                         if (needConfirm) {
-                            if (confirm(`Proceed with copy?`))
+                            if (await ktl.core.selectOption('Proceed with copy?', 'Yes,No') === 0)
                                 await waitSourceDataReady();
                         } else
                             await waitSourceDataReady();
@@ -13866,10 +13870,13 @@ function Ktl($, appInfo) {
                 try {
                     const countDone = await ktl.views.processAutomatedBulkOps(dstViewId, bulkApiDataArray, requestType, [], false, false)
                     needsRefresh = !!countDone;
+                    if (forceRefresh && needsRefresh)
+                        ktl.views.refreshView(dstViewId);
+
                     $.unblockUI();
                 } catch (error) {
                     $.unblockUI();
-                    ktl.log.clog('purple', `processAutomatedBulkOps error encountered`);
+                    ktl.log.clog('purple', `copyRecordsFromView - processAutomatedBulkOps error encountered`);
                     throw error;
                 }
             }
@@ -13947,43 +13954,53 @@ function Ktl($, appInfo) {
                             const dstFieldId = headersMapping[header].dst;
 
                             if (srcFieldId.startsWith('field_')) {
-                                const sourceRecord = srcRecord.attributes[srcFieldId];
-                                try {
-                                    const spanClass = $(sourceRecord).find('span[class]');
-                                    if (spanClass.length) {
-                                        apiData[dstFieldId] = [];
-                                        for (const classId of Array.from(spanClass)) {
-                                            apiData[dstFieldId].push(classId.classList.value);
-                                        }
-                                    } else {
-                                        const spanId = $(sourceRecord).find('span[id]');
-                                        if (spanId.length) {
-                                            const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
-                                            apiData[dstFieldId] = ids;
+                                const rawData = srcRecord.attributes[`${srcFieldId}_raw`];
+                                if (Array.isArray(rawData) && rawData.length && rawData[0].id) {
+                                    apiData[dstFieldId] = rawData.map(item => item.id);
+                                } else {
+                                    let sourceRecord = srcRecord.attributes[srcFieldId];
+                                    if (srcFieldId === srcViewDisplayFieldId) {
+                                        sourceRecord = [srcRecId];
+                                    }
+
+                                    try {
+                                        const spanClass = $(sourceRecord).filter('span[class]');
+                                        if (spanClass.length) {
+                                            apiData[dstFieldId] = [];
+                                            for (const classId of Array.from(spanClass)) {
+                                                apiData[dstFieldId].push(classId.classList.value);
+                                            }
                                         } else {
-                                            if (srcFieldId === srcViewDisplayFieldId) {
-                                                const srcFieldType = ktl.fields.getFieldType(srcFieldId);
-                                                if (srcFieldType === 'connection')
-                                                    apiData[dstFieldId] = [srcRecId];
-                                                else
-                                                    apiData[dstFieldId] = sourceRecord;
+                                            const spanId = $(sourceRecord).filter('span[id]');
+                                            if (spanId.length) {
+                                                const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
+                                                apiData[dstFieldId] = ids;
                                             } else {
-                                                const data = srcRecord.attributes[`${srcFieldId}_raw`];
-                                                if (data) {
-                                                    if (Array.isArray(data)) {
-                                                        if (data.length)
+                                                if (srcFieldId === srcViewDisplayFieldId) {
+                                                    const srcFieldType = ktl.fields.getFieldType(srcFieldId);
+                                                    if (srcFieldType === 'connection')
+                                                        apiData[dstFieldId] = [srcRecId];
+                                                    else
+                                                        apiData[dstFieldId] = sourceRecord;
+                                                } else {
+                                                    const data = srcRecord.attributes[`${srcFieldId}_raw`];
+                                                    if (data) {
+                                                        if (Array.isArray(data)) {
+                                                            if (data.length) {
+                                                                apiData[dstFieldId] = data;
+                                                            } else {
+                                                                //ktl.log.clog('orange', '_cpyfrom enountered invalid data:', data);
+                                                            }
+                                                        } else {
                                                             apiData[dstFieldId] = data;
-                                                        else
-                                                            ktl.log.clog('_cpyfrom enountered invalid data:', data);
-                                                    } else {
-                                                        apiData[dstFieldId] = data;
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
+                                    } catch (e) {
+                                        apiData[dstFieldId] = sourceRecord;
                                     }
-                                } catch (e) {
-                                    apiData[dstFieldId] = sourceRecord;
                                 }
                             } else {
                                 if (srcFieldId === 'ktlLoggedInAccount')
@@ -14101,7 +14118,7 @@ function Ktl($, appInfo) {
                         await proceedToUpdateRecords(bulkApiDataArray, options);
                     } catch (error) {
                         $.unblockUI();
-                        ktl.log.clog('purple', `processAutomatedBulkOps error encountered`);
+                        ktl.log.clog('purple', `copyRecordsFromView - processAutomatedBulkOps error encountered (API mode)`);
                         throw error;
                     }
                 } //API mode
@@ -30818,13 +30835,13 @@ function Ktl($, appInfo) {
                     container.appendChild(sceneRefsButton);
                 }
 
-                const knackButton = createButton('fa-copy');
+                const knackButton = createButton('fa-link');
                 knackButton.href = url;
                 knackButton.target = '_blank';
                 knackButton.innerHTML = '';
                 knackButton.style.color = 'transparent';
                 const icon = document.createElement('i');
-                icon.classList.add('fa', 'fa-copy');
+                icon.classList.add('fa', 'fa-link');
                 icon.style.background = "url(https://ctrnd.s3.amazonaws.com/Lib/KTL/Media/knack-logo.png)";
                 icon.style['background-size'] = 'contain';
                 icon.style.width = '14px';
