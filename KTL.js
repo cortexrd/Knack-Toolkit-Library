@@ -13770,6 +13770,7 @@ function Ktl($, appInfo) {
             let needsRefresh = false;
             let forceRefresh = false;
             let showProgress = false;
+            let hasButton = false;
 
             const kwList = ktl.core.getKeywordsByType(dstViewId, kw);
             processKwList(kwList).then(() => {
@@ -13814,26 +13815,32 @@ function Ktl($, appInfo) {
 
                     if (params[0].length >= 3 && params[0][2]) {
                         //Add a start button
+                        hasButton = true;
                         const buttonLabel = params[0][2];
                         let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
                         const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
                         const capturedForceRefresh = forceRefresh;
                         const capturedMode = mode;
+                        const capturedSrcViewId = srcViewId;
+                        const capturedOptions = options;
                         $(startButton).off('click.ktl_cpyfrom').on('click.ktl_cpyfrom', async e => {
                             forceRefresh = capturedForceRefresh;
                             mode = capturedMode;
+                            srcViewId = capturedSrcViewId;
+                            options = capturedOptions;
                             if (needConfirm) {
                                 if (await ktl.core.selectOption('Proceed with copy?', 'Yes,No') === 0)
-                                    await waitSourceDataReady();
+                                    await waitSourceDataReady(srcViewId);
                             } else
-                                await waitSourceDataReady();
+                                await waitSourceDataReady(srcViewId);
                         });
                     } else { //No button
+                        hasButton = false;
                         if (needConfirm) {
                             if (await ktl.core.selectOption('Proceed with copy?', 'Yes,No') === 0)
-                                await waitSourceDataReady();
+                                await waitSourceDataReady(srcViewId);
                         } else
-                            await waitSourceDataReady();
+                            await waitSourceDataReady(srcViewId);
                     }
                 } catch (error) {
                     ktl.log.clog('purple', 'Error in _cpyfrom');
@@ -13841,10 +13848,16 @@ function Ktl($, appInfo) {
                 }
             }
 
-            async function waitSourceDataReady() {
+            async function waitSourceDataReady(srcViewId) {
                 try {
-                    await ktl.views.waitViewDataReady(srcViewId);
-                    await proceed();
+                    //!@#
+                    const data = await ktl.views.waitViewDataReady(srcViewId);
+                    if (data.length) {
+                        //await proceed(srcViewId);
+                    } else {
+                        console.log(`copyRecordsFromView - No data found in source view: ${srcViewId}`);
+                        debugger;
+                    }
                 } catch (error) {
                     ktl.log.clog('purple', `copyRecordsFromView - Timeout waiting for data: ${srcViewId}`);
                     throw error;
@@ -13888,11 +13901,16 @@ function Ktl($, appInfo) {
                 }
             }
 
-            async function proceed() {
+            async function proceed(srcViewId) {
                 const srcData = Knack.views[srcViewId].model.data.models;
                 if (!srcData.length) return;
 
-                if (mode === 'add' && data.length) return; //Add only if view is empty.
+                if (mode === 'add' && data.length) {
+                    if (!hasButton)
+                        return;
+                    if (await ktl.core.selectOption('Data already exists. Proceed anyway?', 'Yes,No') !== 0)
+                        return;
+                }
 
                 let bulkApiDataArray = [];
                 let fieldsToCopy = ['']; //All fields by default
@@ -13963,12 +13981,16 @@ function Ktl($, appInfo) {
                             //!@#
                             if (srcFieldId.startsWith('field_')) {
                                 const rawData = srcRecord.attributes[`${srcFieldId}_raw`];
-                                if (Array.isArray(rawData) && rawData.length && rawData[0].id) {
+                                const dstFieldType = ktl.fields.getFieldType(dstFieldId);
+                                if (dstFieldType === 'connection' && Array.isArray(rawData) && rawData.length && rawData[0].id) {
                                     apiData[dstFieldId] = rawData.map(item => item.id);
                                 } else {
                                     let sourceRecord = srcRecord.attributes[srcFieldId];
                                     if (srcFieldId === srcViewDisplayFieldId) {
-                                        sourceRecord = [srcRecId];
+                                        if (dstFieldType === 'connection')
+                                            sourceRecord = [srcRecId];
+                                        else
+                                            sourceRecord = rawData;
                                     }
 
                                     try {
@@ -29045,10 +29067,10 @@ function Ktl($, appInfo) {
                                             $('#ktl-bulk-delete-all-' + viewId).click();
                                         } else {
                                             bulkOpsDeleteAll = false;
-                                            alert('Delete All has completed successfully');
+                                            ktl.core.timedPopup('Delete All has completed successfully');
                                         }
                                     } else
-                                        alert('Deleted Selected has completed successfully');
+                                        ktl.core.timedPopup('Deleted Selected has completed successfully');
                                 }, 500);
                             });
                         })
@@ -29404,7 +29426,7 @@ function Ktl($, appInfo) {
                                     postBulkOpsRestoreState();
                                     ktl.views.refreshView(bulkOpsViewId).then(function () {
                                         setTimeout(() => {
-                                            alert('Bulk Edit completed successfully');
+                                            ktl.core.timedPopup('Bulk Edit completed successfully');
                                         }, 500);
                                     })
                                 } else
@@ -29453,7 +29475,7 @@ function Ktl($, appInfo) {
                                     postBulkOpsRestoreState();
                                     ktl.views.refreshView(bulkOpsViewId).then(function () {
                                         ktl.views.autoRefresh();
-                                        alert('Bulk Copy completed successfully');
+                                        ktl.core.timedPopup('Bulk Copy completed successfully');
                                     })
                                 } else
                                     showProgress();
