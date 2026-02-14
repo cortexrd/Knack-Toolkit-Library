@@ -13769,6 +13769,7 @@ function Ktl($, appInfo) {
             let mode;
             let needsRefresh = false;
             let forceRefresh = false;
+            let showProgress = false;
 
             const kwList = ktl.core.getKeywordsByType(dstViewId, kw);
             processKwList(kwList).then(() => {
@@ -13853,6 +13854,7 @@ function Ktl($, appInfo) {
             async function proceedToUpdateRecords(bulkApiDataArray = [], options) {
                 if (!bulkApiDataArray.length) return;
 
+                showProgress = false;
                 if (options && options.ktlMsg) {
                     const message = options.ktlMsg.split(',').slice(1).join(',').trim();
                     const displayMode = options.ktlMsg.split(',')[0].trim();
@@ -13865,13 +13867,15 @@ function Ktl($, appInfo) {
                                 },
                                 css: { padding: 20 }
                             })
+                        } else if (displayMode === 'count') {
+                            showProgress = message || true;
                         }
                     }
                 }
 
                 let requestType = (mode === 'add') ? 'POST' : 'PUT';
                 try {
-                    const countDone = await ktl.views.processAutomatedBulkOps(dstViewId, bulkApiDataArray, requestType, [], false, false)
+                    const countDone = await ktl.views.processAutomatedBulkOps(dstViewId, bulkApiDataArray, requestType, [], false, showProgress);
                     needsRefresh = needsRefresh || !!countDone;
                     if (forceRefresh && needsRefresh)
                         ktl.views.refreshView(dstViewId);
@@ -13956,6 +13960,7 @@ function Ktl($, appInfo) {
                             const srcFieldId = headersMapping[header].src;
                             const dstFieldId = headersMapping[header].dst;
 
+                            //!@#
                             if (srcFieldId.startsWith('field_')) {
                                 const rawData = srcRecord.attributes[`${srcFieldId}_raw`];
                                 if (Array.isArray(rawData) && rawData.length && rawData[0].id) {
@@ -13967,14 +13972,14 @@ function Ktl($, appInfo) {
                                     }
 
                                     try {
-                                        const spanClass = $(sourceRecord).filter('span[class]');
+                                        const spanClass = $(sourceRecord).find('span[class]');
                                         if (spanClass.length) {
                                             apiData[dstFieldId] = [];
                                             for (const classId of Array.from(spanClass)) {
                                                 apiData[dstFieldId].push(classId.classList.value);
                                             }
                                         } else {
-                                            const spanId = $(sourceRecord).filter('span[id]');
+                                            const spanId = $(sourceRecord).find('span[id]');
                                             if (spanId.length) {
                                                 const ids = ktl.core.extractIds(srcRecord.attributes[srcFieldId]);
                                                 apiData[dstFieldId] = ids;
@@ -13991,8 +13996,6 @@ function Ktl($, appInfo) {
                                                         if (Array.isArray(data)) {
                                                             if (data.length) {
                                                                 apiData[dstFieldId] = data;
-                                                            } else {
-                                                                //ktl.log.clog('orange', '_cpyfrom enountered invalid data:', data);
                                                             }
                                                         } else {
                                                             apiData[dstFieldId] = data;
@@ -21432,7 +21435,10 @@ function Ktl($, appInfo) {
                             })
 
                         function showProgress() {
-                            enableShowProgress && ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.    Records left: ' + (arrayLen - countDone));
+                            if (!enableShowProgress) return;
+                            const defaultMsg = 'Updating ' + arrayLen + ' ' + objName + ((arrayLen > 1 && objName.slice(-1) !== 's') ? 's' : '') + '.';
+                            const msg = typeof enableShowProgress === 'string' ? enableShowProgress : defaultMsg;
+                            ktl.core.setInfoPopupText(msg + '    ' + countDone + ' of ' + arrayLen);
                         }
 
                         async function handleProcessResolution(countDone, message) {
@@ -21461,12 +21467,12 @@ function Ktl($, appInfo) {
 
             waitViewDataReady: function (viewId) {
                 return new Promise(function (resolve, reject) {
-                    if (!viewId || !Knack.views[viewId])
+                    if (!viewId)
                         return reject();
 
                     const getData = () => {
-                        return Knack.views[viewId].record ||
-                            Knack.views[viewId].model.data?.models ||
+                        return Knack.views[viewId]?.record ||
+                            Knack.views[viewId]?.model?.data?.models ||
                             null;
                     };
 
