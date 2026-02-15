@@ -10061,11 +10061,19 @@ function Ktl($, appInfo) {
         $(document).on('knack-scene-render.any', function (event, scene) {
             //In developer mode, add a checkbox to pause all views' auto-refresh.
             if (ktl.core.getCfg().enabled.devPauseAutoRefresh && ktl.account.isDeveloper() && !ktl.scenes.isiFrameWnd()) {
-                var div = $('.kn-info-bar > div');
-                if (div.length > 0) {
-                    var cbStyle = 'position: absolute; left: 40vw; top: 0.7vh; width: 20px; height: 20px';
-                    var lbStyle = 'position: absolute; left: 42vw; top: 0.7vh';
-                    var autoRefreshCb = ktl.fields.addCheckbox(div[0], 'Pause Auto-Refresh', false, PAUSE_AUTO_REFRESH_CHECKBOX_ID, cbStyle, lbStyle);
+                var utilityBar = document.getElementById('ktlUtilityBar');
+                if (!utilityBar) {
+                    var infoBar = document.querySelector('.kn-info-bar');
+                    if (infoBar) {
+                        utilityBar = document.createElement('div');
+                        utilityBar.id = 'ktlUtilityBar';
+                        utilityBar.className = 'ktlUtilityBar';
+                        infoBar.appendChild(utilityBar);
+                    }
+                }
+
+                if (utilityBar && !document.getElementById(PAUSE_AUTO_REFRESH_CHECKBOX_ID + '-id')) {
+                    var autoRefreshCb = ktl.fields.addCheckbox(utilityBar, 'Pause Auto-Refresh', false, PAUSE_AUTO_REFRESH_CHECKBOX_ID, 'width: 18px; height: 18px');
                     autoRefreshCb.addEventListener('change', function () {
                         ktl.views.autoRefresh(!this.checked);
                     });

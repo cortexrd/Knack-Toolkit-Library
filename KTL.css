@@ -41,6 +41,36 @@
 	padding-right: 15px;
 }
 
+/************ Utility Bar **************/
+.kn-info-bar {
+	position: relative;
+}
+
+.ktlUtilityBar {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px 6px;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.ktlUtilityBar .ktlCheckbox-field {
+	width: 20px;
+	height: 20px;
+}
+
+@media (max-width: 768px) {
+	.ktlUtilityBar {
+		position: static;
+		transform: none;
+		padding: 4px 0;
+	}
+}
+
 #knack-body.iFrameWnd {
 	background-color: #e1e1e1;
 }
@@ -961,7 +991,8 @@ body.ktlKioskMode { /* Add extra space at top of screen in kiosk mode, to preven
 @media print {
 	#addVersionInfoDiv,
 	.bulkEditCb,
-	.ktlBookmarksContainer {
+	.ktlBookmarksContainer,
+	.ktlUtilityBar {
 		display: none !important;
 	}
 
