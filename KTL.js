@@ -10078,6 +10078,11 @@ function Ktl($, appInfo) {
                         ktl.views.autoRefresh(!this.checked);
                     });
                 }
+
+                if (utilityBar && ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true) === 'true')
+                    ktl.scenes.updateUtilityBarIndicator('hiddenElements', true);
+                else
+                    ktl.scenes.updateUtilityBarIndicator('hiddenElements', false);
             }
 
             //Prevent modal pages from being too wide on Kiosks, otherwise users may miss information and have to scroll right to close the page.
@@ -26075,6 +26080,8 @@ function Ktl($, appInfo) {
 
                                     ktl.storage.lsSetItem('SHOW_HIDDEN_ELEMENTS', showHiddenElements, false, true);
 
+                                    ktl.scenes.updateUtilityBarIndicator('hiddenElements', showHiddenElements);
+
                                     if (showHiddenElements)
                                         showHiddenElemements();
                                     else
@@ -26311,6 +26318,29 @@ function Ktl($, appInfo) {
 
             isiFrameWnd: function () {
                 return (window.self.frameElement && (window.self.frameElement.id === IFRAME_WND_ID)) ? true : false;
+            },
+
+            updateUtilityBarIndicator: function (key, active) {
+                var utilityBar = document.getElementById('ktlUtilityBar');
+                if (!utilityBar) return;
+
+                var indicatorId = 'ktlIndicator_' + key;
+                var indicator = document.getElementById(indicatorId);
+
+                if (active) {
+                    if (!indicator) {
+                        indicator = document.createElement('span');
+                        indicator.id = indicatorId;
+                        indicator.className = 'ktlUtilityBarIndicator ktlFlashingFadeInOut';
+                        utilityBar.appendChild(indicator);
+                    }
+
+                    var labels = { hiddenElements: 'Hidden Elements: Show' };
+                    indicator.textContent = labels[key] || key;
+                    indicator.style.display = '';
+                } else if (indicator) {
+                    indicator.style.display = 'none';
+                }
             },
 
             sceneChangeNotificationSubscribe: function (callback) {

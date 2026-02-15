@@ -63,6 +63,14 @@
 	height: 20px;
 }
 
+.ktlUtilityBarIndicator {
+	color: red;
+	font-weight: 900;
+	font-size: 14px;
+	white-space: nowrap;
+	--ktlFlashRate: 1s;
+}
+
 @media (max-width: 768px) {
 	.ktlUtilityBar {
 		position: static;
