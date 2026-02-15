@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.40.4a';
+    const KTL_VERSION = '0.40.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -13917,6 +13917,8 @@ function Ktl($, appInfo) {
 
                     const model = Knack.views[dstViewId] && Knack.views[dstViewId].model;
                     const columns = model.view.columns;
+                    const dstObjId = model.view.source.object;
+                    const dstObjFieldKeys = new Set(Knack.objects._byId[dstObjId].attributes.fields.map(f => f.key));
                     const headers = columns.map(col => col.header.trim()).filter(header => {
                         return (fieldsToCopy.includes(header) || fieldsToCopy[0] === '');
                     });
@@ -13924,10 +13926,13 @@ function Ktl($, appInfo) {
                     //Try to find the equivalent headers in source view.
                     for (const header of headers) {
                         const dstFieldId = ktl.fields.getFieldIdFromLabel(dstViewId, header);
-                        if (dstFieldId && dstFieldId.startsWith('field_') && Knack.objects.getField(dstFieldId).attributes.type !== 'concatenation') {
-                            const srcFieldId = ktl.fields.getFieldIdFromLabel(srcViewId, header);
-                            if (srcFieldId)
-                                headersMapping[header] = { src: srcFieldId, dst: dstFieldId };
+                        if (dstFieldId && dstFieldId.startsWith('field_') && dstObjFieldKeys.has(dstFieldId)) {
+                            const fieldType = Knack.objects.getField(dstFieldId).attributes.type;
+                            if (fieldType !== 'concatenation' && fieldType !== 'equation') {
+                                const srcFieldId = ktl.fields.getFieldIdFromLabel(srcViewId, header);
+                                if (srcFieldId)
+                                    headersMapping[header] = { src: srcFieldId, dst: dstFieldId };
+                            }
                         }
                     }
 
@@ -14037,10 +14042,16 @@ function Ktl($, appInfo) {
                             if (!$.isEmptyObject(apiData)) {
                                 const dstRowsWithSameRecId = $(`#${dstViewId} tbody tr td .${srcRecId}`);
                                 if (dstRowsWithSameRecId.length) {
+                                    const processedDstRecIds = new Set();
                                     dstRowsWithSameRecId.each((ix, el) => {
                                         const dstRecId = el.closest('tr').id;
+                                        if (processedDstRecIds.has(dstRecId)) return;
+                                        processedDstRecIds.add(dstRecId);
+
+                                        let needsUpdate = false;
 
                                         for (const header in headersMapping) {
+                                            if (needsUpdate) break;
                                             const srcFieldId = headersMapping[header].src;
                                             const dstFieldId = headersMapping[header].dst;
 
@@ -14059,19 +14070,18 @@ function Ktl($, appInfo) {
 
                                                 const arraysAreSame = ktl.core.isArraysContainSameElements(array1, array2);
                                                 if (!arraysAreSame && arraysAreSame !== undefined)
-                                                    bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
+                                                    needsUpdate = true;
                                             } else { //Text and numeric values.
                                                 const srcText = $(`#${srcViewId} tr[id="${srcRecId}"] .${srcFieldId}`).text();
                                                 const dstText = $(`#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`).text();
 
-                                                if (srcText !== dstText) {
-                                                    //console.log('src vs dst text', srcText, dstText);
-                                                    //console.log('sel', `#${dstViewId} tr[id="${dstRecId}"] .${dstFieldId}`);
-                                                    bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
-                                                }
-
+                                                if (srcText !== dstText)
+                                                    needsUpdate = true;
                                             } //TODO: add support for all field types.
                                         }
+
+                                        if (needsUpdate)
+                                            bulkApiDataArray.push({ apiData: apiData, id: dstRecId });
                                     });
                                 }
                             }
