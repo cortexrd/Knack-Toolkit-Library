@@ -45,6 +45,14 @@ function Ktl($, appInfo) {
     //Extract all keywords from view titles and descriptions, and cleanup view titles and descriptions.
     const ktlKeywords = {};
     window.ktlKeywords = ktlKeywords;
+    const knackMetaCache = {
+        accountsObjectName: '',
+        currentScene: { key: '', slug: '', views: [] },
+        fieldIdsByObject: {},
+        objectIdsByName: {},
+        sceneSlugs: [],
+        viewsBySceneSlug: {}
+    };
 
     //Temporary debug code to detect DOM changes.
     //Uncomment to use momentarily, then comment back when done.
@@ -248,18 +256,40 @@ function Ktl($, appInfo) {
     };
 
     Knack.scenes.models.forEach(scene => {
+        const sceneSlug = scene?.attributes?.slug;
+        const sceneViews = [];
+        const viewIdsByTitle = {};
         scene.views.forEach(view => {
             extractKeywordsFromView(scene, view);
+            sceneViews.push(view);
+            const viewTitle = view?.attributes?.title;
+            if (viewTitle && !viewIdsByTitle[viewTitle])
+                viewIdsByTitle[viewTitle] = view.id;
         });
+        if (sceneSlug) {
+            knackMetaCache.sceneSlugs.push(sceneSlug);
+            knackMetaCache.viewsBySceneSlug[sceneSlug] = { sceneViews, viewIdsByTitle };
+        }
     });
 
     //Add field keywords.
     const objects = Knack.objects.models;
     for (var o = 0; o < objects.length; o++) {
         var obj = objects[o];
+        const objectId = obj?.attributes?.key;
+        const objectName = obj?.attributes?.name;
+        const fieldIdsByName = {};
+
+        if (objectName && !knackMetaCache.objectIdsByName[objectName])
+            knackMetaCache.objectIdsByName[objectName] = objectId;
+
+        if (obj?.attributes?.profile_key === 'all_users')
+            knackMetaCache.accountsObjectName = objectName;
 
         obj.attributes.fields.filter(f => !!f).forEach(f => {
             const fieldId = f.key;
+            if (f.name && !fieldIdsByName[f.name])
+                fieldIdsByName[f.name] = fieldId;
             const field = Knack.fields[fieldId];
             var fieldDesc = field.attributes && field.attributes.meta && field.attributes.meta.description;
             if (fieldDesc) {
@@ -269,6 +299,9 @@ function Ktl($, appInfo) {
                     ktlKeywords[fieldId] = fieldKwObj;
             }
         });
+
+        if (objectId)
+            knackMetaCache.fieldIdsByObject[objectId] = fieldIdsByName;
     }
 
     //window.ktlParserEnd = window.performance.now();
@@ -1772,29 +1805,46 @@ function Ktl($, appInfo) {
             },
 
             getAccountsObjectName: function () {
+                if (knackMetaCache.accountsObjectName)
+                    return knackMetaCache.accountsObjectName;
+
                 const objects = Knack.objects.models;
                 for (let i = 0; i < objects.length; i++) {
                     const obj = objects[i];
-                    if (obj.attributes && obj.attributes.profile_key && obj.attributes.profile_key === 'all_users')
+                    if (obj.attributes && obj.attributes.profile_key && obj.attributes.profile_key === 'all_users') {
+                        knackMetaCache.accountsObjectName = obj.attributes.name;
                         return obj.attributes.name;
+                    }
                 }
             },
 
             getObjectIdByName: function (objectName = '') {
                 if (!objectName) return;
+                if (knackMetaCache.objectIdsByName[objectName])
+                    return knackMetaCache.objectIdsByName[objectName];
+
                 var objects = Knack.objects.models;
                 for (var i = 0; i < objects.length; i++) {
-                    if (objects[i].attributes.name === objectName)
+                    if (objects[i].attributes.name === objectName) {
+                        knackMetaCache.objectIdsByName[objectName] = objects[i].attributes.key;
                         return objects[i].attributes.key;
+                    }
                 }
             },
 
             getFieldIdByName: function (fieldName = '', objectId = '') {
                 if (!objectId || !fieldName) return;
+                const cachedFields = knackMetaCache.fieldIdsByObject[objectId];
+                if (cachedFields && cachedFields[fieldName])
+                    return cachedFields[fieldName];
+
                 const fields = Knack.objects._byId[objectId].fields.models.filter(f => !!f);
                 for (var i = 0; i < fields.length; i++) {
-                    if (fields[i].attributes.name === fieldName)
+                    if (fields[i].attributes.name === fieldName) {
+                        knackMetaCache.fieldIdsByObject[objectId] = knackMetaCache.fieldIdsByObject[objectId] || {};
+                        knackMetaCache.fieldIdsByObject[objectId][fieldName] = fields[i].attributes.key;
                         return fields[i].attributes.key;
+                    }
                 }
             },
 
@@ -1809,12 +1859,22 @@ function Ktl($, appInfo) {
             getViewIdByTitle: function (srchTitle = '', pageUrl = ''/*Empty to search all (but takes longer)*/, exactMatch = false) {
                 if (!srchTitle) return;
                 if (!pageUrl) {
-                    var scenes = Knack.scenes.models;
-                    for (var i = 0; i < scenes.length; i++) {
-                        var foundView = this.getViewIdByTitle(srchTitle, scenes[i].id, exactMatch);
+                    for (const sceneSlug of knackMetaCache.sceneSlugs) {
+                        var foundView = this.getViewIdByTitle(srchTitle, sceneSlug, exactMatch);
                         if (foundView) return foundView;
                     }
                 } else {
+                    const sceneCache = knackMetaCache.viewsBySceneSlug[pageUrl];
+                    if (sceneCache) {
+                        if (exactMatch && sceneCache.viewIdsByTitle[srchTitle])
+                            return sceneCache.viewIdsByTitle[srchTitle];
+                        for (const sceneView of sceneCache.sceneViews) {
+                            const title = sceneView?.attributes?.title;
+                            if (title && !exactMatch && title.includes(srchTitle))
+                                return sceneView.id;
+                        }
+                    }
+
                     var sceneObj = Knack.scenes._byId[pageUrl];
                     if (sceneObj) {
                         var views = sceneObj.views.models;
@@ -21933,6 +21993,11 @@ function Ktl($, appInfo) {
         //Early detection of scene change to prevent multi-rendering and flickering of views.
         //Inspired from David Roizenman's code on Slack: https://knack-community.slack.com/archives/C016QKN0QBF/p1707364683629919
         Knack.router.on('route:viewScene', function (slug, search) {
+            const sceneViewModel = Knack.router.scene_view && Knack.router.scene_view.model;
+            knackMetaCache.currentScene.key = sceneViewModel?.attributes?.key || '';
+            knackMetaCache.currentScene.slug = sceneViewModel?.attributes?.slug || '';
+            knackMetaCache.currentScene.views = sceneViewModel?.attributes?.views || [];
+
             ktl.scenes.syncUserPrefs(); // Sync prefs early if user already logged in
             generateUserTheme(); //Early application of user theme, before user logged-in.  Apply app's default, if any.
 
@@ -21945,7 +22010,7 @@ function Ktl($, appInfo) {
                     })
                     .catch(() => { })
 
-                for (const view of Knack.router.scene_view.model.attributes.views) {
+                for (const view of knackMetaCache.currentScene.views) {
                     $(document).off('knack-view-init.' + view.key).on('knack-view-init.' + view.key, function (event, view) {
                         $(document).trigger('KTL.preprocessView', view);
                     })
