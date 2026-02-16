@@ -49,8 +49,10 @@ function Ktl($, appInfo) {
         accountsObjectName: '',
         currentScene: { key: '', slug: '', views: [] },
         fieldMetaById: {},
+        fieldNamesById: {},
         fieldIdsByObject: {},
         objectIdsByName: {},
+        sceneSlugByKey: {},
         sceneSlugs: [],
         viewsBySceneSlug: {}
     };
@@ -76,6 +78,17 @@ function Ktl($, appInfo) {
             if (!fieldMeta.viewIds.includes(viewId))
                 fieldMeta.viewIds.push(viewId);
         }
+    }
+
+    function getSceneSlugByKeyCached(sceneKey = '') {
+        if (!sceneKey) return;
+        if (knackMetaCache.sceneSlugByKey[sceneKey])
+            return knackMetaCache.sceneSlugByKey[sceneKey];
+
+        const slug = Knack.scenes.getByKey(sceneKey)?.attributes?.slug;
+        if (slug)
+            knackMetaCache.sceneSlugByKey[sceneKey] = slug;
+        return slug;
     }
 
     //Temporary debug code to detect DOM changes.
@@ -226,7 +239,7 @@ function Ktl($, appInfo) {
                 ktlKeywords[scene.attributes.key] = viewKwObj;
 
             if (viewKwObj._footer)
-                ktlKeywords.ktlAppFooter = Knack.scenes.getByKey(view.attributes.scene.key).attributes.slug;
+                ktlKeywords.ktlAppFooter = getSceneSlugByKeyCached(view.attributes.scene.key);
 
             if (viewKwObj._loh) {
                 const logOutHere = scene.attributes.slug;
@@ -280,13 +293,16 @@ function Ktl($, appInfo) {
     };
 
     Knack.scenes.models.forEach(scene => {
+        const sceneKey = scene?.attributes?.key;
         const sceneSlug = scene?.attributes?.slug;
         const sceneViews = [];
         const viewIdsByTitle = {};
+        if (sceneKey && sceneSlug)
+            knackMetaCache.sceneSlugByKey[sceneKey] = sceneSlug;
         scene.views.forEach(view => {
             extractKeywordsFromView(scene, view);
             cacheViewFieldUsage(view);
-            sceneViews.push(view);
+            sceneViews.push({ id: view.id, title: view?.attributes?.title || '' });
             const viewTitle = view?.attributes?.title;
             if (viewTitle && !viewIdsByTitle[viewTitle])
                 viewIdsByTitle[viewTitle] = view.id;
@@ -315,6 +331,8 @@ function Ktl($, appInfo) {
             const fieldId = f.key;
             const fieldType = Knack.fields[fieldId]?.attributes?.type || f.type || '';
             cacheFieldMeta(fieldId, fieldType);
+            if (fieldId && f.name && !knackMetaCache.fieldNamesById[fieldId])
+                knackMetaCache.fieldNamesById[fieldId] = f.name;
             if (f.name && !fieldIdsByName[f.name])
                 fieldIdsByName[f.name] = fieldId;
             const field = Knack.fields[fieldId];
@@ -1877,9 +1895,13 @@ function Ktl($, appInfo) {
 
             getFieldNameById: function (fieldId) {
                 if (!fieldId) return;
+                if (knackMetaCache.fieldNamesById[fieldId])
+                    return knackMetaCache.fieldNamesById[fieldId];
                 const fieldObject = Knack.objects.getField(fieldId);
-                if (fieldObject && fieldObject.attributes)
+                if (fieldObject && fieldObject.attributes) {
+                    knackMetaCache.fieldNamesById[fieldId] = fieldObject.attributes.name;
                     return fieldObject.attributes.name;
+                }
             },
 
             getFieldTypeById: function (fieldId) {
@@ -1892,6 +1914,10 @@ function Ktl($, appInfo) {
             getViewIdsByFieldId: function (fieldId) {
                 if (!fieldId) return [];
                 return [...(knackMetaCache.fieldMetaById[fieldId]?.viewIds || [])];
+            },
+
+            getSceneSlugByKey: function (sceneKey = '') {
+                return getSceneSlugByKeyCached(sceneKey);
             },
 
             //pageUrl is also called a slug.  It's what you find in the scene's Settings / Page URL field in the Builder.
@@ -1908,7 +1934,7 @@ function Ktl($, appInfo) {
                         if (exactMatch && sceneCache.viewIdsByTitle[srchTitle])
                             return sceneCache.viewIdsByTitle[srchTitle];
                         for (const sceneView of sceneCache.sceneViews) {
-                            const title = sceneView?.attributes?.title;
+                            const title = sceneView?.title;
                             if (title && !exactMatch && title.includes(srchTitle))
                                 return sceneView.id;
                         }
@@ -2669,7 +2695,7 @@ function Ktl($, appInfo) {
             findAllReferencesToThisScene: function (sceneId) {
                 let foundViewIds = [];
                 const scenes = Knack.scenes.models;
-                const targetSlug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                const targetSlug = getSceneSlugByKeyCached(sceneId);
 
                 for (const scene of scenes) {
                     var views = scene.views.models;
@@ -3064,7 +3090,7 @@ function Ktl($, appInfo) {
                                         if (viewId === kwKey) {
                                             const sceneId = attr.scene.key;
                                             builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
-                                            const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                            const slug = getSceneSlugByKeyCached(sceneId);
                                             appUrl = `${Knack.url_base}#${slug}`;
                                             console.log(`Builder: ${builderUrl}`);
                                             console.log(`App: ${appUrl}`);
@@ -3668,7 +3694,7 @@ function Ktl($, appInfo) {
                                 const sceneId = attr.scene.key;
                                 const viewId = attr.key;
                                 const builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
-                                const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                const slug = getSceneSlugByKeyCached(sceneId);
                                 const appUrl = `${Knack.url_base}#${slug}`;
 
                                 console.log(`Builder: ${builderUrl}`);
@@ -14314,7 +14340,7 @@ function Ktl($, appInfo) {
 
             //This is the correct way to get parent in the page based on HTML, not from the Builder's structure.
             const sceneKey = $('.kn-scenes .kn-scene')[0].id.replace('kn-', '');
-            const sceneSlug = Knack.scenes.getByKey(sceneKey).attributes.slug;
+            const sceneSlug = getSceneSlugByKeyCached(sceneKey);
 
             let forcePageRefresh = false;
 
@@ -15592,7 +15618,7 @@ function Ktl($, appInfo) {
             if (!viewRecordHistoryViewId) return;
 
             const viewRecordHistorySceneId = ktl.scenes.getSceneKeyFromViewId(viewRecordHistoryViewId);
-            const viewRecordHistorySlug = Knack.scenes.getByKey(viewRecordHistorySceneId).attributes.slug;
+            const viewRecordHistorySlug = getSceneSlugByKeyCached(viewRecordHistorySceneId);
             const originalSceneModal = Knack.scenes._byId[viewRecordHistorySlug].attributes.modal;
             const originalViewRecordHistoryFilterEnabled = Knack.views[viewId].model.view.filter;
 
@@ -25936,7 +25962,7 @@ function Ktl($, appInfo) {
                                                         if (viewId === query) {
                                                             const sceneId = attr.scene.key;
                                                             builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${attr.type}`;
-                                                            const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                                            const slug = getSceneSlugByKeyCached(sceneId);
                                                             appUrl = `${Knack.url_base}#${slug}`;
                                                             console.log('Open in Builder:', builderUrl);
                                                             console.log('Open in App:', appUrl);
@@ -25949,7 +25975,7 @@ function Ktl($, appInfo) {
                                             for (var t = 0; t < Knack.scenes.models.length; t++) {
                                                 if (query === Knack.scenes.models[t].attributes.key) {
                                                     builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${query}`;
-                                                    const slug = Knack.scenes.getByKey(query).attributes.slug;
+                                                    const slug = getSceneSlugByKeyCached(query);
                                                     appUrl = `${Knack.url_base}#${slug}`;
                                                     console.log('Open in Builder:', builderUrl);
                                                     console.log('Open in App:', appUrl);
@@ -30996,7 +31022,7 @@ function Ktl($, appInfo) {
                                 const viewType = view.attributes.type;
                                 const sceneId = scene.attributes.key;
                                 const builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${sceneId}/views/${viewId}/${viewType}`;
-                                const slug = Knack.scenes.getByKey(sceneId).attributes.slug;
+                                const slug = getSceneSlugByKeyCached(sceneId);
                                 const appUrl = `${Knack.url_base}#${slug}`;
 
                                 kwResults += `
