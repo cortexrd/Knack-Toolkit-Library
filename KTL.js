@@ -45,51 +45,65 @@ function Ktl($, appInfo) {
     //Extract all keywords from view titles and descriptions, and cleanup view titles and descriptions.
     const ktlKeywords = {};
     window.ktlKeywords = ktlKeywords;
-    const knackMetaCache = {
-        accountsObjectName: '',
-        currentScene: { key: '', slug: '', views: [] },
-        fieldMetaById: {},
-        fieldNamesById: {},
-        fieldIdsByObject: {},
-        objectIdsByName: {},
-        sceneSlugByKey: {},
-        sceneSlugs: [],
-        viewsBySceneSlug: {}
-    };
+    const knackCache = (function () {
+        const metaCache = {
+            accountsObjectName: '',
+            currentScene: { key: '', slug: '', views: [] },
+            fieldMetaById: {},
+            fieldNamesById: {},
+            fieldIdsByObject: {},
+            objectIdsByName: {},
+            sceneSlugByKey: {},
+            sceneSlugs: [],
+            viewsBySceneSlug: {}
+        };
 
-    function cacheFieldMeta(fieldId = '', fieldType = '') {
-        if (!fieldId) return;
-        if (!knackMetaCache.fieldMetaById[fieldId])
-            knackMetaCache.fieldMetaById[fieldId] = { type: fieldType || '', viewIds: [] };
-        else if (!knackMetaCache.fieldMetaById[fieldId].type && fieldType)
-            knackMetaCache.fieldMetaById[fieldId].type = fieldType;
-    }
-
-    function cacheViewFieldUsage(view = {}) {
-        const viewId = view.id;
-        if (!viewId) return;
-
-        const fieldMatches = JSON.stringify(view.attributes || {}).match(/\bfield_[a-zA-Z0-9]+\b/g);
-        if (!fieldMatches || !fieldMatches.length) return;
-
-        for (const fieldId of [...new Set(fieldMatches)]) {
-            cacheFieldMeta(fieldId);
-            const fieldMeta = knackMetaCache.fieldMetaById[fieldId];
-            if (!fieldMeta.viewIds.includes(viewId))
-                fieldMeta.viewIds.push(viewId);
+        function cacheFieldMeta(fieldId = '', fieldType = '') {
+            if (!fieldId) return;
+            if (!metaCache.fieldMetaById[fieldId])
+                metaCache.fieldMetaById[fieldId] = { type: fieldType || '', viewIds: [] };
+            else if (!metaCache.fieldMetaById[fieldId].type && fieldType)
+                metaCache.fieldMetaById[fieldId].type = fieldType;
         }
-    }
 
-    function getSceneSlugByKeyCached(sceneKey = '') {
-        if (!sceneKey) return;
-        if (knackMetaCache.sceneSlugByKey[sceneKey])
-            return knackMetaCache.sceneSlugByKey[sceneKey];
+        function cacheViewFieldUsage(view = {}) {
+            const viewId = view.id;
+            if (!viewId) return;
 
-        const slug = Knack.scenes.getByKey(sceneKey)?.attributes?.slug;
-        if (slug)
-            knackMetaCache.sceneSlugByKey[sceneKey] = slug;
-        return slug;
-    }
+            const fieldMatches = JSON.stringify(view.attributes || {}).match(/\bfield_[a-zA-Z0-9]+\b/g);
+            if (!fieldMatches || !fieldMatches.length) return;
+
+            for (const fieldId of [...new Set(fieldMatches)]) {
+                cacheFieldMeta(fieldId);
+                const fieldMeta = metaCache.fieldMetaById[fieldId];
+                if (!fieldMeta.viewIds.includes(viewId))
+                    fieldMeta.viewIds.push(viewId);
+            }
+        }
+
+        function getSceneSlugByKeyCached(sceneKey = '') {
+            if (!sceneKey) return;
+            if (metaCache.sceneSlugByKey[sceneKey])
+                return metaCache.sceneSlugByKey[sceneKey];
+
+            const slug = Knack.scenes.getByKey(sceneKey)?.attributes?.slug;
+            if (slug)
+                metaCache.sceneSlugByKey[sceneKey] = slug;
+            return slug;
+        }
+
+        return {
+            cacheFieldMeta,
+            cacheViewFieldUsage,
+            getCache: () => metaCache,
+            getSceneSlugByKeyCached
+        };
+    })();
+    const knackMetaCache = knackCache.getCache();
+    const cacheFieldMeta = knackCache.cacheFieldMeta;
+    const cacheViewFieldUsage = knackCache.cacheViewFieldUsage;
+    const getSceneSlugByKeyCached = knackCache.getSceneSlugByKeyCached;
+    ktl.knack = knackCache;
 
     //Temporary debug code to detect DOM changes.
     //Uncomment to use momentarily, then comment back when done.
