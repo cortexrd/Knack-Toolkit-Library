@@ -784,7 +784,9 @@ function Ktl($, appInfo) {
                                     if (!dateTime)
                                         continue;
                                     let [dateStr, timeStr] = dateTime.split(' ');
-                                    const format = Knack.objects.getField(fieldId).attributes.format;
+                                    const format = ktl.knack.getFieldAttributesByIdCached(fieldId)?.format;
+                                    if (!format)
+                                        continue;
                                     const dateFormat = format.date_format;
                                     const timeFormat = format.time_format;
 
@@ -2429,7 +2431,7 @@ function Ktl($, appInfo) {
 
                 if (!fieldId) return;
 
-                var field = Knack.objects.getField(fieldId);
+                var field = ktl.knack.getFieldByIdCached(fieldId);
                 if (!field) return;
 
                 fieldAttributes = field.attributes;
@@ -2443,7 +2445,7 @@ function Ktl($, appInfo) {
                 //Is this field a calculation related to another field, like a Sum, Avg, or other?
                 if (fieldAttributes.format && fieldAttributes.format.field) {
                     fieldId = fieldAttributes.format.field.key;
-                    var field = Knack.objects.getField(fieldId);
+                    var field = ktl.knack.getFieldByIdCached(fieldId);
                     if (!field) return;
 
                     fieldAttributes = field.attributes;
@@ -14400,7 +14402,7 @@ function Ktl($, appInfo) {
                 }
             } else {
                 //All parent views.
-                const viewsInScene = Knack.scenes._byId[sceneSlug].views.models;
+                const viewsInScene = ktl.knack.getSceneBySlugCached(sceneSlug)?.views?.models || [];
                 for (const { attributes: { key: viewIdToRefresh } } of viewsInScene) {
                     //Calendars don't need a refresh since it's done automatically.
                     if (ktl.views.getViewType(viewIdToRefresh) !== 'calendar' && $(`#${viewIdToRefresh}`).length) {
@@ -15572,7 +15574,8 @@ function Ktl($, appInfo) {
                         apiData[recordHistoryFieldIds.builder_history] = `${baseURL}/records/objects/${sourceObjectId}/record/${recordId}/history`;
 
                         //Calculate expiry date/time
-                        const futureDate = ktl.core.computeFutureDateTime(expiry, Knack.objects.getField(recordHistoryFieldIds.expiry).attributes.format.date_format);
+                        const expiryFieldDateFormat = ktl.knack.getFieldAttributesByIdCached(recordHistoryFieldIds.expiry)?.format?.date_format;
+                        const futureDate = ktl.core.computeFutureDateTime(expiry, expiryFieldDateFormat);
                         apiData[recordHistoryFieldIds.expiry] = futureDate;
 
                         ktl.core.knAPI(addRecordHistoryLogViewId, null, apiData, 'POST')
@@ -22182,7 +22185,8 @@ function Ktl($, appInfo) {
         function addFooter() {
             const footerSlug = ktlKeywords.ktlAppFooter;
             if (!footerSlug) return;
-            const footerHTML = Knack.scenes._byId[footerSlug].views.models[0].attributes.content;
+            const footerHTML = ktl.knack.getSceneBySlugCached(footerSlug)?.views?.models?.[0]?.attributes?.content;
+            if (!footerHTML) return;
 
             const footerElement = document.createElement('footer');
             footerElement.innerHTML = footerHTML;
