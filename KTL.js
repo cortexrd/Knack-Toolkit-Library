@@ -51,8 +51,10 @@ function Ktl($, appInfo) {
             currentScene: { key: '', slug: '', views: [] },
             fieldMetaById: {},
             fieldNamesById: {},
+            fieldObjectsById: {},
             fieldIdsByObject: {},
             objectIdsByName: {},
+            scenesBySlug: {},
             sceneSlugByKey: {},
             sceneSlugs: [],
             viewsBySceneSlug: {}
@@ -92,10 +94,34 @@ function Ktl($, appInfo) {
             return slug;
         }
 
+        function getSceneBySlugCached(sceneSlug = '') {
+            if (!sceneSlug) return;
+            if (metaCache.scenesBySlug[sceneSlug])
+                return metaCache.scenesBySlug[sceneSlug];
+
+            const scene = Knack.scenes?._byId?.[sceneSlug];
+            if (scene)
+                metaCache.scenesBySlug[sceneSlug] = scene;
+            return scene;
+        }
+
+        function getFieldByIdCached(fieldId = '') {
+            if (!fieldId) return;
+            if (metaCache.fieldObjectsById[fieldId])
+                return metaCache.fieldObjectsById[fieldId];
+
+            const field = Knack.objects.getField(fieldId);
+            if (field)
+                metaCache.fieldObjectsById[fieldId] = field;
+            return field;
+        }
+
         return {
             cacheFieldMeta,
             cacheViewFieldUsage,
+            getFieldByIdCached,
             getCache: () => metaCache,
+            getSceneBySlugCached,
             getSceneSlugByKeyCached
         };
     })();
@@ -310,6 +336,8 @@ function Ktl($, appInfo) {
         const viewIdsByTitle = {};
         if (sceneKey && sceneSlug)
             knackMetaCache.sceneSlugByKey[sceneKey] = sceneSlug;
+        if (sceneSlug)
+            knackMetaCache.scenesBySlug[sceneSlug] = scene;
         scene.views.forEach(view => {
             extractKeywordsFromView(scene, view);
             ktl.knack.cacheViewFieldUsage(view);
@@ -1531,7 +1559,8 @@ function Ktl($, appInfo) {
                 var topMenuStr = '';
                 var topMenu = '';
                 var menuStr = '';
-                var pageStr = Knack.scenes._byId[Knack.router.current_scene].attributes.name;
+                const curScene = ktl.knack.getSceneBySlugCached(Knack.router.current_scene);
+                var pageStr = curScene?.attributes?.name || '';
 
                 var menuElem = document.querySelector('#app-menu-list .is-active');
                 if (ktl.core.isKiosk()) {
@@ -1908,7 +1937,7 @@ function Ktl($, appInfo) {
                 if (!fieldId) return;
                 if (knackMetaCache.fieldNamesById[fieldId])
                     return knackMetaCache.fieldNamesById[fieldId];
-                const fieldObject = Knack.objects.getField(fieldId);
+                const fieldObject = ktl.knack.getFieldByIdCached(fieldId);
                 if (fieldObject && fieldObject.attributes) {
                     knackMetaCache.fieldNamesById[fieldId] = fieldObject.attributes.name;
                     return fieldObject.attributes.name;
@@ -1919,7 +1948,7 @@ function Ktl($, appInfo) {
                 if (!fieldId) return;
                 const cachedType = knackMetaCache.fieldMetaById[fieldId]?.type;
                 if (cachedType) return cachedType;
-                return Knack.objects.getField(fieldId)?.attributes?.type;
+                return ktl.knack.getFieldByIdCached(fieldId)?.attributes?.type;
             },
 
             getViewIdsByFieldId: function (fieldId) {
@@ -22229,8 +22258,8 @@ function Ktl($, appInfo) {
             e.preventDefault();
 
             const sceneKey = Knack.router.current_scene_key;
-            const sceneName = (Knack.scenes._byId[Knack.router.current_scene] ?
-                Knack.scenes._byId[Knack.router.current_scene].attributes.name : 'Unnamed Page');
+            const currentScene = ktl.knack.getSceneBySlugCached(Knack.router.current_scene);
+            const sceneName = currentScene ? currentScene.attributes.name : 'Unnamed Page';
             const pageUrl = window.location.href;
             const icon = $(this).find('i');
 
