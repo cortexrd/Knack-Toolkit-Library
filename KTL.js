@@ -48,11 +48,35 @@ function Ktl($, appInfo) {
     const knackMetaCache = {
         accountsObjectName: '',
         currentScene: { key: '', slug: '', views: [] },
+        fieldMetaById: {},
         fieldIdsByObject: {},
         objectIdsByName: {},
         sceneSlugs: [],
         viewsBySceneSlug: {}
     };
+
+    function cacheFieldMeta(fieldId = '', fieldType = '') {
+        if (!fieldId) return;
+        if (!knackMetaCache.fieldMetaById[fieldId])
+            knackMetaCache.fieldMetaById[fieldId] = { type: fieldType || '', viewIds: [] };
+        else if (!knackMetaCache.fieldMetaById[fieldId].type && fieldType)
+            knackMetaCache.fieldMetaById[fieldId].type = fieldType;
+    }
+
+    function cacheViewFieldUsage(view = {}) {
+        const viewId = view.id;
+        if (!viewId) return;
+
+        const fieldMatches = JSON.stringify(view.attributes || {}).match(/\bfield_[a-zA-Z0-9]+\b/g);
+        if (!fieldMatches || !fieldMatches.length) return;
+
+        for (const fieldId of [...new Set(fieldMatches)]) {
+            cacheFieldMeta(fieldId);
+            const fieldMeta = knackMetaCache.fieldMetaById[fieldId];
+            if (!fieldMeta.viewIds.includes(viewId))
+                fieldMeta.viewIds.push(viewId);
+        }
+    }
 
     //Temporary debug code to detect DOM changes.
     //Uncomment to use momentarily, then comment back when done.
@@ -261,6 +285,7 @@ function Ktl($, appInfo) {
         const viewIdsByTitle = {};
         scene.views.forEach(view => {
             extractKeywordsFromView(scene, view);
+            cacheViewFieldUsage(view);
             sceneViews.push(view);
             const viewTitle = view?.attributes?.title;
             if (viewTitle && !viewIdsByTitle[viewTitle])
@@ -288,6 +313,8 @@ function Ktl($, appInfo) {
 
         obj.attributes.fields.filter(f => !!f).forEach(f => {
             const fieldId = f.key;
+            const fieldType = Knack.fields[fieldId]?.attributes?.type || f.type || '';
+            cacheFieldMeta(fieldId, fieldType);
             if (f.name && !fieldIdsByName[f.name])
                 fieldIdsByName[f.name] = fieldId;
             const field = Knack.fields[fieldId];
@@ -1853,6 +1880,18 @@ function Ktl($, appInfo) {
                 const fieldObject = Knack.objects.getField(fieldId);
                 if (fieldObject && fieldObject.attributes)
                     return fieldObject.attributes.name;
+            },
+
+            getFieldTypeById: function (fieldId) {
+                if (!fieldId) return;
+                const cachedType = knackMetaCache.fieldMetaById[fieldId]?.type;
+                if (cachedType) return cachedType;
+                return Knack.objects.getField(fieldId)?.attributes?.type;
+            },
+
+            getViewIdsByFieldId: function (fieldId) {
+                if (!fieldId) return [];
+                return [...(knackMetaCache.fieldMetaById[fieldId]?.viewIds || [])];
             },
 
             //pageUrl is also called a slug.  It's what you find in the scene's Settings / Page URL field in the Builder.
