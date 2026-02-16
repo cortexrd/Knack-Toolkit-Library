@@ -116,9 +116,14 @@ function Ktl($, appInfo) {
             return field;
         }
 
+        function getFieldAttributesByIdCached(fieldId = '') {
+            return getFieldByIdCached(fieldId)?.attributes;
+        }
+
         return {
             cacheFieldMeta,
             cacheViewFieldUsage,
+            getFieldAttributesByIdCached,
             getFieldByIdCached,
             getCache: () => metaCache,
             getSceneBySlugCached,
@@ -14683,11 +14688,11 @@ function Ktl($, appInfo) {
             let field = cols.find(col => {
                 fieldId = col.field && col.field.key;
                 if (!fieldId) return false;
-                let field = Knack.objects.getField(fieldId);
-                return field && field.attributes && field.attributes.type === 'date_time';
+                const fieldAttrs = ktl.knack.getFieldAttributesByIdCached(fieldId);
+                return fieldAttrs && fieldAttrs.type === 'date_time';
             });
 
-            let fieldName = field ? Knack.objects.getField(field.field.key).attributes.name : undefined;
+            let fieldName = field ? ktl.knack.getFieldAttributesByIdCached(field.field.key)?.name : undefined;
 
             if (!fieldId || !fieldName) {
                 ktl.core.timedPopup('This table doesn\'t have a Date/Time column.', 'warning', 4000);
@@ -16045,7 +16050,7 @@ function Ktl($, appInfo) {
 
                 // Get field attributes if a string ID is provided
                 const fieldAttrs = (typeof field === 'string' && field.startsWith('field_'))
-                    ? Knack.objects.getField(field) && Knack.objects.getField(field).attributes
+                    ? ktl.knack.getFieldAttributesByIdCached(field)
                     : field;
 
                 if (!fieldAttrs) {
@@ -31818,8 +31823,9 @@ function Ktl($, appInfo) {
                         keyboard.setCaretPosition(target.selectionStart, target.selectionEnd);
 
                         const fieldId = $(target).closest('[data-input-id]').attr('data-input-id') || 0;
+                        const fieldAttrs = ktl.knack.getFieldAttributesByIdCached(fieldId);
 
-                        if ($(target).attr('type') === 'tel' || $(target).attr('type') === 'number' || (Knack.objects.getField(fieldId) && Knack.objects.getField(fieldId).attributes.type === 'number') || ktl.fields.shouldBeNumeric(fieldId))
+                        if ($(target).attr('type') === 'tel' || $(target).attr('type') === 'number' || (fieldAttrs && fieldAttrs.type === 'number') || ktl.fields.shouldBeNumeric(fieldId))
                             keyboard.setOptions({ layoutName: 'numeric' });
                         else
                             keyboard.setOptions({ layoutName: 'default' });
