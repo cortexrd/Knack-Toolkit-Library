@@ -5961,7 +5961,7 @@ function Ktl($, appInfo) {
             },
 
             hideFields: function (viewId, keywords) {
-                if (!viewId || !keywords) return;
+                if (!viewId) return;
 
                 if ($('.kn-modal').length && !$('#' + viewId).children().length) {
                     // Issue #458
@@ -17473,7 +17473,7 @@ function Ktl($, appInfo) {
             },
 
             hideField: function (fieldId) {
-                $('#kn-input-' + fieldId).addClass('ktlHidden');
+                document.querySelectorAll('#kn-input-' + fieldId + ', .' + fieldId).forEach(el => el.classList.add('ktlHidden_hf'));
             },
 
             // srchTxt: string to find, must be non-empty.

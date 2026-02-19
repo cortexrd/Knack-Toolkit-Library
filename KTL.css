@@ -94,6 +94,12 @@
 	left: -9000px !important;
 }
 
+th.ktlHidden, td.ktlHidden,
+th[class^="ktlHidden_"], td[class^="ktlHidden_"],
+th[class*=" ktlHidden_"], td[class*=" ktlHidden_"] {
+	display: none !important;
+}
+
 .ktlDisplayNone,
 [class^="ktlDisplayNone_"],
 [class*=" ktlDisplayNone_"] {
