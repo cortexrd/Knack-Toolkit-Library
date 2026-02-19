@@ -12815,19 +12815,6 @@ function Ktl($, appInfo) {
             return recordIds;
         }
 
-        function tagsGetAllVisibleRecordIds(viewId) {
-            const recordIds = [];
-            $(`#${viewId} tbody tr[id]:not(.kn-table-group):not(.kn-table-totals)`).each(function () {
-                const recordId = $(this).attr('id');
-                if (recordId) recordIds.push(recordId);
-            });
-            return recordIds;
-        }
-
-        function tagsHasBulkOpsEnabled(viewId) {
-            return $(`#${viewId} tbody ${TAGS_BULK_OPS_CHECKBOX_SELECTOR}`).length > 0;
-        }
-
         function tagsAddDialogStyles() {
             if (document.querySelector('#ktlTagDialogStyles')) return;
 
@@ -13035,27 +13022,10 @@ function Ktl($, appInfo) {
         }
 
         async function tagsHandleButtonClick(viewId, fieldId, data, mode) {
-            const hasBulkOps = tagsHasBulkOpsEnabled(viewId);
-            let recordIds;
-
-            if (hasBulkOps) {
-                recordIds = tagsGetSelectedRecordIds(viewId);
-                if (recordIds.length === 0) {
-                    ktl.core.timedPopup('Please select at least one record', 'warning');
-                    return;
-                }
-            } else {
-                recordIds = tagsGetAllVisibleRecordIds(viewId);
-                if (recordIds.length === 0) {
-                    ktl.core.timedPopup('No visible records found', 'warning');
-                    return;
-                }
-
-                const confirmResult = await ktl.core.selectOption(
-                    `No bulk selection available.\nThis will ${mode} the tag ${mode === 'add' ? 'to' : 'from'} all ${recordIds.length} visible record(s).\n\nContinue?`,
-                    'Yes,No'
-                );
-                if (confirmResult !== 0) return;
+            const recordIds = tagsGetSelectedRecordIds(viewId);
+            if (recordIds.length === 0) {
+                ktl.core.timedPopup('Please select at least one record', 'warning');
+                return;
             }
 
             let tagsForDialog;
@@ -13078,16 +13048,10 @@ function Ktl($, appInfo) {
         }
 
         function tagsUpdateButtonsState(viewId) {
-            const hasBulkOps = tagsHasBulkOpsEnabled(viewId);
-            if (hasBulkOps) {
-                const selectedIds = tagsGetSelectedRecordIds(viewId);
-                const hasSelection = selectedIds.length > 0;
-                $(`#ktlAddTag-${viewId}`).prop('disabled', !hasSelection);
-                $(`#ktlRemoveTag-${viewId}`).prop('disabled', !hasSelection);
-            } else {
-                $(`#ktlAddTag-${viewId}`).prop('disabled', false);
-                $(`#ktlRemoveTag-${viewId}`).prop('disabled', false);
-            }
+            const selectedIds = tagsGetSelectedRecordIds(viewId);
+            const hasSelection = selectedIds.length > 0;
+            $(`#ktlAddTag-${viewId}`).prop('disabled', !hasSelection);
+            $(`#ktlRemoveTag-${viewId}`).prop('disabled', !hasSelection);
         }
 
         function tagsCreateButtons(viewId, fieldId, data) {
@@ -13142,6 +13106,23 @@ function Ktl($, appInfo) {
             if (!fieldId) {
                 ktl.log.clog('purple', '_tags: Could not find Tags field in view', viewId);
                 return;
+            }
+
+            //Ensure checkboxes exist even when user has no bulk ops roles.
+            const viewElement = document.getElementById(viewId);
+            if (viewElement && !viewElement.querySelector(TAGS_BULK_OPS_CHECKBOX_SELECTOR)) {
+                ktl.views.addCheckboxesToTable(viewId, {
+                    withMaster: true,
+                    checkboxClasses: ['bulkEditCb', 'ktlCheckbox-bulkops'],
+                    checkboxDataAttrs: { 'data-ktl-selection': 'ktlCheckbox', 'data-ktl-bulkops': '1' },
+                    enhanceExisting: true,
+                    onRowChange: ({ viewId: vId }) => {
+                        if (vId === viewId) tagsUpdateButtonsState(viewId);
+                    },
+                    onMasterChange: ({ viewId: vId }) => {
+                        if (vId === viewId) tagsUpdateButtonsState(viewId);
+                    },
+                });
             }
 
             tagsCreateButtons(viewId, fieldId, data);
