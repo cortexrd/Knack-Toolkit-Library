@@ -10494,6 +10494,7 @@ function Ktl($, appInfo) {
                     keywords._mmb && moveMenuButtons(view, keywords);
                     keywords._tags && addRemoveTags(viewId, keywords, data);
                     keywords._cgc && ktl.views.chooseGridColumns(view, keywords);
+                    keywords._legend && ktl.views.addLegendTooltips(viewId);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -20954,6 +20955,190 @@ function Ktl($, appInfo) {
                     const tooltipElement = icon.data('tooltipElement')
 
                     tooltipElement.remove();
+                });
+            },
+
+            extractDisplayRules: function (viewId) {
+                if (!viewId) return [];
+
+                const view = Knack.views[viewId];
+                if (!view || !view.model || !view.model.view) return [];
+
+                const columns = view.model.view.columns;
+                if (!columns || !columns.length) return [];
+
+                const results = [];
+                columns.forEach(col => {
+                    if (!col.rules || !col.rules.length) return;
+
+                    const columnRules = [];
+                    col.rules.forEach(rule => {
+                        const criteria = (rule.criteria || []).map(c => {
+                            const fieldName = ktl.core.getFieldNameById(c.field) || c.field;
+                            return { fieldId: c.field, fieldName, operator: c.operator, value: c.value };
+                        });
+
+                        const actions = (rule.actions || []).map(a => ({
+                            type: a.action,
+                            color: a.color,
+                            bold: a.bold,
+                            italic: a.italic,
+                            strikethrough: a.strikethrough,
+                            icon: a.icon ? a.icon.icon : null,
+                            iconAlign: a.icon ? a.icon.align : null
+                        }));
+
+                        if (criteria.length && actions.length)
+                            columnRules.push({ criteria, actions });
+                    });
+
+                    if (columnRules.length) {
+                        results.push({
+                            columnHeader: col.header,
+                            fieldId: col.field ? col.field.key : null,
+                            rules: columnRules
+                        });
+                    }
+                });
+
+                return results;
+            },
+
+            addLegendTooltips: function (viewId) {
+                if (!viewId) return;
+
+                const viewType = ktl.views.getViewType(viewId);
+                if (!['table', 'search'].includes(viewType)) return;
+
+                const displayRules = ktl.views.extractDisplayRules(viewId);
+                if (!displayRules.length) return;
+
+                displayRules.forEach(colInfo => {
+                    let html = '';
+                    colInfo.rules.forEach(rule => {
+                        const visualActions = rule.actions.filter(a => ['icon', 'bg-color', 'text-color'].includes(a.type));
+                        if (!visualActions.length) return;
+
+                        html += '<div class="ktlLegendRule">';
+
+                        const iconAction = visualActions.find(a => a.type === 'icon');
+                        const bgAction = visualActions.find(a => a.type === 'bg-color');
+                        const textColorAction = visualActions.find(a => a.type === 'text-color');
+
+                        if (iconAction) {
+                            html += `<span class="ktlLegendIconChip" style="background-color:${iconAction.color || '#333'};"><i class="fa ${iconAction.icon}"></i></span>`;
+                        } else if (bgAction) {
+                            html += `<span class="ktlLegendSwatch" style="background-color:${bgAction.color};"></span>`;
+                        } else if (textColorAction) {
+                            html += `<span class="ktlLegendSwatch" style="background-color:${textColorAction.color};"></span>`;
+                        }
+
+                        const criteriaText = rule.criteria.map(c => `${c.fieldName} ${c.operator} ${c.value}`).join(' AND ');
+                        html += `<span class="ktlLegendText">${criteriaText}</span></div>`;
+                    });
+
+                    if (!html) return;
+
+                    const fieldId = colInfo.fieldId;
+                    let tooltipIconPosition;
+                    if (fieldId)
+                        tooltipIconPosition = `#${viewId} th.${fieldId}`;
+                    else {
+                        const headerText = colInfo.columnHeader;
+                        const th = document.querySelector(`#${viewId} th`);
+                        if (!th) return;
+                        const allThs = document.querySelectorAll(`#${viewId} .kn-table thead th`);
+                        for (const el of allThs) {
+                            const span = el.querySelector('.table-fixed-label');
+                            if (span && span.textContent.trim() === headerText) {
+                                tooltipIconPosition = `#${viewId} th.${el.classList[0]}`;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!tooltipIconPosition || !document.querySelector(tooltipIconPosition)) return;
+
+                    const existingLegendIcon = document.querySelector(`${tooltipIconPosition} .ktlLegendIcon`);
+                    if (existingLegendIcon) return;
+
+                    const icon = document.createElement('i');
+                    icon.className = 'fa fa-info-circle ktlLegendIcon ktlTtipIcon-table-view';
+                    const headerEl = document.querySelector(tooltipIconPosition);
+                    headerEl.appendChild(icon);
+
+                    const fixedLabel = headerEl.querySelector('.table-fixed-label');
+                    if (fixedLabel) fixedLabel.style.display = 'inline-flex';
+
+                    icon.addEventListener('mouseenter', function (e) {
+                        const existing = document.querySelector('.ktlLegendTooltip');
+                        if (existing) existing.remove();
+
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'ktlLegendTooltip ktlTtip-table-view';
+                        tooltip.innerHTML = html;
+                        document.body.appendChild(tooltip);
+
+                        const tooltipWidth = tooltip.offsetWidth;
+                        const tooltipHeight = tooltip.offsetHeight;
+                        let left = e.clientX - tooltipWidth / 2;
+                        let top = e.clientY - tooltipHeight - 20;
+
+                        if (left < 0) left = 10;
+                        else if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 10;
+                        if (top < 0) top = e.clientY + 20;
+
+                        Object.assign(tooltip.style, {
+                            position: 'fixed',
+                            left: left + 'px',
+                            top: top + 'px',
+                            zIndex: '2000'
+                        });
+                    });
+
+                    icon.addEventListener('mouseleave', function () {
+                        const tooltip = document.querySelector('.ktlLegendTooltip');
+                        if (tooltip) tooltip.remove();
+                    });
+
+                    icon.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        const existing = document.querySelector('.ktlLegendTooltip');
+                        if (existing) { existing.remove(); return; }
+
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'ktlLegendTooltip ktlTtip-table-view';
+                        tooltip.innerHTML = html;
+                        document.body.appendChild(tooltip);
+
+                        const tooltipWidth = tooltip.offsetWidth;
+                        const tooltipHeight = tooltip.offsetHeight;
+                        let left = e.clientX - tooltipWidth / 2;
+                        let top = e.clientY - tooltipHeight - 20;
+
+                        if (left < 0) left = 10;
+                        else if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 10;
+                        if (top < 0) top = e.clientY + 20;
+
+                        Object.assign(tooltip.style, {
+                            position: 'fixed',
+                            left: left + 'px',
+                            top: top + 'px',
+                            zIndex: '2000'
+                        });
+
+                        function dismissLegend(ev) {
+                            if (!tooltip.contains(ev.target) && ev.target !== icon) {
+                                tooltip.remove();
+                                document.removeEventListener('click', dismissLegend);
+                                document.removeEventListener('touchstart', dismissLegend);
+                            }
+                        }
+                        setTimeout(() => {
+                            document.addEventListener('click', dismissLegend);
+                            document.addEventListener('touchstart', dismissLegend);
+                        }, 0);
+                    });
                 });
             },
 
