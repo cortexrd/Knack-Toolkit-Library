@@ -29179,21 +29179,7 @@ function Ktl($, appInfo) {
                 const src = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId].attributes)
                     || Knack.views[viewId].model.data._byId[recId].attributes;
 
-                //TODO:  put the duplicate code below in a common function.
-                checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
-                checkedFields.each((idx, cbox) => {
-                    const fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
-                    if (fieldId.startsWith('field_')) {
-                        if (cbox.checked) {
-                            apiData[fieldId] = JSON.parse(JSON.stringify(src[fieldId + '_raw']));
-
-                            //Support date formats with day month year.  Issue #132
-                            const fieldType = ktl.fields.getFieldType(fieldId);
-                            if (fieldType === 'date_time')
-                                apiData[fieldId].date = apiData[fieldId].date_formatted;
-                        }
-                    }
-                })
+                collectFieldsFromCheckedHeaders(viewId, src);
 
                 if ($.isEmptyObject(apiData))
                     ktl.core.timedPopup('No data found.  Please try again', 'error');
@@ -29216,6 +29202,20 @@ function Ktl($, appInfo) {
                     previewLastBulkEditData();
                 else
                     processBulkOps(viewId, e);
+            });
+        }
+
+        function collectFieldsFromCheckedHeaders(viewId, src) {
+            $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`).each((idx, cbox) => {
+                const fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
+                if (fieldId.startsWith('field_') && cbox.checked) {
+                    apiData[fieldId] = JSON.parse(JSON.stringify(src[fieldId + '_raw']));
+
+                    //Support date formats with day month year.  Issue #132
+                    const fieldType = ktl.fields.getFieldType(fieldId);
+                    if (fieldType === 'date_time')
+                        apiData[fieldId].date = apiData[fieldId].date_formatted;
+                }
             });
         }
 
@@ -29389,19 +29389,7 @@ function Ktl($, appInfo) {
                     }
 
                     if (checkedFields.length) {
-                        checkedFields.each((idx, cbox) => {
-                            const fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
-                            if (fieldId.startsWith('field_')) {
-                                if (cbox.checked) {
-                                    apiData[fieldId] = JSON.parse(JSON.stringify(src[fieldId + '_raw']));
-
-                                    //Support date formats with day month year.  Issue #132
-                                    const fieldType = ktl.fields.getFieldType(fieldId);
-                                    if (fieldType === 'date_time')
-                                        apiData[fieldId].date = apiData[fieldId].date_formatted;
-                                }
-                            }
-                        })
+                        collectFieldsFromCheckedHeaders(viewId, src);
                     } else {
                         //If no column selected, use field clicked.
                         let clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
