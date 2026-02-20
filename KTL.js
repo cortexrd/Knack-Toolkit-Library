@@ -29185,7 +29185,7 @@ function Ktl($, appInfo) {
                     const fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
                     if (fieldId.startsWith('field_')) {
                         if (cbox.checked) {
-                            apiData[fieldId] = src[fieldId + '_raw'];
+                            apiData[fieldId] = JSON.parse(JSON.stringify(src[fieldId + '_raw']));
 
                             //Support date formats with day month year.  Issue #132
                             const fieldType = ktl.fields.getFieldType(fieldId);
@@ -29348,7 +29348,7 @@ function Ktl($, appInfo) {
 
         //For Bulk Edit, called when user clicks on a row and when there are some checkboxes enabled.
         //For Bulk Duplicate, called when user clicks on Duplicate button, when one row is selected.  No columns checked means all.
-        function processBulkOps(viewId, e) {
+        async function processBulkOps(viewId, e) {
             if (!viewId) return;
 
             let numToProcess = 0;
@@ -29356,10 +29356,11 @@ function Ktl($, appInfo) {
             const operation = e.target.id;
             if (operation === 'ktl-bulk-duplicate-' + viewId) {
                 //Bulk Copy
-                numToProcess = prompt('How many copies do you want to create?', 0);
-                numToProcess = parseInt(numToProcess);
+                const result = await ktl.core.selectOption('How many copies do you want to create?', 'ktlOther:Create', '1');
+                if (result === -1) return;
+                numToProcess = parseInt(result);
                 if (isNaN(numToProcess) || numToProcess <= 0) {
-                    alert('Must chose a numeric value higher than zero.');
+                    ktl.core.selectOption('Must choose a numeric value higher than zero.', 'Close');
                     return;
                 }
 
@@ -29377,16 +29378,22 @@ function Ktl($, appInfo) {
                     processBulkEdit(); //Paste button.
                 } else {
                     recId = recId || e.target.closest('tr[id]').id;
-                    const src = Knack.views[viewId].model.data._byId[recId].attributes;
+                    const src = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId].attributes)
+                        || Knack.views[viewId].model.data._byId[recId].attributes;
 
                     //Add all selected fields from header.
                     let checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
+                    if (!checkedFields.length && operation === 'ktl-bulk-duplicate-' + viewId) {
+                        $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}`).prop('checked', true);
+                        checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
+                    }
+
                     if (checkedFields.length) {
                         checkedFields.each((idx, cbox) => {
                             const fieldId = $(cbox).closest('th').attr('class').split(' ')[0];
                             if (fieldId.startsWith('field_')) {
                                 if (cbox.checked) {
-                                    apiData[fieldId] = src[fieldId + '_raw'];
+                                    apiData[fieldId] = JSON.parse(JSON.stringify(src[fieldId + '_raw']));
 
                                     //Support date formats with day month year.  Issue #132
                                     const fieldType = ktl.fields.getFieldType(fieldId);
@@ -29400,7 +29407,7 @@ function Ktl($, appInfo) {
                         let clickedFieldId = $(e.target).closest('td[class^="field_"].cell-edit');
                         if (clickedFieldId.length && clickedFieldId.attr('data-field-key').startsWith('field_')) {
                             clickedFieldId = clickedFieldId.attr('data-field-key');
-                            apiData[clickedFieldId] = src[clickedFieldId + '_raw'];
+                            apiData[clickedFieldId] = JSON.parse(JSON.stringify(src[clickedFieldId + '_raw']));
                             const fieldType = ktl.fields.getFieldType(clickedFieldId);
 
                             //Support date formats with day month year.  Issue #132
