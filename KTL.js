@@ -20297,8 +20297,21 @@ function Ktl($, appInfo) {
                 const headers = document.querySelectorAll('#' + viewId + ' .kn-table th');
                 for (var i = 0; i < headers.length; i++) {
                     const headerTxt = headers[i].textContent.trim();
-                    if (headerTxt === header)
+                    if (headerTxt === header) {
+                        const fieldIdMatch = headers[i].classList.value.match(/field_\d+/);
+                        if (fieldIdMatch) {
+                            const firstRow = document.querySelector('#' + viewId + ' tbody tr[id]');
+                            if (firstRow) {
+                                const td = firstRow.querySelector('td.' + fieldIdMatch[0] + ', td[data-field-key="' + fieldIdMatch[0] + '"]');
+                                if (td) {
+                                    const colIndex = td.getAttribute('data-column-index');
+                                    if (colIndex !== null)
+                                        return parseInt(colIndex, 10);
+                                }
+                            }
+                        }
                         return i;
+                    }
                 }
             },
 
@@ -20310,6 +20323,16 @@ function Ktl($, appInfo) {
                 if (viewType !== 'table') {
                     ktl.log.clog('purple', 'getFieldPositionFromFieldId - unsupported view type', viewId, viewType);
                     return;
+                }
+
+                const firstRow = document.querySelector('#' + viewId + ' tbody tr[id]');
+                if (firstRow) {
+                    const td = firstRow.querySelector('td.' + fieldId + ', td[data-field-key="' + fieldId + '"]');
+                    if (td) {
+                        const colIndex = td.getAttribute('data-column-index');
+                        if (colIndex !== null)
+                            return parseInt(colIndex, 10);
+                    }
                 }
 
                 const headers = document.querySelectorAll('#' + viewId + ' .kn-table th');
