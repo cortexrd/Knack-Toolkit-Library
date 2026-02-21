@@ -547,30 +547,6 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 }
 
 /* Legend tooltip styles */
-.ktlLegendIcon {
-	margin-top: 0.15em;
-	padding-left: 0.15em;
-	opacity: 0.3;
-	cursor: pointer;
-	vertical-align: middle;
-}
-
-.ktlLegendIcon:hover {
-	opacity: 0.8;
-}
-
-.ktlLegendTooltip {
-	border: 1px solid #000000;
-	border-radius: 5px;
-	padding: 8px 12px;
-	max-width: 400px;
-	width: max-content;
-	font-weight: 400;
-	text-align: left;
-	font-size: 13px;
-	line-height: 1.6;
-}
-
 .ktlLegendRule {
 	display: flex;
 	align-items: center;

@@ -244,6 +244,9 @@ function Ktl($, appInfo) {
                 ktlKeywords._theme.params = viewKwObj._theme[0]?.params || [];
                 ktlKeywords._theme.viewId = view.id;
             }
+
+            if (viewKwObj._legend?.some(kw => kw.params?.[0]?.includes('all')))
+                ktlKeywords._legendAll = true;
         }
     };
 
@@ -10494,7 +10497,6 @@ function Ktl($, appInfo) {
                     keywords._mmb && moveMenuButtons(view, keywords);
                     keywords._tags && addRemoveTags(viewId, keywords, data);
                     keywords._cgc && ktl.views.chooseGridColumns(view, keywords);
-                    keywords._legend && ktl.views.addLegendTooltips(viewId);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
@@ -10515,6 +10517,9 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 addDataTooltips(view, keywords);
+
+                if ((keywords && keywords._legend) || ktlKeywords._legendAll)
+                    ktl.views.addLegendTooltips(viewId, keywords?._legend);
                 noFiltering(view);
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
@@ -20913,6 +20918,9 @@ function Ktl($, appInfo) {
 
                 const ttipText = this.processTextMarkup(tooltipText);
 
+                const posEl = document.querySelector(tooltipIconPosition);
+                if (posEl) posEl.dataset.ktlTtipText = ttipText;
+
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
                     const icon = $(this);
 
@@ -21004,7 +21012,7 @@ function Ktl($, appInfo) {
                 return results;
             },
 
-            addLegendTooltips: function (viewId) {
+            addLegendTooltips: function (viewId, legendKeywords) {
                 if (!viewId) return;
 
                 const viewType = ktl.views.getViewType(viewId);
@@ -21013,132 +21021,146 @@ function Ktl($, appInfo) {
                 const displayRules = ktl.views.extractDisplayRules(viewId);
                 if (!displayRules.length) return;
 
+                const overrides = {};
+                if (legendKeywords && legendKeywords.length) {
+                    legendKeywords.forEach(kw => {
+                        const params = kw.params;
+                        if (!params || !params.length) return;
+                        if (params.length === 1 && params[0].includes('all')) return;
+                        const columnTarget = params[0].map(s => s.trim()).join(', ');
+                        const texts = [];
+                        for (let i = 1; i < params.length; i++)
+                            texts.push(params[i].map(s => s.trim()).join(', '));
+                        overrides[columnTarget] = texts;
+                    });
+                }
+
+                function showLegendTooltip(e, html) {
+                    const existing = document.querySelector('.ktlLegendTooltip');
+                    if (existing) existing.remove();
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'ktlLegendTooltip ktlTooltip ktlTtip-table-view';
+                    tooltip.innerHTML = html;
+                    document.body.appendChild(tooltip);
+                    const w = tooltip.offsetWidth;
+                    const h = tooltip.offsetHeight;
+                    let left = e.clientX - w / 2;
+                    let top = e.clientY - h - 20;
+                    if (left < 0) left = 10;
+                    else if (left + w > window.innerWidth) left = window.innerWidth - w - 10;
+                    if (top < 0) top = e.clientY + 20;
+                    Object.assign(tooltip.style, { position: 'fixed', left: left + 'px', top: top + 'px', zIndex: '2000', display: 'block' });
+                    return tooltip;
+                }
+
+                function bindTooltipEvents(iconEl, html) {
+                    let activeTooltip = null;
+                    let hideTimeout = null;
+
+                    function scheduleHide() {
+                        clearTimeout(hideTimeout);
+                        hideTimeout = setTimeout(() => {
+                            if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; }
+                        }, 200);
+                    }
+
+                    function cancelHide() { clearTimeout(hideTimeout); }
+
+                    iconEl.addEventListener('mouseenter', function (e) {
+                        cancelHide();
+                        if (!activeTooltip) activeTooltip = showLegendTooltip(e, html);
+                        activeTooltip.addEventListener('mouseenter', cancelHide);
+                        activeTooltip.addEventListener('mouseleave', scheduleHide);
+                    });
+                    iconEl.addEventListener('mouseleave', scheduleHide);
+
+                    iconEl.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; return; }
+                        activeTooltip = showLegendTooltip(e, html);
+                        activeTooltip.addEventListener('mouseenter', cancelHide);
+                        activeTooltip.addEventListener('mouseleave', scheduleHide);
+                        function dismiss(ev) {
+                            if (activeTooltip && !activeTooltip.contains(ev.target) && ev.target !== iconEl) {
+                                activeTooltip.remove();
+                                activeTooltip = null;
+                                document.removeEventListener('click', dismiss);
+                                document.removeEventListener('touchstart', dismiss);
+                            }
+                        }
+                        setTimeout(() => {
+                            document.addEventListener('click', dismiss);
+                            document.addEventListener('touchstart', dismiss);
+                        }, 0);
+                    });
+                }
+
                 displayRules.forEach(colInfo => {
-                    let html = '';
+                    let legendHtml = '';
+                    const columnOverrides = overrides[colInfo.columnHeader] ||
+                        (colInfo.fieldId && overrides[colInfo.fieldId]) || null;
+                    let ruleIndex = 0;
+
                     colInfo.rules.forEach(rule => {
                         const visualActions = rule.actions.filter(a => ['icon', 'bg-color', 'text-color'].includes(a.type));
                         if (!visualActions.length) return;
 
-                        html += '<div class="ktlLegendRule">';
-
+                        legendHtml += '<div class="ktlLegendRule">';
                         const iconAction = visualActions.find(a => a.type === 'icon');
                         const bgAction = visualActions.find(a => a.type === 'bg-color');
                         const textColorAction = visualActions.find(a => a.type === 'text-color');
 
-                        if (iconAction) {
-                            html += `<span class="ktlLegendIconChip" style="background-color:${iconAction.color || '#333'};"><i class="fa ${iconAction.icon}"></i></span>`;
-                        } else if (bgAction) {
-                            html += `<span class="ktlLegendSwatch" style="background-color:${bgAction.color};"></span>`;
-                        } else if (textColorAction) {
-                            html += `<span class="ktlLegendSwatch" style="background-color:${textColorAction.color};"></span>`;
-                        }
+                        if (iconAction)
+                            legendHtml += `<span class="ktlLegendIconChip" style="background-color:${iconAction.color || '#333'};"><i class="fa ${iconAction.icon}"></i></span>`;
+                        else if (bgAction)
+                            legendHtml += `<span class="ktlLegendSwatch" style="background-color:${bgAction.color};"></span>`;
+                        else if (textColorAction)
+                            legendHtml += `<span class="ktlLegendSwatch" style="background-color:${textColorAction.color};"></span>`;
 
-                        const criteriaText = rule.criteria.map(c => `${c.fieldName} ${c.operator} ${c.value}`).join(' AND ');
-                        html += `<span class="ktlLegendText">${criteriaText}</span></div>`;
+                        let criteriaText;
+                        if (columnOverrides && ruleIndex < columnOverrides.length && columnOverrides[ruleIndex])
+                            criteriaText = columnOverrides[ruleIndex];
+                        else
+                            criteriaText = rule.criteria.map(c => `${c.fieldName} ${c.operator} ${c.value}`).join(' AND ');
+
+                        legendHtml += `<span class="ktlLegendText">${criteriaText}</span></div>`;
+                        ruleIndex++;
                     });
 
-                    if (!html) return;
+                    if (!legendHtml) return;
 
                     const fieldId = colInfo.fieldId;
-                    let tooltipIconPosition;
+                    let headerEl;
                     if (fieldId)
-                        tooltipIconPosition = `#${viewId} th.${fieldId}`;
+                        headerEl = document.querySelector(`#${viewId} th.${fieldId}`);
                     else {
-                        const headerText = colInfo.columnHeader;
-                        const th = document.querySelector(`#${viewId} th`);
-                        if (!th) return;
                         const allThs = document.querySelectorAll(`#${viewId} .kn-table thead th`);
                         for (const el of allThs) {
                             const span = el.querySelector('.table-fixed-label');
-                            if (span && span.textContent.trim() === headerText) {
-                                tooltipIconPosition = `#${viewId} th.${el.classList[0]}`;
+                            if (span && span.textContent.trim() === colInfo.columnHeader) {
+                                headerEl = el;
                                 break;
                             }
                         }
                     }
+                    if (!headerEl) return;
 
-                    if (!tooltipIconPosition || !document.querySelector(tooltipIconPosition)) return;
+                    const existingIcon = headerEl.querySelector('.ktlTooltipIcon');
 
-                    const existingLegendIcon = document.querySelector(`${tooltipIconPosition} .ktlLegendIcon`);
-                    if (existingLegendIcon) return;
-
-                    const icon = document.createElement('i');
-                    icon.className = 'fa fa-info-circle ktlLegendIcon ktlTtipIcon-table-view';
-                    const headerEl = document.querySelector(tooltipIconPosition);
-                    headerEl.appendChild(icon);
-
-                    const fixedLabel = headerEl.querySelector('.table-fixed-label');
-                    if (fixedLabel) fixedLabel.style.display = 'inline-flex';
-
-                    icon.addEventListener('mouseenter', function (e) {
-                        const existing = document.querySelector('.ktlLegendTooltip');
-                        if (existing) existing.remove();
-
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'ktlLegendTooltip ktlTtip-table-view';
-                        tooltip.innerHTML = html;
-                        document.body.appendChild(tooltip);
-
-                        const tooltipWidth = tooltip.offsetWidth;
-                        const tooltipHeight = tooltip.offsetHeight;
-                        let left = e.clientX - tooltipWidth / 2;
-                        let top = e.clientY - tooltipHeight - 20;
-
-                        if (left < 0) left = 10;
-                        else if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 10;
-                        if (top < 0) top = e.clientY + 20;
-
-                        Object.assign(tooltip.style, {
-                            position: 'fixed',
-                            left: left + 'px',
-                            top: top + 'px',
-                            zIndex: '2000'
-                        });
-                    });
-
-                    icon.addEventListener('mouseleave', function () {
-                        const tooltip = document.querySelector('.ktlLegendTooltip');
-                        if (tooltip) tooltip.remove();
-                    });
-
-                    icon.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        const existing = document.querySelector('.ktlLegendTooltip');
-                        if (existing) { existing.remove(); return; }
-
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'ktlLegendTooltip ktlTtip-table-view';
-                        tooltip.innerHTML = html;
-                        document.body.appendChild(tooltip);
-
-                        const tooltipWidth = tooltip.offsetWidth;
-                        const tooltipHeight = tooltip.offsetHeight;
-                        let left = e.clientX - tooltipWidth / 2;
-                        let top = e.clientY - tooltipHeight - 20;
-
-                        if (left < 0) left = 10;
-                        else if (left + tooltipWidth > window.innerWidth) left = window.innerWidth - tooltipWidth - 10;
-                        if (top < 0) top = e.clientY + 20;
-
-                        Object.assign(tooltip.style, {
-                            position: 'fixed',
-                            left: left + 'px',
-                            top: top + 'px',
-                            zIndex: '2000'
-                        });
-
-                        function dismissLegend(ev) {
-                            if (!tooltip.contains(ev.target) && ev.target !== icon) {
-                                tooltip.remove();
-                                document.removeEventListener('click', dismissLegend);
-                                document.removeEventListener('touchstart', dismissLegend);
-                            }
-                        }
-                        setTimeout(() => {
-                            document.addEventListener('click', dismissLegend);
-                            document.addEventListener('touchstart', dismissLegend);
-                        }, 0);
-                    });
+                    if (existingIcon) {
+                        const ttipText = headerEl.dataset.ktlTtipText || '';
+                        const combinedHtml = ttipText + '<br><br>' + legendHtml;
+                        $(existingIcon).off('.ktlTooltip');
+                        bindTooltipEvents(existingIcon, combinedHtml);
+                    } else {
+                        if (headerEl.querySelector('.ktlTooltipIcon')) return;
+                        const icon = document.createElement('i');
+                        icon.className = 'fa fa-question-circle ktlTooltipIcon ktlTtipIcon-table-view';
+                        headerEl.appendChild(icon);
+                        const fixedLabel = headerEl.querySelector('.table-fixed-label');
+                        if (fixedLabel) fixedLabel.style.display = 'inline-flex';
+                        bindTooltipEvents(icon, legendHtml);
+                    }
                 });
             },
 
