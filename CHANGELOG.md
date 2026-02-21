@@ -1,6 +1,26 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.40.4    *2026-02-14*
+
+- `_cpyfrom` major improvements:
+  - Fix duplicate PUT requests in edit mode caused by source record ID matching multiple connection cells in the same destination row
+  - Filter out fields that don't belong to the destination view's source object and exclude read-only equation fields
+  - Fix connection field copy using `.filter()` instead of `.find()` for root elements, with raw data ID extraction
+  - Fix multi-instance state handling: capture `forceRefresh` and `mode` in button click closures for correct per-instance behavior
+  - Accumulate `needsRefresh` across instances to ensure final refresh
+  - Add optional 5th `refresh` parameter to force destination view refresh
+  - Add `count` display mode in `ktlMsg` for progress via infoPopup with custom message support
+  - Add `hasButton` tracking for mode='add' duplicate data prompt
+  - Replace `confirm()` with `ktl.core.selectOption()`
+- Bookmarks: Add drag-and-drop reordering with Sortable
+- Bookmarks: Fix deleted bookmarks reappearing after navigation (spread merge was resurrecting deleted keys)
+- `_tags`: Improve tag update with record fetching via API before processing for accurate lookups
+- Bulk operations: Add batched record creation with adaptive concurrency and rate limiting
+- Bulk operations: Add 429 rate limit tracking and Retry-After header support for batch operations
+- Bulk operations: Replace `alert()` with `ktl.core.selectOption()`
+- Fix `waitViewDataReady` race condition returning empty data when models array was empty but truthy
+
 ## 0.40.3    *2026-02-11*
 
 - `_arh`: Add `[identifier]` group parameter to manually specify the identifier field via Universal Selectors

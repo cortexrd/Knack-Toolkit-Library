@@ -4,10 +4,10 @@ This document contains important coding conventions and guidelines specific to t
 
 ## User Dialogs and Alerts
 
-**IMPORTANT**: Never use `alert()` in KTL code. Always use `ktl.core.selectOption()` instead.
+**IMPORTANT**: Never use `alert()` or `confirm()` in KTL code. Always use `ktl.core.selectOption()` instead.
 
 ### Why?
-On touch devices running Linux (e.g., Raspberry Pi) without a desktop environment (Lite OS), there is no OS-provided virtual keyboard. Standard JavaScript `alert()` dialogs can leave users stuck with no way to dismiss them without plugging in a physical keyboard or mouse.
+On touch devices running Linux (e.g., Raspberry Pi) without a desktop environment (Lite OS), there is no OS-provided virtual keyboard. Standard JavaScript `alert()` and `confirm()` dialogs can leave users stuck with no way to dismiss them without plugging in a physical keyboard or mouse.
 
 ### Usage
 
