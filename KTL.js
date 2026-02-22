@@ -4451,14 +4451,14 @@ function Ktl($, appInfo) {
              * Fetch child records connected to a parent record.
              * @param {string} viewId
              * @param {string} recordId
-             * @param {string} connectionFieldKey
+             * @param {string} connectionSlug
              * @param {Object} [options]
              * @returns {Promise<Array<Object>|Object>}
              */
-            async getChildRecords(viewId, recordId, connectionFieldKey, options = {}) {
+            async getChildRecords(viewId, recordId, connectionSlug, options = {}) {
                 const opts = options || {};
                 const params = this._buildQueryParams(opts);
-                params[`${connectionFieldKey}_id`] = recordId;
+                params[`${connectionSlug}_id`] = recordId;
                 const url = this._formatApiUrl(viewId) + this._formatParams(params);
                 const responseData = await this._request(url, { method: 'GET' }, opts.timeout);
                 return opts.rawResponse ? responseData : responseData?.records;
@@ -4468,14 +4468,14 @@ function Ktl($, appInfo) {
              * Fetch all connected child records.
              * @param {string} viewId
              * @param {string} recordId
-             * @param {string} connectionFieldKey
+             * @param {string} connectionSlug
              * @param {Object} [options]
              * @returns {Promise<Array<Object>>}
              */
-            async getAllChildRecords(viewId, recordId, connectionFieldKey, options = {}) {
+            async getAllChildRecords(viewId, recordId, connectionSlug, options = {}) {
                 const opts = options || {};
                 const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
-                const firstPage = await this.getChildRecords(viewId, recordId, connectionFieldKey, {
+                const firstPage = await this.getChildRecords(viewId, recordId, connectionSlug, {
                     filters: opts.filters,
                     sorters: opts.sorters,
                     page: 1,
@@ -4491,7 +4491,7 @@ function Ktl($, appInfo) {
                 if (totalRecords === 0 || totalPages <= 1) return allRecords;
 
                 for (let page = 2; page <= totalPages; page += 1) {
-                    const nextPage = await this.getChildRecords(viewId, recordId, connectionFieldKey, {
+                    const nextPage = await this.getChildRecords(viewId, recordId, connectionSlug, {
                         filters: opts.filters,
                         sorters: opts.sorters,
                         page,

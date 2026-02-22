@@ -68,13 +68,11 @@ Gets all pages from a view.
 ### `getRecord(viewId, recordId, options?)`
 Gets a single record by record id.
 
-### `getChildRecords(viewId, recordId, connectionFieldKey, options?)`
+### `getChildRecords(viewId, recordId, connectionSlug, options?)`
 Gets child records linked by a connection field.
 
-### `getAllChildRecords(viewId, recordId, connectionFieldKey, options?)`
+### `getAllChildRecords(viewId, recordId, connectionSlug, options?)`
 Gets all pages of child records.
-
-> Note: `getRecordChildren` / `getAllRecordChildren` were renamed to `getChildRecords` / `getAllChildRecords`.
 
 ---
 
