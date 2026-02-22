@@ -38,7 +38,7 @@ function Ktl($, appInfo) {
 
     const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1028
+    //KEC stands for "KTL Event Code".  Next:  KEC_1032
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
@@ -4455,7 +4455,7 @@ function Ktl($, appInfo) {
              * @param {Object} [options]
              * @returns {Promise<Array<Object>|Object>}
              */
-            async getRecordChildren(viewId, recordId, connectionFieldKey, options = {}) {
+            async getChildRecords(viewId, recordId, connectionFieldKey, options = {}) {
                 const opts = options || {};
                 const params = this._buildQueryParams(opts);
                 params[`${connectionFieldKey}_id`] = recordId;
@@ -4472,10 +4472,10 @@ function Ktl($, appInfo) {
              * @param {Object} [options]
              * @returns {Promise<Array<Object>>}
              */
-            async getAllRecordChildren(viewId, recordId, connectionFieldKey, options = {}) {
+            async getAllChildRecords(viewId, recordId, connectionFieldKey, options = {}) {
                 const opts = options || {};
                 const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
-                const firstPage = await this.getRecordChildren(viewId, recordId, connectionFieldKey, {
+                const firstPage = await this.getChildRecords(viewId, recordId, connectionFieldKey, {
                     filters: opts.filters,
                     sorters: opts.sorters,
                     page: 1,
@@ -4491,7 +4491,7 @@ function Ktl($, appInfo) {
                 if (totalRecords === 0 || totalPages <= 1) return allRecords;
 
                 for (let page = 2; page <= totalPages; page += 1) {
-                    const nextPage = await this.getRecordChildren(viewId, recordId, connectionFieldKey, {
+                    const nextPage = await this.getChildRecords(viewId, recordId, connectionFieldKey, {
                         filters: opts.filters,
                         sorters: opts.sorters,
                         page,
@@ -4565,51 +4565,44 @@ function Ktl($, appInfo) {
                 const total = payloads.length;
                 if (!total) return { total: 0, created: 0, failed: 0, records: [] };
 
-                const opts = options || {};
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let created = 0;
                 let failed = 0;
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedIndices = [];
                 const createdRecords = [];
-                const requestOptions = {
-                    ...opts,
-                    _on429: () => {
-                        rateLimit429Count += 1;
-                    }
-                };
-
-                const tasks = payloads.map((recordData, index) => delay(staggerMs * index).then(() => this.createRecord(viewId, recordData, [], requestOptions))
-                    .then((record) => {
-                        created += 1;
-                        createdRecords[index] = record;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ created, failed, total, index, record });
-                    })
-                    .catch((error) => {
-                        failed += 1;
-                        failedIndices.push(index);
-                        if (!firstError) firstError = error;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ created, failed, total, index, error });
-                        if (!opts.continueOnError) throw error;
-                    }));
+                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                    rateLimit429Count += 1;
+                });
 
                 try {
-                    if (opts.continueOnError) {
-                        await Promise.allSettled(tasks);
-                    } else {
-                        await Promise.all(tasks);
-                    }
+                    const batchResult = await this._runBatchWorkers({
+                        total,
+                        workerCount,
+                        staggerMs,
+                        continueOnError: opts.continueOnError,
+                        execute: async (index) => {
+                            try {
+                                const record = await this.createRecord(viewId, payloads[index], [], requestOptions);
+                                created += 1;
+                                createdRecords[index] = record;
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ created, failed, total, index, record });
+                            } catch (error) {
+                                failed += 1;
+                                failedIndices.push(index);
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ created, failed, total, index, error });
+                                if (!opts.continueOnError)
+                                    throw error;
+                            }
+                        }
+                    });
+                    firstError = batchResult.firstError;
 
                     await this._refreshAfterWrite(refreshViews);
 
-                    if (failedIndices.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                        const errorMsg = `KEC_1027 - API create failed for view ${viewId}. Failed records (${failedIndices.length}/${total}) at indices: ${failedIndices.join(', ')}`;
-                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                    }
+                    this._logBatchFailures('KEC_1028', 'create', viewId, failedIndices.length, total, `at indices: ${failedIndices.join(', ')}`);
 
                     if (firstError && !opts.continueOnError)
                         throw firstError;
@@ -4617,7 +4610,7 @@ function Ktl($, appInfo) {
                     return { total, created, failed, records: createdRecords.filter(Boolean) };
                 } finally {
                     const processed = created + failed;
-                    console.log(`[KTL API] Concurrent create summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                    this._logBatchSummary('create', viewId, processed, total, rateLimit429Count);
                 }
             }
 
@@ -4666,51 +4659,44 @@ function Ktl($, appInfo) {
                 const total = ids.length;
                 if (!total) return { total: 0, updated: 0, failed: 0 };
 
-                const opts = options || {};
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let updated = 0;
                 let failed = 0;
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
-                const requestOptions = {
-                    ...opts,
-                    _on429: () => {
-                        rateLimit429Count += 1;
-                    }
-                };
-
-                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.updateRecord(viewId, recordId, recordData, [], requestOptions))
-                    .then(() => {
-                        updated += 1;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ updated, failed, total, recordId });
-                    })
-                    .catch((error) => {
-                        failed += 1;
-                        failedRecordIds.push(recordId);
-                        if (!firstError) firstError = error;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ updated, failed, total, recordId });
-                        if (!opts.continueOnError) throw error;
-                    }));
+                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                    rateLimit429Count += 1;
+                });
 
                 try {
-                    if (opts.continueOnError) {
-                        await Promise.allSettled(tasks);
-                    } else {
-                        await Promise.all(tasks);
-                    }
+                    const batchResult = await this._runBatchWorkers({
+                        total,
+                        workerCount,
+                        staggerMs,
+                        continueOnError: opts.continueOnError,
+                        execute: async (index) => {
+                            const recordId = ids[index];
+                            try {
+                                await this.updateRecord(viewId, recordId, recordData, [], requestOptions);
+                                updated += 1;
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ updated, failed, total, recordId });
+                            } catch (error) {
+                                failed += 1;
+                                failedRecordIds.push(recordId);
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ updated, failed, total, recordId });
+                                if (!opts.continueOnError)
+                                    throw error;
+                            }
+                        }
+                    });
+                    firstError = batchResult.firstError;
 
                     await this._refreshAfterWrite(refreshViews);
 
                     // Log failed records if any (only after all retries exhausted)
-                    if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                        const recordList = failedRecordIds.join(', ');
-                        const errorMsg = `KEC_1027 - API update failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
-                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                    }
+                    this._logBatchFailures('KEC_1029', 'update', viewId, failedRecordIds.length, total, `: ${failedRecordIds.join(', ')}`);
 
                     if (firstError && !opts.continueOnError)
                         throw firstError;
@@ -4718,7 +4704,7 @@ function Ktl($, appInfo) {
                     return { total, updated, failed };
                 } finally {
                     const processed = updated + failed;
-                    console.log(`[KTL API] Concurrent update summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                    this._logBatchSummary('update', viewId, processed, total, rateLimit429Count);
                 }
             }
 
@@ -4764,51 +4750,44 @@ function Ktl($, appInfo) {
                 const total = ids.length;
                 if (!total) return { total: 0, deleted: 0, failed: 0 };
 
-                const opts = options || {};
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let deleted = 0;
                 let failed = 0;
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
-                const requestOptions = {
-                    ...opts,
-                    _on429: () => {
-                        rateLimit429Count += 1;
-                    }
-                };
-
-                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.deleteRecord(viewId, recordId, [], requestOptions))
-                    .then(() => {
-                        deleted += 1;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ deleted, failed, total, recordId });
-                    })
-                    .catch((error) => {
-                        failed += 1;
-                        failedRecordIds.push(recordId);
-                        if (!firstError) firstError = error;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ deleted, failed, total, recordId });
-                        if (!opts.continueOnError) throw error;
-                    }));
+                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                    rateLimit429Count += 1;
+                });
 
                 try {
-                    if (opts.continueOnError) {
-                        await Promise.allSettled(tasks);
-                    } else {
-                        await Promise.all(tasks);
-                    }
+                    const batchResult = await this._runBatchWorkers({
+                        total,
+                        workerCount,
+                        staggerMs,
+                        continueOnError: opts.continueOnError,
+                        execute: async (index) => {
+                            const recordId = ids[index];
+                            try {
+                                await this.deleteRecord(viewId, recordId, [], requestOptions);
+                                deleted += 1;
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ deleted, failed, total, recordId });
+                            } catch (error) {
+                                failed += 1;
+                                failedRecordIds.push(recordId);
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ deleted, failed, total, recordId });
+                                if (!opts.continueOnError)
+                                    throw error;
+                            }
+                        }
+                    });
+                    firstError = batchResult.firstError;
 
                     await this._refreshAfterWrite(refreshViews);
 
                     // Log failed records if any (only after all retries exhausted)
-                    if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                        const recordList = failedRecordIds.join(', ');
-                        const errorMsg = `KEC_1027 - API delete failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
-                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                    }
+                    this._logBatchFailures('KEC_1030', 'delete', viewId, failedRecordIds.length, total, `: ${failedRecordIds.join(', ')}`);
 
                     if (firstError && !opts.continueOnError)
                         throw firstError;
@@ -4816,7 +4795,7 @@ function Ktl($, appInfo) {
                     return { total, deleted, failed };
                 } finally {
                     const processed = deleted + failed;
-                    console.log(`[KTL API] Concurrent delete summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                    this._logBatchSummary('delete', viewId, processed, total, rateLimit429Count);
                 }
             }
 
@@ -4996,6 +4975,117 @@ function Ktl($, appInfo) {
             }
 
             /**
+             * Build common batch execution settings for bulk write methods.
+             * @param {number} total
+             * @param {Object} [options]
+             * @param {Function} [on429]
+             * @returns {{opts:Object,staggerMs:number,workerCount:number,requestOptions:Object}}
+             * @private
+             */
+            _buildBatchContext(total, options = {}, on429 = () => { }) {
+                const opts = options || {};
+                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
+                const queue = this._writeQueue || {};
+                const workerCount = Math.max(1, Math.min(total, Math.floor(queue.current || this.options.writeConcurrency || 1)));
+                const requestOptions = {
+                    ...opts,
+                    _on429: () => {
+                        typeof on429 === 'function' && on429();
+                    }
+                };
+
+                return { opts, staggerMs, workerCount, requestOptions };
+            }
+
+            /**
+             * Log standardized summary for bulk API operations.
+             * @param {'create'|'update'|'delete'} operation
+             * @param {string} viewId
+             * @param {number} processed
+             * @param {number} total
+             * @param {number} rateLimit429Count
+             * @private
+             */
+            _logBatchSummary(operation, viewId, processed, total, rateLimit429Count) {
+                console.log(`[KTL API] Concurrent ${operation} summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+            }
+
+            /**
+             * Log standardized failure details for bulk API operations.
+             * @param {string} code
+             * @param {'create'|'update'|'delete'} operation
+             * @param {string} viewId
+             * @param {number} failedCount
+             * @param {number} total
+             * @param {string} detailsSuffix
+             * @private
+             */
+            _logBatchFailures(code, operation, viewId, failedCount, total, detailsSuffix = '') {
+                if (failedCount <= 0 || typeof ktl?.log?.addLog !== 'function') return;
+                const errorMsg = `${code} - API ${operation} failed for view ${viewId}. Failed records (${failedCount}/${total})${detailsSuffix}`;
+                ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+            }
+
+            /**
+             * Run indexed tasks using bounded worker concurrency.
+             * @param {Object} config
+             * @param {number} config.total
+             * @param {number} config.workerCount
+             * @param {number} [config.staggerMs=0]
+             * @param {boolean} [config.continueOnError=false]
+             * @param {(index:number)=>Promise<void>} config.execute
+             * @returns {Promise<{firstError: Error|null}>}
+             * @private
+             */
+            async _runBatchWorkers(config = {}) {
+                const total = Number.isFinite(config.total) ? config.total : 0;
+                const workerCount = Number.isFinite(config.workerCount) ? Math.max(1, Math.floor(config.workerCount)) : 1;
+                const staggerMs = Number.isFinite(config.staggerMs) ? Math.max(0, Math.floor(config.staggerMs)) : 0;
+                const continueOnError = config.continueOnError === true;
+                const execute = typeof config.execute === 'function' ? config.execute : null;
+
+                if (!execute)
+                    throw new TypeError('KTL API error: _runBatchWorkers requires an execute callback');
+
+                if (total <= 0)
+                    return { firstError: null };
+
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                let nextIndex = 0;
+                let stopScheduling = false;
+                let firstError = null;
+
+                const runWorker = async () => {
+                    while (true) {
+                        if (stopScheduling && !continueOnError)
+                            return;
+
+                        const index = nextIndex;
+                        nextIndex += 1;
+                        if (index >= total)
+                            return;
+
+                        if (staggerMs > 0)
+                            await delay(staggerMs * index);
+
+                        if (stopScheduling && !continueOnError)
+                            return;
+
+                        try {
+                            await execute(index);
+                        } catch (error) {
+                            if (!firstError) firstError = error;
+                            if (!continueOnError)
+                                stopScheduling = true;
+                        }
+                    }
+                };
+
+                await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+                return { firstError };
+            }
+
+            /**
              * Enqueue a write task respecting concurrency limits.
              * @param {() => Promise<any>} task
              * @returns {Promise<any>}
@@ -5144,7 +5234,7 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Perform an Ajax request with retries, backoff, and timeout.
+             * Perform an HTTP request with retries, backoff, and timeout.
              * @param {string} url
              * @param {Object} options
              * @param {number} [timeoutOverride]
@@ -5161,36 +5251,45 @@ function Ktl($, appInfo) {
                 const timeoutMs = Number.isFinite(timeoutOverride) ? timeoutOverride : this.options.timeout;
 
                 let attempt = 0;
-                const { rateLimitHandler, onRateLimit429, ...ajaxOptions } = options || {};
+                const { rateLimitHandler, onRateLimit429, ...requestOptions } = options || {};
 
                 this._toggleSpinner(true);
 
                 try {
                     while (attempt < maxAttempts) {
                         attempt += 1;
+                        const method = (requestOptions.method || 'GET').toUpperCase();
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
                         try {
-                            const result = await new Promise((resolve, reject) => {
-                                $.ajax({
-                                    url: url,
-                                    type: ajaxOptions.method || 'GET',
-                                    crossDomain: true,
-                                    timeout: timeoutMs,
-                                    headers: this._buildHeaders(),
-                                    data: ajaxOptions.body,
-                                    success: function (data) {
-                                        resolve(data);
-                                    },
-                                    error: function (jqXHR) {
-                                        reject(jqXHR);
-                                    }
-                                });
-                            });
+                            const fetchOptions = {
+                                method,
+                                headers: this._buildHeaders(),
+                                signal: controller.signal
+                            };
 
-                            this._log('API response', result);
-                            return result;
-                        } catch (jqXHR) {
-                            const status = jqXHR?.status;
+                            if (requestOptions.body !== undefined && requestOptions.body !== null && !['GET', 'HEAD'].includes(method)) {
+                                fetchOptions.body = requestOptions.body;
+                            }
+
+                            const response = await fetch(url, fetchOptions);
+                            const responseText = await response.text();
+
+                            if (response.ok) {
+                                const result = responseText ? (() => {
+                                    try {
+                                        return JSON.parse(responseText);
+                                    } catch (e) {
+                                        return responseText;
+                                    }
+                                })() : {};
+
+                                this._log('API response', result);
+                                return result;
+                            }
+
+                            const status = response?.status;
 
                             if (status === 429 && typeof onRateLimit429 === 'function') {
                                 onRateLimit429();
@@ -5198,12 +5297,17 @@ function Ktl($, appInfo) {
 
                             const isRetryable = retryOnStatus.includes(status);
                             if (!isRetryable || attempt >= maxAttempts) {
-                                throw this._buildRequestError(jqXHR);
+                                throw this._buildRequestError({
+                                    status,
+                                    statusText: response?.statusText,
+                                    responseText,
+                                    headers: response?.headers
+                                });
                             }
 
                             const retryIndex = attempt - 1;
                             const backoffDelay = this._computeBackoffMs(baseDelay, maxDelay, retryIndex);
-                            const retryAfterDelay = this._getRetryAfterDelayMs(jqXHR);
+                            const retryAfterDelay = this._getRetryAfterDelayMs(response);
                             const delay = status === 429
                                 ? Math.max(backoffDelay, Number(min429Delay) || 0, retryAfterDelay)
                                 : backoffDelay;
@@ -5214,6 +5318,31 @@ function Ktl($, appInfo) {
 
                             this._log('Retrying request', { status, attempt, delay }, 'warn');
                             await new Promise(resolve => setTimeout(resolve, delay));
+                        } catch (error) {
+                            const isTimeout = error?.name === 'AbortError';
+                            if (isTimeout) {
+                                throw this._buildRequestError({
+                                    status: 0,
+                                    statusText: 'Request timeout',
+                                    responseText: ''
+                                });
+                            }
+
+                            const status = error?.status;
+                            const isRetryable = retryOnStatus.includes(status);
+                            if (!isRetryable || attempt >= maxAttempts) {
+                                if (error instanceof Error && error.message && error.status !== undefined)
+                                    throw error;
+
+                                throw this._buildRequestError(error);
+                            }
+
+                            const retryIndex = attempt - 1;
+                            const delay = this._computeBackoffMs(baseDelay, maxDelay, retryIndex);
+                            this._log('Retrying request', { status, attempt, delay }, 'warn');
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        } finally {
+                            clearTimeout(timeoutId);
                         }
                     }
                 } finally {
@@ -5224,7 +5353,7 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Build a structured error from a jQuery XHR object.
+             * Build a structured error from an HTTP/jqXHR error-like object.
              * @param {Object} jqXHR
              * @returns {Error}
              * @private
@@ -5269,9 +5398,15 @@ function Ktl($, appInfo) {
              * @private
              */
             _getRetryAfterDelayMs(jqXHR) {
-                if (!jqXHR || typeof jqXHR.getResponseHeader !== 'function') return 0;
+                if (!jqXHR) return 0;
 
-                const retryAfter = jqXHR.getResponseHeader('Retry-After');
+                let retryAfter = null;
+                if (typeof jqXHR.getResponseHeader === 'function') {
+                    retryAfter = jqXHR.getResponseHeader('Retry-After');
+                } else if (jqXHR.headers && typeof jqXHR.headers.get === 'function') {
+                    retryAfter = jqXHR.headers.get('Retry-After');
+                }
+
                 if (!retryAfter) return 0;
 
                 const seconds = Number(retryAfter);
@@ -5407,12 +5542,12 @@ function Ktl($, appInfo) {
                 return apiInstance.getRecord(...args);
             },
 
-            getRecordChildren: function (...args) {
-                return apiInstance.getRecordChildren(...args);
+            getChildRecords: function (...args) {
+                return apiInstance.getChildRecords(...args);
             },
 
-            getAllRecordChildren: function (...args) {
-                return apiInstance.getAllRecordChildren(...args);
+            getAllChildRecords: function (...args) {
+                return apiInstance.getAllChildRecords(...args);
             },
 
             createRecord: function (...args) {
@@ -14196,7 +14331,7 @@ function Ktl($, appInfo) {
 
                 if (typeof ktl?.log?.addLog === 'function') {
                     const recordList = failedRecordIds.join(', ');
-                    const errorMsg = `KEC_1027 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${ids.length}): ${recordList}`;
+                    const errorMsg = `KEC_1031 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${ids.length}): ${recordList}`;
                     ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
                 }
 
@@ -14292,7 +14427,7 @@ function Ktl($, appInfo) {
             // Log failed records if any (only after all retries exhausted)
             if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
                 const recordList = failedRecordIds.join(', ');
-                const errorMsg = `KEC_1027 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${recordIds.length}): ${recordList}`;
+                const errorMsg = `KEC_1031 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${recordIds.length}): ${recordList}`;
                 ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
             }
 
@@ -22934,12 +23069,14 @@ function Ktl($, appInfo) {
                             }
 
                             showProgress(0);
-                            ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
-                                onProgress: ({ updated }) => showProgress(updated),
-                                continueOnError: false,
-                                staggerMs: 40
-                            })
-                                .then(async (result) => {
+                            (async () => {
+                                try {
+                                    const result = await ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                                        onProgress: ({ updated }) => showProgress(updated),
+                                        continueOnError: false,
+                                        staggerMs: 40
+                                    });
+
                                     automatedBulkOpsQueue[bulkOpsViewId] = [];
                                     delete automatedBulkOpsQueue[bulkOpsViewId];
 
@@ -22955,12 +23092,12 @@ function Ktl($, appInfo) {
                                     }
 
                                     resolve(result.updated);
-                                })
-                                .catch(async (error) => {
+                                } catch (error) {
                                     await restoreDefaultPageState();
                                     const errorMessage = error.message || 'processAutomatedBulkOps error';
                                     reject(errorMessage);
-                                });
+                                }
+                            })();
 
                             async function restoreDefaultPageState() {
                                 ktl.core.removeInfoPopup();
@@ -31051,7 +31188,7 @@ function Ktl($, appInfo) {
 
                     const showProgress = (updatedCount) => {
                         const done = Number.isFinite(updatedCount) ? updatedCount : 0;
-                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + pluralizeObjectName(objName, arrayLen) + '.    Records left: ' + (arrayLen - done));
+                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + pluralizeObjectName(objName, arrayLen) + '.    Records updated: ' + done + ' of ' + arrayLen);
                     };
 
                     showProgress(0);
@@ -31083,7 +31220,7 @@ function Ktl($, appInfo) {
                     let countDone = 0;
 
                     function showProgress() {
-                        ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + pluralizeObjectName(objName, numToProcess) + '.    Records created: ' + countDone);
+                        ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + pluralizeObjectName(objName, numToProcess) + '.    Records processed: ' + countDone + ' of ' + numToProcess);
                     }
 
                     showProgress();
