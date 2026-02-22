@@ -4805,10 +4805,19 @@ function Ktl($, appInfo) {
              * @returns {Promise<void|void[]>}
              */
             async refreshView(viewId) {
+                const refreshOne = async (id) => {
+                    if (!id) return;
+                    try {
+                        await ktl.views.refreshView(id);
+                    } catch (error) {
+                        this._log('View refresh failed', { viewId: id, error }, 'warn');
+                    }
+                };
+
                 if (Array.isArray(viewId)) {
-                    return Promise.all(viewId.map(id => this._refreshSingleView(id)));
+                    return Promise.all(viewId.map(id => refreshOne(id)));
                 }
-                return this._refreshSingleView(viewId);
+                return refreshOne(viewId);
             }
 
             /**
@@ -5471,21 +5480,6 @@ function Ktl($, appInfo) {
             async _refreshAfterWrite(refreshViews) {
                 if (!refreshViews) return;
                 await this.refreshView(refreshViews);
-            }
-
-            /**
-             * Refresh a single view with fallbacks.
-             * @param {string} viewId
-             * @returns {Promise<void>}
-             * @private
-             */
-            async _refreshSingleView(viewId) {
-                if (!viewId) return;
-                try {
-                    await ktl.views.refreshView(viewId);
-                } catch (error) {
-                    this._log('View refresh failed', { viewId, error }, 'warn');
-                }
             }
 
             /**
