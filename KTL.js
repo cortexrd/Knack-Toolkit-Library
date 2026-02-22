@@ -20983,7 +20983,7 @@ function Ktl($, appInfo) {
                     col.rules.forEach(rule => {
                         const criteria = (rule.criteria || []).map(c => {
                             const fieldName = ktl.core.getFieldNameById(c.field) || c.field;
-                            return { fieldId: c.field, fieldName, operator: c.operator, value: c.value };
+                            return { fieldId: c.field, fieldName, operator: c.operator, value: c.value, range: c.range, type: c.type };
                         });
 
                         const actions = (rule.actions || []).map(a => ({
@@ -21121,7 +21121,14 @@ function Ktl($, appInfo) {
                         if (columnOverrides && ruleIndex < columnOverrides.length && columnOverrides[ruleIndex])
                             criteriaText = columnOverrides[ruleIndex];
                         else
-                            criteriaText = rule.criteria.map(c => `${c.fieldName} ${c.operator} ${c.value}`).join(' AND ');
+                            criteriaText = rule.criteria.map(c => {
+                                if (c.range && c.type)
+                                    return `${c.fieldName} ${c.operator} ${c.range} ${c.type}`;
+                                const val = (typeof c.value === 'object' && c.value !== null) ? '' : c.value;
+                                if (val === true || val === 'true' || val === 'Yes')
+                                    return c.fieldName;
+                                return `${c.fieldName} ${c.operator} ${val}`.trim();
+                            }).join(' AND ');
 
                         legendHtml += `<span class="ktlLegendText">${criteriaText}</span></div>`;
                         ruleIndex++;
