@@ -2482,6 +2482,59 @@ function Ktl($, appInfo) {
                 return { left: centeredLeft, top: centeredTop };
             },
 
+            devToolAutoPosition: function (element) {
+                const sw = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                const sh = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+                const ew = element.offsetWidth;
+                const eh = element.offsetHeight;
+                const GAP = 10;
+
+                let left, top;
+                const id = element.id;
+
+                if (id === 'devBtnsDivId') {
+                    const SEARCH_EST_WIDTH = 160;
+                    left = (sw - ew - GAP - SEARCH_EST_WIDTH) / 2;
+                    top = sh * 0.24;
+                } else if (id === 'devToolSearchDivId') {
+                    const ref = document.getElementById('devBtnsDivId');
+                    if (ref && ref.offsetWidth) {
+                        left = ref.offsetLeft + ref.offsetWidth + GAP;
+                        top = ref.offsetTop;
+                    } else {
+                        left = (sw + GAP) / 2;
+                        top = sh * 0.24;
+                    }
+                } else if (id === 'resultWndId') {
+                    const ref = document.getElementById('devToolSearchDivId');
+                    if (ref && ref.offsetHeight) {
+                        left = ref.offsetLeft;
+                        top = ref.offsetTop + ref.offsetHeight + GAP;
+                    } else {
+                        left = (sw + GAP) / 2;
+                        top = sh * 0.38;
+                    }
+                } else {
+                    const baseCenterLeft = (sw - ew) / 2;
+                    const baseCenterTop = (sh - eh) / 2;
+                    const visibleCount = ktl.core.devToolWindows.filter(w => {
+                        return w.element !== element && w.element.isConnected &&
+                            window.getComputedStyle(w.element).display !== 'none';
+                    }).length;
+                    left = baseCenterLeft + (visibleCount * 40);
+                    top = baseCenterTop + (visibleCount * 40);
+                }
+
+                left = Math.max(0, Math.min(left, sw - Math.max(ew, 80)));
+                top = Math.max(0, Math.min(top, sh - 40));
+
+                element.style.position = 'fixed';
+                element.style.left = Math.round(left) + 'px';
+                element.style.top = Math.round(top) + 'px';
+
+                return { left: Math.round(left), top: Math.round(top) };
+            },
+
             showKnackStyleMessage: function (viewId, message, style = 'error' /*or success*/) {
                 Knack.$['utility_forms'].renderMessage($('#' + viewId), '<b>' + message + '</b>', style);
             },
@@ -2615,6 +2668,9 @@ function Ktl($, appInfo) {
 
             ktlDevToolsAdjustPositionAndSave: function (div, devToolStorageName, position = {}) {
                 if (!devToolStorageName)
+                    return;
+
+                if (!div.isConnected || div.style.display === 'none')
                     return;
 
                 const MIN_VISIBLE = 80; // ~2cm at 96 DPI - minimum grab area for header
@@ -4283,9 +4339,7 @@ function Ktl($, appInfo) {
                 ktl.core.enableSortableDrag(popup);
                 ktl.core.registerDevToolWindow(popup, () => popup.style.display = 'none');
 
-                const position = ktl.core.centerElementOnScreen(popup);
-                popup.style.left = position.left + 'px';
-                popup.style.top = position.top + 'px';
+                ktl.core.devToolAutoPosition(popup);
             },
 
         }
@@ -11031,7 +11085,7 @@ function Ktl($, appInfo) {
 
                                         ktl.core.ktlDevToolsAdjustPositionAndSave(debugWnd, devToolStorageName, savedPosition);
                                     } else {
-                                        const position = ktl.core.centerElementOnScreen(debugWnd);
+                                        const position = ktl.core.devToolAutoPosition(debugWnd);
                                         ktl.core.ktlDevToolsAdjustPositionAndSave(debugWnd, devToolStorageName, position);
                                     }
 
@@ -27092,7 +27146,7 @@ function Ktl($, appInfo) {
                                         devToolSearchDiv.style.top = savedPosition.top + 'px';
                                         ktl.core.ktlDevToolsAdjustPositionAndSave(devToolSearchDiv, devToolStorageName, savedPosition);
                                     } else {
-                                        const position = ktl.core.centerElementOnScreen(devToolSearchDiv);
+                                        const position = ktl.core.devToolAutoPosition(devToolSearchDiv);
                                         ktl.core.ktlDevToolsAdjustPositionAndSave(devToolSearchDiv, devToolStorageName, position);
                                     }
 
@@ -27846,7 +27900,7 @@ function Ktl($, appInfo) {
                                     devBtnsDiv.style.top = savedPosition.top + 'px';
                                     ktl.core.ktlDevToolsAdjustPositionAndSave(devBtnsDiv, devToolStorageName, savedPosition);
                                 } else {
-                                    const position = ktl.core.centerElementOnScreen(devBtnsDiv);
+                                    const position = ktl.core.devToolAutoPosition(devBtnsDiv);
                                     ktl.core.ktlDevToolsAdjustPositionAndSave(devBtnsDiv, devToolStorageName, position);
                                 }
 
@@ -27901,6 +27955,14 @@ function Ktl($, appInfo) {
                         indicator.id = indicatorId;
                         indicator.className = 'ktlUtilityBarIndicator ktlFlashingFadeInOut';
                         utilityBar.appendChild(indicator);
+
+                        if (key === 'hiddenElements') {
+                            indicator.addEventListener('click', function () {
+                                hideHiddenElemements();
+                                ktl.storage.lsSetItem('SHOW_HIDDEN_ELEMENTS', false, false, true);
+                                ktl.scenes.updateUtilityBarIndicator('hiddenElements', false);
+                            });
+                        }
                     }
 
                     var labels = { hiddenElements: 'Hidden Elements: Show' };
@@ -32254,8 +32316,8 @@ function Ktl($, appInfo) {
 
                 resultWndTextDiv.style.minWidth = '400px';
                 resultWndTextDiv.style.minHeight = '200px';
-                resultWndTextDiv.style.height = Math.min(resultWndTextDiv.clientHeight, DEFAULT_HEIGHT) + 'px';
-                resultWndTextDiv.style.width = Math.min(resultWndTextDiv.clientWidth, DEFAULT_WIDTH) + 'px';
+                resultWndTextDiv.style.height = Math.min(resultWndTextDiv.clientHeight || Math.round(window.innerHeight * 0.40), DEFAULT_HEIGHT) + 'px';
+                resultWndTextDiv.style.width = Math.min(resultWndTextDiv.clientWidth || Math.round(window.innerWidth * 0.26), DEFAULT_WIDTH) + 'px';
 
                 const devToolStorageName = 'devToolSearchResult';
                 ktl.core.addAppResizeSubscriber(ktl.core.ktlDevToolsAdjustPositionAndSave, resultWnd, devToolStorageName);
@@ -32286,7 +32348,7 @@ function Ktl($, appInfo) {
 
                     ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, savedPosition);
                 } else {
-                    const position = ktl.core.centerElementOnScreen(resultWnd);
+                    const position = ktl.core.devToolAutoPosition(resultWnd);
                     ktl.core.ktlDevToolsAdjustPositionAndSave(resultWnd, devToolStorageName, position);
                 }
 
