@@ -546,6 +546,43 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 	color: var(--ktlTtipIconTableViewColor);
 }
 
+/* Legend tooltip styles */
+.ktlLegendRule {
+	display: flex;
+	align-items: center;
+	padding: 2px 0;
+}
+
+.ktlLegendIconChip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 3px;
+	margin-right: 8px;
+	flex-shrink: 0;
+}
+
+.ktlLegendIconChip i {
+	color: #fff;
+	font-size: 12px;
+}
+
+.ktlLegendSwatch {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border-radius: 2px;
+	border: 1px solid #0003;
+	margin-right: 8px;
+	flex-shrink: 0;
+}
+
+.ktlLegendText {
+	white-space: nowrap;
+}
+
 /************Show Hide Views**************/
 
 #knack-body .kn-content .ktlHideShowSection {

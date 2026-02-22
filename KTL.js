@@ -244,6 +244,9 @@ function Ktl($, appInfo) {
                 ktlKeywords._theme.params = viewKwObj._theme[0]?.params || [];
                 ktlKeywords._theme.viewId = view.id;
             }
+
+            if (viewKwObj._legend?.some(kw => kw.params?.[0]?.includes('all')))
+                ktlKeywords._legendAll = true;
         }
     };
 
@@ -11680,6 +11683,9 @@ function Ktl($, appInfo) {
                 ktl.views.obfuscateData(view, keywords);
                 addTooltips(view, keywords);
                 addDataTooltips(view, keywords);
+
+                if ((keywords && keywords._legend) || ktlKeywords._legendAll)
+                    ktl.views.addLegendTooltips(viewId, keywords?._legend);
                 noFiltering(view);
                 fieldIsRequired(view);
                 addRecordHistory(view, keywords, data);
@@ -22188,6 +22194,9 @@ function Ktl($, appInfo) {
 
                 const ttipText = this.processTextMarkup(tooltipText);
 
+                const posEl = document.querySelector(tooltipIconPosition);
+                if (posEl) posEl.dataset.ktlTtipText = ttipText;
+
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
                     const icon = $(this);
 
@@ -22230,6 +22239,211 @@ function Ktl($, appInfo) {
                     const tooltipElement = icon.data('tooltipElement')
 
                     tooltipElement.remove();
+                });
+            },
+
+            extractDisplayRules: function (viewId) {
+                if (!viewId) return [];
+
+                const view = Knack.views[viewId];
+                if (!view || !view.model || !view.model.view) return [];
+
+                const columns = view.model.view.columns;
+                if (!columns || !columns.length) return [];
+
+                const results = [];
+                columns.forEach(col => {
+                    if (!col.rules || !col.rules.length) return;
+
+                    const columnRules = [];
+                    col.rules.forEach(rule => {
+                        const criteria = (rule.criteria || []).map(c => {
+                            const fieldName = ktl.core.getFieldNameById(c.field) || c.field;
+                            return { fieldId: c.field, fieldName, operator: c.operator, value: c.value, range: c.range, type: c.type };
+                        });
+
+                        const actions = (rule.actions || []).map(a => ({
+                            type: a.action,
+                            color: a.color,
+                            bold: a.bold,
+                            italic: a.italic,
+                            strikethrough: a.strikethrough,
+                            icon: a.icon ? a.icon.icon : null,
+                            iconAlign: a.icon ? a.icon.align : null
+                        }));
+
+                        if (criteria.length && actions.length)
+                            columnRules.push({ criteria, actions });
+                    });
+
+                    if (columnRules.length) {
+                        results.push({
+                            columnHeader: col.header,
+                            fieldId: col.field ? col.field.key : null,
+                            rules: columnRules
+                        });
+                    }
+                });
+
+                return results;
+            },
+
+            addLegendTooltips: function (viewId, legendKeywords) {
+                if (!viewId) return;
+
+                const viewType = ktl.views.getViewType(viewId);
+                if (!['table', 'search'].includes(viewType)) return;
+
+                const displayRules = ktl.views.extractDisplayRules(viewId);
+                if (!displayRules.length) return;
+
+                const overrides = {};
+                if (legendKeywords && legendKeywords.length) {
+                    legendKeywords.forEach(kw => {
+                        const params = kw.params;
+                        if (!params || !params.length) return;
+                        if (params.length === 1 && params[0].includes('all')) return;
+                        const columnTarget = params[0].map(s => s.trim()).join(', ');
+                        const texts = [];
+                        for (let i = 1; i < params.length; i++)
+                            texts.push(params[i].map(s => s.trim()).join(', '));
+                        overrides[columnTarget] = texts;
+                    });
+                }
+
+                function showLegendTooltip(e, html) {
+                    const existing = document.querySelector('.ktlLegendTooltip');
+                    if (existing) existing.remove();
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'ktlLegendTooltip ktlTooltip ktlTtip-table-view';
+                    tooltip.innerHTML = html;
+                    document.body.appendChild(tooltip);
+                    const w = tooltip.offsetWidth;
+                    const h = tooltip.offsetHeight;
+                    let left = e.clientX - w / 2;
+                    let top = e.clientY - h - 20;
+                    if (left < 0) left = 10;
+                    else if (left + w > window.innerWidth) left = window.innerWidth - w - 10;
+                    if (top < 0) top = e.clientY + 20;
+                    Object.assign(tooltip.style, { position: 'fixed', left: left + 'px', top: top + 'px', zIndex: '2000', display: 'block' });
+                    return tooltip;
+                }
+
+                function bindTooltipEvents(iconEl, html) {
+                    let activeTooltip = null;
+                    let hideTimeout = null;
+
+                    function scheduleHide() {
+                        clearTimeout(hideTimeout);
+                        hideTimeout = setTimeout(() => {
+                            if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; }
+                        }, 200);
+                    }
+
+                    function cancelHide() { clearTimeout(hideTimeout); }
+
+                    iconEl.addEventListener('mouseenter', function (e) {
+                        cancelHide();
+                        if (!activeTooltip) activeTooltip = showLegendTooltip(e, html);
+                        activeTooltip.addEventListener('mouseenter', cancelHide);
+                        activeTooltip.addEventListener('mouseleave', scheduleHide);
+                    });
+                    iconEl.addEventListener('mouseleave', scheduleHide);
+
+                    iconEl.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; return; }
+                        activeTooltip = showLegendTooltip(e, html);
+                        activeTooltip.addEventListener('mouseenter', cancelHide);
+                        activeTooltip.addEventListener('mouseleave', scheduleHide);
+                        function dismiss(ev) {
+                            if (activeTooltip && !activeTooltip.contains(ev.target) && ev.target !== iconEl) {
+                                activeTooltip.remove();
+                                activeTooltip = null;
+                                document.removeEventListener('click', dismiss);
+                                document.removeEventListener('touchstart', dismiss);
+                            }
+                        }
+                        setTimeout(() => {
+                            document.addEventListener('click', dismiss);
+                            document.addEventListener('touchstart', dismiss);
+                        }, 0);
+                    });
+                }
+
+                displayRules.forEach(colInfo => {
+                    let legendHtml = '';
+                    const columnOverrides = overrides[colInfo.columnHeader] ||
+                        (colInfo.fieldId && overrides[colInfo.fieldId]) || null;
+                    let ruleIndex = 0;
+
+                    colInfo.rules.forEach(rule => {
+                        const visualActions = rule.actions.filter(a => ['icon', 'bg-color', 'text-color'].includes(a.type));
+                        if (!visualActions.length) return;
+
+                        legendHtml += '<div class="ktlLegendRule">';
+                        const iconAction = visualActions.find(a => a.type === 'icon');
+                        const bgAction = visualActions.find(a => a.type === 'bg-color');
+                        const textColorAction = visualActions.find(a => a.type === 'text-color');
+
+                        if (iconAction)
+                            legendHtml += `<span class="ktlLegendIconChip" style="background-color:${iconAction.color || '#333'};"><i class="fa ${iconAction.icon}"></i></span>`;
+                        else if (bgAction)
+                            legendHtml += `<span class="ktlLegendSwatch" style="background-color:${bgAction.color};"></span>`;
+                        else if (textColorAction)
+                            legendHtml += `<span class="ktlLegendSwatch" style="background-color:${textColorAction.color};"></span>`;
+
+                        let criteriaText;
+                        if (columnOverrides && ruleIndex < columnOverrides.length && columnOverrides[ruleIndex])
+                            criteriaText = columnOverrides[ruleIndex];
+                        else
+                            criteriaText = rule.criteria.map(c => {
+                                if (c.range && c.type)
+                                    return `${c.fieldName} ${c.operator} ${c.range} ${c.type}`;
+                                const val = (typeof c.value === 'object' && c.value !== null) ? '' : c.value;
+                                if (val === true || val === 'true' || val === 'Yes')
+                                    return c.fieldName;
+                                return `${c.fieldName} ${c.operator} ${val}`.trim();
+                            }).join(' AND ');
+
+                        legendHtml += `<span class="ktlLegendText">${criteriaText}</span></div>`;
+                        ruleIndex++;
+                    });
+
+                    if (!legendHtml) return;
+
+                    const fieldId = colInfo.fieldId;
+                    let headerEl;
+                    if (fieldId)
+                        headerEl = document.querySelector(`#${viewId} th.${fieldId}`);
+                    else {
+                        const allThs = document.querySelectorAll(`#${viewId} .kn-table thead th`);
+                        for (const el of allThs) {
+                            const span = el.querySelector('.table-fixed-label');
+                            if (span && span.textContent.trim() === colInfo.columnHeader) {
+                                headerEl = el;
+                                break;
+                            }
+                        }
+                    }
+                    if (!headerEl) return;
+
+                    const existingIcon = headerEl.querySelector('.ktlTooltipIcon');
+
+                    if (existingIcon) {
+                        const ttipText = headerEl.dataset.ktlTtipText || '';
+                        const combinedHtml = ttipText + '<br><br>' + legendHtml;
+                        $(existingIcon).off('.ktlTooltip');
+                        bindTooltipEvents(existingIcon, combinedHtml);
+                    } else {
+                        if (headerEl.querySelector('.ktlTooltipIcon')) return;
+                        const icon = document.createElement('i');
+                        icon.className = 'fa fa-question-circle ktlTooltipIcon ktlTtipIcon-table-view';
+                        headerEl.appendChild(icon);
+                        const fixedLabel = headerEl.querySelector('.table-fixed-label');
+                        if (fixedLabel) fixedLabel.style.display = 'inline-flex';
+                        bindTooltipEvents(icon, legendHtml);
+                    }
                 });
             },
 
