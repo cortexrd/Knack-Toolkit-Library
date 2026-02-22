@@ -38,7 +38,7 @@ function Ktl($, appInfo) {
 
     const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1032
+    //KEC stands for "KTL Event Code".  Next:  KEC_1033
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
@@ -31142,9 +31142,40 @@ function Ktl($, appInfo) {
                 if (!$.isEmptyObject(apiData) && e.target.id === 'ktl-bulk-paste-' + viewId) {
                     processBulkEdit(); //Paste button.
                 } else {
-                    recId = recId || e.target.closest('tr[id]').id;
-                    const src = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId].attributes)
-                        || Knack.views[viewId].model.data._byId[recId].attributes;
+                    const sourceRow = (e && e.target && typeof e.target.closest === 'function') ? e.target.closest('tr[id]') : null;
+                    if (!recId && !sourceRow) {
+                        const errorMsg = `KEC_1032 - Bulk operation aborted: source row not found. viewId=${viewId}, operation=${operation}`;
+                        if (typeof ktl?.log?.addLog === 'function')
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+
+                        console.error(errorMsg, { viewId, operation, target: e ? e.target : null });
+                        ktl.core.timedPopup('Bulk operation stopped: source row not found. Please retry after the view finishes loading.', 'warning', 4000);
+
+                        if (typeof ktl?.account?.isDeveloper === 'function' && ktl.account.isDeveloper()) {
+                            debugger;
+                        }
+                        return;
+                    }
+
+                    recId = recId || sourceRow.id;
+                    const srcRecord = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId])
+                        || (Knack.views[viewId].model.data && Knack.views[viewId].model.data._byId[recId]);
+
+                    if (!srcRecord || !srcRecord.attributes) {
+                        const errorMsg = `KEC_1032 - Bulk operation aborted: source record missing. viewId=${viewId}, operation=${operation}, recId=${recId}`;
+                        if (typeof ktl?.log?.addLog === 'function')
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+
+                        console.error(errorMsg, { viewId, operation, recId });
+                        ktl.core.timedPopup('Bulk operation stopped: source record not available. Please retry after the view finishes loading.', 'warning', 4000);
+
+                        if (typeof ktl?.account?.isDeveloper === 'function' && ktl.account.isDeveloper()) {
+                            debugger;
+                        }
+                        return;
+                    }
+
+                    const src = srcRecord.attributes;
 
                     //Add all selected fields from header.
                     let checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
