@@ -1,6 +1,35 @@
 # Knack Toolkit Library Changelog
 
 
+## 0.41.0    *2026-02-21*
+
+- Add `_legend` keyword: auto-generate Display Rules legends on column headers
+  - Scans `Knack.views[viewId].model.view.columns[n].rules[]` at runtime
+  - Renders icon chips (white FA icon on colored background) and color swatches
+  - Supports `_legend=all` to apply across all table/search views on every page
+  - Text override syntax: `_legend=[Column Header], [Custom text 1], [Custom text 2]`
+  - Merges with existing `_ttip` tooltips into a single icon
+  - Touch-compatible: click-to-toggle with dismiss-on-outside-click
+  - Stable hover: tooltip stays visible until mouse leaves for 1 second
+  - Handles date-relative criteria and suppresses boolean truthy values
+- Add `ktl.api` module: Knack API helper for robust record management
+  - CRUD operations with pagination, adaptive concurrency, and retry logic
+  - Batched record creation with rate limiting and Retry-After header support
+  - 429 rate limit tracking with callback and summary logging
+  - Flexible logging and spinner control
+  - `deleteRecords` and `updateRecords` with concurrent batch processing
+- Bulk operations refactored to use `ktl.api`
+  - `processBulkDuplicate` uses `ktl.api.createRecord`
+  - Extract `collectFieldsFromCheckedHeaders` to DRY up field collection
+  - Fix Bulk Duplicate: empty records, model mutation, and native dialogs
+- `_tags`: Always show bulk ops checkboxes regardless of user roles
+- `_tags`: Use `ktl.api` with concurrent operations and record fetching for accurate lookups
+- `_hf`: Extend field-level keyword to hide fields in all view types
+- `_cfv`: Fix off-by-one in `data-column-index` selectors targeting wrong column
+- Utility bar: Replace absolute-positioned Pause Auto-Refresh checkbox with utility bar placement
+- Utility bar: Add flashing red indicator when Hidden Elements is active
+- Slim down `CLAUDE.md` to reference shared `KTL_AI_Instructions.md`
+
 ## 0.40.4    *2026-02-14*
 
 - `_cpyfrom` major improvements:
