@@ -4524,6 +4524,9 @@ function Ktl($, appInfo) {
              * @param {Object} recordData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
+             * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
+             * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<Object>}
              */
             async createRecord(viewId, recordData, refreshViews, options = {}) {
@@ -4533,12 +4536,15 @@ function Ktl($, appInfo) {
                 if (staggerMs > 0) {
                     await new Promise(resolve => setTimeout(resolve, staggerMs));
                 }
+
+                const preparedRecordData = await this._prepareRecordDataForCreate(recordData, opts);
+
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
                         url,
                         {
                             method: 'POST',
-                            body: this._prepareBody(recordData),
+                            body: this._prepareBody(preparedRecordData),
                             rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
                             onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
                         },
@@ -4558,6 +4564,9 @@ function Ktl($, appInfo) {
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
+             * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
+             * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
+             * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
              */
             async createRecords(viewId, recordsData, refreshViews, options = {}) {
@@ -4612,6 +4621,162 @@ function Ktl($, appInfo) {
                     const processed = created + failed;
                     this._logBatchSummary('create', viewId, processed, total, rateLimit429Count);
                 }
+            }
+
+            /**
+             * Upload a file or image asset to Knack and return the uploaded asset metadata.
+             * @param {File|Blob} file
+             * @param {Object} [options]
+             * @param {'file'|'image'} [options.assetType] - Optional override. Auto-detected from mime type when omitted.
+             * @param {number} [options.timeout]
+             * @returns {Promise<Object>} Uploaded asset payload (must include `id`).
+             */
+            async uploadAsset(file, options = {}) {
+                if (!(file instanceof Blob)) {
+                    throw new Error('KTL API error: uploadAsset requires a File/Blob.');
+                }
+
+                const opts = options || {};
+                const appId = Knack?.application_id;
+                if (!appId) {
+                    throw new Error('KTL API error: missing Knack application id.');
+                }
+
+                const inferredType = (file?.type || '').startsWith('image/') ? 'image' : 'file';
+                const assetType = opts.assetType === 'image' || opts.assetType === 'file' ? opts.assetType : inferredType;
+                const base = this._getApiBaseUrl().replace(/\/$/, '');
+                const url = `${base}/applications/${appId}/assets/${assetType}/upload`;
+
+                const formData = new FormData();
+                const fileName = typeof file?.name === 'string' && file.name.length ? file.name : 'upload.bin';
+                formData.append('files', file, fileName);
+
+                const timeoutMs = Number.isFinite(opts.timeout) ? opts.timeout : this.options.timeout;
+
+                return await this._enqueueWrite(async () => {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                    this._toggleSpinner(true);
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: this._buildUploadHeaders(),
+                            body: formData,
+                            signal: controller.signal
+                        });
+
+                        const responseText = await response.text();
+                        if (!response.ok) {
+                            throw this._buildRequestError({
+                                status: response.status,
+                                statusText: response.statusText,
+                                responseText,
+                                headers: response.headers
+                            });
+                        }
+
+                        let parsed;
+                        try {
+                            parsed = responseText ? JSON.parse(responseText) : {};
+                        } catch (e) {
+                            parsed = responseText || {};
+                        }
+
+                        const asset = Array.isArray(parsed) ? parsed[0] : parsed;
+                        if (!asset || !asset.id) {
+                            throw new Error('KTL API error: asset upload succeeded but no asset id was returned.');
+                        }
+
+                        return asset;
+                    } catch (error) {
+                        if (error?.name === 'AbortError') {
+                            throw this._buildRequestError({ status: 0, statusText: 'Request timeout', responseText: '' });
+                        }
+                        throw error;
+                    } finally {
+                        clearTimeout(timeoutId);
+                        this._toggleSpinner(false);
+                    }
+                });
+            }
+
+            /**
+             * Upload an asset and create a record in a single helper flow.
+             * @param {string} viewId
+             * @param {string} fileFieldId
+             * @param {File|Blob} file
+             * @param {Object} [recordData]
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<{record: Object, asset: Object}>}
+             */
+            async createRecordWithAsset(viewId, fileFieldId, file, recordData = {}, refreshViews, options = {}) {
+                if (!fileFieldId) {
+                    throw new Error('KTL API error: fileFieldId is required.');
+                }
+
+                const asset = await this.uploadAsset(file, options);
+                const payload = {
+                    ...(recordData || {}),
+                    [fileFieldId]: asset.id
+                };
+                const record = await this.createRecord(viewId, payload, refreshViews, options);
+                return { record, asset };
+            }
+
+            /**
+             * Replace File/Blob field values with uploaded Knack asset IDs when enabled.
+             * @param {Object} recordData
+             * @param {Object} options
+             * @returns {Promise<Object>}
+             * @private
+             */
+            async _prepareRecordDataForCreate(recordData, options = {}) {
+                const data = recordData && typeof recordData === 'object' ? { ...recordData } : recordData;
+                if (!options?.autoUploadAssets || !data || typeof data !== 'object') {
+                    return data;
+                }
+
+                const allowList = Array.isArray(options.assetFieldIds)
+                    ? new Set(options.assetFieldIds)
+                    : null;
+                const typesByField = options.assetTypesByField || {};
+
+                for (const [fieldKey, value] of Object.entries(data)) {
+                    if (!(value instanceof Blob)) continue;
+                    if (allowList && !allowList.has(fieldKey)) continue;
+                    if (!allowList && !this._isAssetField(fieldKey)) continue;
+
+                    const assetType = typesByField[fieldKey];
+                    const asset = await this.uploadAsset(value, {
+                        timeout: options.timeout,
+                        assetType
+                    });
+                    data[fieldKey] = asset.id;
+                }
+
+                return data;
+            }
+
+            /**
+             * Determine if a field key is a Knack file/image field.
+             * @param {string} fieldKey
+             * @returns {boolean}
+             * @private
+             */
+            _isAssetField(fieldKey = '') {
+                if (!fieldKey || typeof fieldKey !== 'string') return false;
+
+                const fromKtl = typeof ktl?.fields?.getFieldType === 'function'
+                    ? ktl.fields.getFieldType(fieldKey)
+                    : null;
+                if (fromKtl === 'file' || fromKtl === 'image') {
+                    return true;
+                }
+
+                const fieldModel = Knack?.objects?.getField?.(fieldKey);
+                const fieldType = fieldModel?.attributes?.type || null;
+                return fieldType === 'file' || fieldType === 'image';
             }
 
             /**
@@ -5215,6 +5380,23 @@ function Ktl($, appInfo) {
             }
 
             /**
+             * Build headers for multipart asset upload calls.
+             * @returns {Object}
+             * @private
+             */
+            _buildUploadHeaders() {
+                const headers = {
+                    'X-Knack-Application-Id': Knack.application_id,
+                    'X-Knack-REST-API-Key': 'knack'
+                };
+                const token = typeof Knack?.getUserToken === 'function' ? Knack.getUserToken() : null;
+                if (token) {
+                    headers.Authorization = token;
+                }
+                return headers;
+            }
+
+            /**
              * Format API URL for view-based operations.
              * @param {string} viewId
              * @param {string} [recordId]
@@ -5550,6 +5732,14 @@ function Ktl($, appInfo) {
 
             createRecords: function (...args) {
                 return apiInstance.createRecords(...args);
+            },
+
+            uploadAsset: function (...args) {
+                return apiInstance.uploadAsset(...args);
+            },
+
+            createRecordWithAsset: function (...args) {
+                return apiInstance.createRecordWithAsset(...args);
             },
 
             updateRecord: function (...args) {
@@ -33837,6 +34027,7 @@ function Ktl($, appInfo) {
         //KTL exposed objects
         const: this.const,
         core: this.core,
+        api: this.api,
         storage: this.storage,
         fields: this.fields,
         views: this.views,
