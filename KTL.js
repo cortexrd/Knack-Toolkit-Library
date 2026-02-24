@@ -13452,18 +13452,40 @@ function Ktl($, appInfo) {
             let bgColorTrue = quickToggleParams.bgColorTrue;
             let bgColorFalse = quickToggleParams.bgColorFalse;
 
+            function extractQtParams(params) {
+                let confirmMsg = null;
+                let mode = null;
+                if (!params) return { confirmMsg, mode };
+                for (const group of params) {
+                    const id = group[0].toLowerCase();
+                    if (id === 'confirm' && group.length >= 2)
+                        confirmMsg = group.slice(1).join(', ').trim();
+                    else if (id === 'mode' && group.length >= 2)
+                        mode = group[1].toLowerCase().trim();
+                }
+                return { confirmMsg, mode };
+            }
+
             let viewHasQt = false;
+            let viewConfirmMsg = null;
+            let viewMode = null;
+
             // Override with view-specific colors, if any.
             if (kwInstance) {
                 viewHasQt = true; // If view has QT, then all fields inherit also.
 
                 if (kwInstance.params && kwInstance.params.length) {
-                    const fldColors = kwInstance.params[0];
-                    if (fldColors.length >= 1 && fldColors[0])
-                        bgColorTrue = fldColors[0];
-
-                    if (fldColors.length >= 2 && fldColors[1])
-                        bgColorFalse = fldColors[1];
+                    const firstId = kwInstance.params[0][0]?.toLowerCase();
+                    if (firstId !== 'confirm' && firstId !== 'mode') {
+                        const fldColors = kwInstance.params[0];
+                        if (fldColors.length >= 1 && fldColors[0])
+                            bgColorTrue = fldColors[0];
+                        if (fldColors.length >= 2 && fldColors[1])
+                            bgColorFalse = fldColors[1];
+                    }
+                    const viewExtra = extractQtParams(kwInstance.params);
+                    viewConfirmMsg = viewExtra.confirmMsg;
+                    viewMode = viewExtra.mode;
                 }
             }
 
@@ -13489,16 +13511,30 @@ function Ktl($, appInfo) {
                             if (viewHasQt || fieldKeyword) {
                                 fieldHasQt = true;
                                 if (fieldKeyword && fieldKeyword.length && fieldKeyword[0].params && fieldKeyword[0].params.length > 0) {
-                                    const fldColors = fieldKeyword[0].params[0];
-                                    if (fldColors.length >= 1 && fldColors[0] !== '')
-                                        tmpFieldColors.bgColorTrue = fldColors[0];
-                                    if (fldColors.length >= 2 && fldColors[1] !== '')
-                                        tmpFieldColors.bgColorFalse = fldColors[1];
+                                    const firstId = fieldKeyword[0].params[0][0]?.toLowerCase();
+                                    if (firstId !== 'confirm' && firstId !== 'mode') {
+                                        const fldColors = fieldKeyword[0].params[0];
+                                        if (fldColors.length >= 1 && fldColors[0] !== '')
+                                            tmpFieldColors.bgColorTrue = fldColors[0];
+                                        if (fldColors.length >= 2 && fldColors[1] !== '')
+                                            tmpFieldColors.bgColorFalse = fldColors[1];
+                                    }
                                 }
                             }
 
                             if (fieldHasQt) {
-                                fieldsColor[fieldId] = tmpFieldColors;
+                                let fieldConfirmMsg = null;
+                                let fieldMode = null;
+                                if (fieldKeyword && fieldKeyword.length && fieldKeyword[0].params) {
+                                    const fieldExtra = extractQtParams(fieldKeyword[0].params);
+                                    fieldConfirmMsg = fieldExtra.confirmMsg;
+                                    fieldMode = fieldExtra.mode;
+                                }
+                                fieldsColor[fieldId] = {
+                                    ...tmpFieldColors,
+                                    confirmMsg: fieldConfirmMsg ?? viewConfirmMsg,
+                                    mode: fieldMode ?? viewMode
+                                };
                                 if (inlineEditing && !col.ignore_edit)
                                     $(`#${viewId} td.${fieldId}.cell-edit`).addClass('qtCellClickable');
                             }
@@ -13516,12 +13552,22 @@ function Ktl($, appInfo) {
                         const currentStyle = cell.attr('style');
                         const style = `background-color:${row[fieldId + '_raw'] === true ? fieldsColor[fieldId].bgColorTrue : fieldsColor[fieldId].bgColorFalse}`;
                         cell.attr('style', `${currentStyle ? currentStyle + '; ' : ''}${style}`);
+
+                        const fc = fieldsColor[fieldId];
+                        if (fc.mode) {
+                            const currentValue = row[fieldId + '_raw'] === true;
+                            const isAtTarget = (fc.mode === 'f2t' && currentValue) || (fc.mode === 't2f' && !currentValue);
+                            if (isAtTarget) {
+                                cell.removeClass('qtCellClickable');
+                                cell.css({ cursor: 'default', opacity: '0.6', pointerEvents: 'none' });
+                            }
+                        }
                     });
                 });
             }
 
             //Process cell clicks.
-            $(`#${viewId} .qtCellClickable`).bindFirst('click', e => {
+            $(`#${viewId} .qtCellClickable`).bindFirst('click', async e => {
                 if ($('.bulkEditCb:checked').length) return;
 
                 e.stopImmediatePropagation();
@@ -13530,14 +13576,25 @@ function Ktl($, appInfo) {
                 const viewElement = $(e.target).closest('.kn-search.kn-view[id], .kn-table.kn-view[id]');
                 if (viewElement.length) {
                     const viewId = viewElement.attr('id');
-
-                    const dt = Date.now();
                     const recId = $(e.target).closest('tr').attr('id');
                     let value = ktl.views.getDataFromRecId(viewId, recId)[`${fieldId}_raw`];
-                    value = (value === true ? false : true);
+                    const fc = fieldsColor[fieldId];
+
+                    if (fc && fc.mode) {
+                        if ((fc.mode === 'f2t' && value === true) || (fc.mode === 't2f' && value === false))
+                            return;
+                    }
+
+                    if (fc && fc.confirmMsg) {
+                        const result = await ktl.core.selectOption(fc.confirmMsg, 'Yes,No');
+                        if (result !== 0) return;
+                    }
+
+                    value = !value;
                     if (!viewsToRefresh.includes(viewId))
                         viewsToRefresh.push(viewId);
 
+                    const dt = Date.now();
                     quickToggleObj[dt] = { viewId, fieldId, value, recId, processed: false };
                     const cell = $(e.target).closest('td');
                     cell.css('background-color', quickToggleParams.bgColorPending); //Visual cue that the process is started.
@@ -13581,6 +13638,14 @@ function Ktl($, appInfo) {
                         if (quickToggleParams.showNotification) {
                             showProgress();
                         }
+
+                        $(document).trigger('KTL.quickToggle', [{
+                            viewId: recObj.viewId,
+                            fieldId: recObj.fieldId,
+                            recId: recObj.recId,
+                            value: recObj.value
+                        }]);
+
                         numToProcess--;
                         delete quickToggleObj[dt];
                         if ($.isEmptyObject(quickToggleObj)) {
@@ -13602,7 +13667,7 @@ function Ktl($, appInfo) {
                     })
                     .catch(reason => {
                         ktl.views.autoRefresh();
-                        alert(`Error code KEC_1025 while processing Quick Toggle operation, reason: ${JSON.stringify(reason)}`);
+                        ktl.core.selectOption(`Error code KEC_1025 while processing Quick Toggle operation, reason: ${JSON.stringify(reason)}`, 'Ok');
                     })
             }
 
