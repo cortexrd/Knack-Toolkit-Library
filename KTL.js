@@ -4350,6 +4350,7 @@ function Ktl($, appInfo) {
 
                 this._initLogSettings();
                 this._initWriteQueue();
+                this._inflightGets = new Map();
             }
 
             /**
@@ -4574,6 +4575,7 @@ function Ktl($, appInfo) {
              * @param {Object[]} recordsData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
@@ -4596,6 +4598,7 @@ function Ktl($, appInfo) {
                 const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
                     rateLimit429Count += 1;
                 });
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -4622,7 +4625,7 @@ function Ktl($, appInfo) {
                     });
                     firstError = batchResult.firstError;
 
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
 
                     this._logBatchFailures('KEC_1028', 'create', viewId, failedIndices.length, total, `at indices: ${failedIndices.join(', ')}`);
 
@@ -4929,6 +4932,7 @@ function Ktl($, appInfo) {
              * @param {string[]} recordIds
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
@@ -4947,6 +4951,7 @@ function Ktl($, appInfo) {
                 const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
                     rateLimit429Count += 1;
                 });
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -4973,7 +4978,7 @@ function Ktl($, appInfo) {
                     });
                     firstError = batchResult.firstError;
 
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
 
                     // Log failed records if any (only after all retries exhausted)
                     this._logBatchFailures('KEC_1030', 'delete', viewId, failedRecordIds.length, total, `: ${failedRecordIds.join(', ')}`);
@@ -5450,6 +5455,8 @@ function Ktl($, appInfo) {
 
             /**
              * Perform an HTTP request with retries, backoff, and timeout.
+             * Identical concurrent GET requests are deduplicated: the second caller shares the
+             * first in-flight promise rather than dispatching a redundant fetch.
              * @param {string} url
              * @param {Object} options
              * @param {number} [timeoutOverride]
@@ -5457,6 +5464,33 @@ function Ktl($, appInfo) {
              * @private
              */
             async _request(url, options = {}, timeoutOverride) {
+                const method = ((options || {}).method || 'GET').toUpperCase();
+
+                // Deduplicate identical concurrent GET requests.
+                if (method === 'GET') {
+                    const key = url;
+                    if (this._inflightGets.has(key)) {
+                        return this._inflightGets.get(key);
+                    }
+                    const promise = this._requestInner(url, options, timeoutOverride).finally(() => {
+                        this._inflightGets.delete(key);
+                    });
+                    this._inflightGets.set(key, promise);
+                    return promise;
+                }
+
+                return this._requestInner(url, options, timeoutOverride);
+            }
+
+            /**
+             * Inner fetch-with-retry implementation, called by _request.
+             * @param {string} url
+             * @param {Object} options
+             * @param {number} [timeoutOverride]
+             * @returns {Promise<Object>}
+             * @private
+             */
+            async _requestInner(url, options = {}, timeoutOverride) {
                 const maxRetries = this.options.maxRetries;
                 const maxAttempts = 1 + maxRetries;
                 const retryOnStatus = this.options.retryOnStatus;
@@ -6874,6 +6908,12 @@ function Ktl($, appInfo) {
 
             getFieldKeywords: function (fieldId, fieldKeywords = {}) {
                 if (!fieldId) return;
+                // Fast path: keywords were pre-parsed at startup into ktlKeywords.
+                if (ktlKeywords[fieldId]) {
+                    fieldKeywords[fieldId] = ktlKeywords[fieldId];
+                    return fieldKeywords;
+                }
+                // Fallback: field was not in ktlKeywords (e.g. dynamically added or no keywords).
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
                     fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, ' ').replace(/ {2,}/g, ' ').trim();
@@ -11549,6 +11589,9 @@ function Ktl($, appInfo) {
         var gotoDateObj = new Date();
         var prevType = '';
         var prevStartDate = '';
+        // Cache for getAllFieldsWithKeywordsInView results — keyed by viewId.
+        // Keywords and view field lists are static after startup, so this is safe to persist for the session.
+        const _fieldsWithKwCache = new Map();
         let chooseGridColumnsGlobalListenerAdded = false;
         let chooseGridColumnsGlobalClickHandler = null;
         let chooseGridColumnsGlobalKeyHandler = null;
@@ -19914,6 +19957,9 @@ function Ktl($, appInfo) {
             getAllFieldsWithKeywordsInView: function (viewId) {
                 if (!viewId || !Knack.views[viewId] || !Knack.views[viewId].model) return {};
 
+                // Return cached result when available — view field lists and keywords are static after startup.
+                if (_fieldsWithKwCache.has(viewId)) return _fieldsWithKwCache.get(viewId);
+
                 //Scan all fields in view to find any keywords.
                 const view = Knack.views[viewId].model.view;
                 var foundFields = [];
@@ -19984,6 +20030,7 @@ function Ktl($, appInfo) {
                 for (var j = 0; j < foundFields.length; j++)
                     ktl.fields.getFieldKeywords(foundFields[j], fieldsWithKwObj);
 
+                _fieldsWithKwCache.set(viewId, fieldsWithKwObj);
                 return fieldsWithKwObj;
             },
 
