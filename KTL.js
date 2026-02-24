@@ -4383,22 +4383,21 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Get all records from a view across pages.
+             * Get all records from a view across pages, fetching remaining pages in parallel batches.
              * @param {string} viewId
              * @param {Object} [options]
+             * @param {number} [options.pageConcurrency=5] - Max pages to fetch concurrently after the first.
              * @returns {Promise<Array<Object>>}
              */
             async getAllRecords(viewId, options = {}) {
                 const opts = options || {};
                 const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
-                const firstPage = await this.getRecords(viewId, {
-                    filters: opts.filters,
-                    sorters: opts.sorters,
-                    page: 1,
-                    rows,
-                    rawResponse: true,
-                    timeout: opts.timeout
-                });
+                const pageConcurrency = Number.isFinite(opts.pageConcurrency) && opts.pageConcurrency > 0
+                    ? Math.floor(opts.pageConcurrency)
+                    : 5;
+                const pageOpts = { filters: opts.filters, sorters: opts.sorters, rows, rawResponse: true, timeout: opts.timeout };
+
+                const firstPage = await this.getRecords(viewId, { ...pageOpts, page: 1 });
 
                 const totalPages = Number(firstPage?.total_pages || 0);
                 const totalRecords = Number(firstPage?.total_records || 0);
@@ -4406,27 +4405,27 @@ function Ktl($, appInfo) {
 
                 if (totalRecords === 0 || totalPages <= 1) return allRecords;
 
-                for (let page = 2; page <= totalPages; page += 1) {
-                    const nextPage = await this.getRecords(viewId, {
-                        filters: opts.filters,
-                        sorters: opts.sorters,
-                        page,
-                        rows,
-                        rawResponse: true,
-                        timeout: opts.timeout
-                    });
+                // Fetch remaining pages in parallel batches to reduce wall-clock time.
+                for (let batchStart = 2; batchStart <= totalPages; batchStart += pageConcurrency) {
+                    const batchEnd = Math.min(totalPages, batchStart + pageConcurrency - 1);
+                    const pageNumbers = [];
+                    for (let p = batchStart; p <= batchEnd; p++) pageNumbers.push(p);
 
-                    if (Array.isArray(nextPage?.records)) {
-                        allRecords.push(...nextPage.records);
+                    const batchResults = await Promise.all(
+                        pageNumbers.map(page => this.getRecords(viewId, { ...pageOpts, page }))
+                    );
+
+                    for (const nextPage of batchResults) {
+                        if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
                     }
 
                     if (typeof opts.onProgress === 'function') {
                         opts.onProgress({
-                            page,
+                            page: batchEnd,
                             totalPages,
                             recordsLoaded: allRecords.length,
                             totalRecords,
-                            percentage: totalPages > 0 ? Math.round((page / totalPages) * 100) : 100
+                            percentage: Math.round((batchEnd / totalPages) * 100)
                         });
                     }
                 }
@@ -4465,24 +4464,23 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Fetch all connected child records.
+             * Fetch all connected child records, fetching remaining pages in parallel batches.
              * @param {string} viewId
              * @param {string} recordId
              * @param {string} connectionSlug
              * @param {Object} [options]
+             * @param {number} [options.pageConcurrency=5] - Max pages to fetch concurrently after the first.
              * @returns {Promise<Array<Object>>}
              */
             async getAllChildRecords(viewId, recordId, connectionSlug, options = {}) {
                 const opts = options || {};
                 const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
-                const firstPage = await this.getChildRecords(viewId, recordId, connectionSlug, {
-                    filters: opts.filters,
-                    sorters: opts.sorters,
-                    page: 1,
-                    rows,
-                    rawResponse: true,
-                    timeout: opts.timeout
-                });
+                const pageConcurrency = Number.isFinite(opts.pageConcurrency) && opts.pageConcurrency > 0
+                    ? Math.floor(opts.pageConcurrency)
+                    : 5;
+                const pageOpts = { filters: opts.filters, sorters: opts.sorters, rows, rawResponse: true, timeout: opts.timeout };
+
+                const firstPage = await this.getChildRecords(viewId, recordId, connectionSlug, { ...pageOpts, page: 1 });
 
                 const totalPages = Number(firstPage?.total_pages || 0);
                 const totalRecords = Number(firstPage?.total_records || 0);
@@ -4490,27 +4488,27 @@ function Ktl($, appInfo) {
 
                 if (totalRecords === 0 || totalPages <= 1) return allRecords;
 
-                for (let page = 2; page <= totalPages; page += 1) {
-                    const nextPage = await this.getChildRecords(viewId, recordId, connectionSlug, {
-                        filters: opts.filters,
-                        sorters: opts.sorters,
-                        page,
-                        rows,
-                        rawResponse: true,
-                        timeout: opts.timeout
-                    });
+                // Fetch remaining pages in parallel batches to reduce wall-clock time.
+                for (let batchStart = 2; batchStart <= totalPages; batchStart += pageConcurrency) {
+                    const batchEnd = Math.min(totalPages, batchStart + pageConcurrency - 1);
+                    const pageNumbers = [];
+                    for (let p = batchStart; p <= batchEnd; p++) pageNumbers.push(p);
 
-                    if (Array.isArray(nextPage?.records)) {
-                        allRecords.push(...nextPage.records);
+                    const batchResults = await Promise.all(
+                        pageNumbers.map(page => this.getChildRecords(viewId, recordId, connectionSlug, { ...pageOpts, page }))
+                    );
+
+                    for (const nextPage of batchResults) {
+                        if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
                     }
 
                     if (typeof opts.onProgress === 'function') {
                         opts.onProgress({
-                            page,
+                            page: batchEnd,
                             totalPages,
                             recordsLoaded: allRecords.length,
                             totalRecords,
-                            percentage: totalPages > 0 ? Math.round((page / totalPages) * 100) : 100
+                            percentage: Math.round((batchEnd / totalPages) * 100)
                         });
                     }
                 }
@@ -4519,11 +4517,29 @@ function Ktl($, appInfo) {
             }
 
             /**
+             * Find all records where a field equals a value. Convenience wrapper around getAllRecords.
+             * @param {string} viewId
+             * @param {string} fieldId - The field key to filter on (e.g. 'field_1').
+             * @param {*} value - The value to match.
+             * @param {Object} [options] - Same options as getAllRecords.
+             * @returns {Promise<Array<Object>>}
+             */
+            async findRecords(viewId, fieldId, value, options = {}) {
+                const opts = options || {};
+                const filter = { match: 'and', rules: [{ field: fieldId, operator: 'is', value }] };
+                const mergedFilters = opts.filters
+                    ? { match: 'and', rules: [filter, ...(opts.filters.rules || [opts.filters])] }
+                    : filter;
+                return this.getAllRecords(viewId, { ...opts, filters: mergedFilters });
+            }
+
+            /**
              * Create a record in a view.
              * @param {string} viewId
              * @param {Object} recordData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
              * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
              * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
@@ -4532,10 +4548,7 @@ function Ktl($, appInfo) {
             async createRecord(viewId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId);
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                if (staggerMs > 0) {
-                    await new Promise(resolve => setTimeout(resolve, staggerMs));
-                }
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
 
                 const preparedRecordData = await this._prepareRecordData(recordData, opts);
 
@@ -4550,7 +4563,7 @@ function Ktl($, appInfo) {
                         },
                         opts.timeout
                     );
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
                     return result;
                 });
             }
@@ -4701,30 +4714,6 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Upload an asset and create a record in a single helper flow.
-             * @param {string} viewId
-             * @param {string} fileFieldId
-             * @param {File|Blob} file
-             * @param {Object} [recordData]
-             * @param {Array|string} [refreshViews]
-             * @param {Object} [options]
-             * @returns {Promise<{record: Object, asset: Object}>}
-             */
-            async createRecordWithAsset(viewId, fileFieldId, file, recordData = {}, refreshViews, options = {}) {
-                if (!fileFieldId) {
-                    throw new Error('KTL API error: fileFieldId is required.');
-                }
-
-                const asset = await this.uploadAsset(file, options);
-                const payload = {
-                    ...(recordData || {}),
-                    [fileFieldId]: asset.id
-                };
-                const record = await this.createRecord(viewId, payload, refreshViews, options);
-                return { record, asset };
-            }
-
-            /**
              * Replace File/Blob field values with uploaded Knack asset IDs when autoUploadAssets is enabled.
              * Used by both createRecord and updateRecord so that callers can pass File/Blob values directly.
              * @param {Object} recordData
@@ -4787,6 +4776,7 @@ function Ktl($, appInfo) {
              * @param {Object} recordData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
              * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
              * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
@@ -4795,6 +4785,7 @@ function Ktl($, appInfo) {
             async updateRecord(viewId, recordId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
                 const preparedRecordData = await this._prepareRecordData(recordData, opts);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -4807,26 +4798,52 @@ function Ktl($, appInfo) {
                         },
                         opts.timeout
                     );
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
                     return result;
                 });
             }
 
             /**
              * Update multiple records in a view using write concurrency.
+             *
+             * Accepts two calling shapes:
+             *   - Shared data:   updateRecords(viewId, recordIds, recordData, refreshViews, options)
+             *   - Per-record:    updateRecords(viewId, records, refreshViews, options)
+             *     where `records` is Array<{id: string, data: Object}>
+             *
              * @param {string} viewId
-             * @param {string[]} recordIds
-             * @param {Object} recordData
+             * @param {string[]|Array<{id:string,data:Object}>} recordIds - Array of record IDs (shared-data shape) or per-record objects.
+             * @param {Object|Array|string} recordData - Shared record data (shared-data shape) or the refreshViews param (per-record shape).
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
              * @returns {Promise<{ total: number, updated: number, failed: number }>}
              */
             async updateRecords(viewId, recordIds, recordData, refreshViews, options = {}) {
-                const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
-                const total = ids.length;
+                // Detect per-record shape: Array<{id, data}>
+                const isPerRecord = Array.isArray(recordIds)
+                    && recordIds.length > 0
+                    && recordIds[0] !== null
+                    && typeof recordIds[0] === 'object'
+                    && 'id' in recordIds[0]
+                    && 'data' in recordIds[0];
+
+                let records, effectiveRefresh, opts;
+                if (isPerRecord) {
+                    // updateRecords(viewId, [{id, data}, ...], refreshViews, options)
+                    records = recordIds.filter(r => r && r.id);
+                    effectiveRefresh = recordData; // positional shift
+                    opts = refreshViews || {};
+                } else {
+                    records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
+                    effectiveRefresh = options?.refreshViews !== undefined ? options.refreshViews : refreshViews;
+                    opts = options || {};
+                }
+
+                const total = records.length;
                 if (!total) return { total: 0, updated: 0, failed: 0 };
 
                 let updated = 0;
@@ -4834,7 +4851,7 @@ function Ktl($, appInfo) {
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
-                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                const { opts: batchOpts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, opts, () => {
                     rateLimit429Count += 1;
                 });
 
@@ -4843,32 +4860,32 @@ function Ktl($, appInfo) {
                         total,
                         workerCount,
                         staggerMs,
-                        continueOnError: opts.continueOnError,
+                        continueOnError: batchOpts.continueOnError,
                         execute: async (index) => {
-                            const recordId = ids[index];
+                            const { id: recordId, data } = records[index];
                             try {
-                                await this.updateRecord(viewId, recordId, recordData, [], requestOptions);
+                                await this.updateRecord(viewId, recordId, data, [], requestOptions);
                                 updated += 1;
-                                if (typeof opts.onProgress === 'function')
-                                    opts.onProgress({ updated, failed, total, recordId });
+                                if (typeof batchOpts.onProgress === 'function')
+                                    batchOpts.onProgress({ updated, failed, total, recordId });
                             } catch (error) {
                                 failed += 1;
                                 failedRecordIds.push(recordId);
-                                if (typeof opts.onProgress === 'function')
-                                    opts.onProgress({ updated, failed, total, recordId });
-                                if (!opts.continueOnError)
+                                if (typeof batchOpts.onProgress === 'function')
+                                    batchOpts.onProgress({ updated, failed, total, recordId });
+                                if (!batchOpts.continueOnError)
                                     throw error;
                             }
                         }
                     });
                     firstError = batchResult.firstError;
 
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
 
                     // Log failed records if any (only after all retries exhausted)
                     this._logBatchFailures('KEC_1029', 'update', viewId, failedRecordIds.length, total, `: ${failedRecordIds.join(', ')}`);
 
-                    if (firstError && !opts.continueOnError)
+                    if (firstError && !batchOpts.continueOnError)
                         throw firstError;
 
                     return { total, updated, failed };
@@ -4884,10 +4901,12 @@ function Ktl($, appInfo) {
              * @param {string} recordId
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @returns {Promise<Object>}
              */
             async deleteRecord(viewId, recordId, refreshViews, options = {}) {
                 const opts = options || {};
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
                 const url = this._formatApiUrl(viewId, recordId);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -4899,7 +4918,7 @@ function Ktl($, appInfo) {
                         },
                         opts.timeout
                     );
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
                     return result;
                 });
             }
@@ -5748,10 +5767,6 @@ function Ktl($, appInfo) {
                 return apiInstance.uploadAsset(...args);
             },
 
-            createRecordWithAsset: function (...args) {
-                return apiInstance.createRecordWithAsset(...args);
-            },
-
             updateRecord: function (...args) {
                 return apiInstance.updateRecord(...args);
             },
@@ -5766,6 +5781,10 @@ function Ktl($, appInfo) {
 
             deleteRecords: function (...args) {
                 return apiInstance.deleteRecords(...args);
+            },
+
+            findRecords: function (...args) {
+                return apiInstance.findRecords(...args);
             },
 
             refreshView: function (...args) {
