@@ -13458,8 +13458,8 @@ function Ktl($, appInfo) {
                 if (!params) return { confirmMsg, mode };
                 for (const group of params) {
                     const id = group[0].toLowerCase();
-                    if (id === 'confirm' && group.length >= 2)
-                        confirmMsg = group.slice(1).join(', ').trim();
+                    if (id === 'confirm')
+                        confirmMsg = group.length >= 2 ? group.slice(1).join(', ').trim() : 'Are you sure?';
                     else if (id === 'mode' && group.length >= 2)
                         mode = group[1].toLowerCase().trim();
                 }
