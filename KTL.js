@@ -4537,7 +4537,7 @@ function Ktl($, appInfo) {
                     await new Promise(resolve => setTimeout(resolve, staggerMs));
                 }
 
-                const preparedRecordData = await this._prepareRecordDataForCreate(recordData, opts);
+                const preparedRecordData = await this._prepareRecordData(recordData, opts);
 
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -4725,13 +4725,14 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Replace File/Blob field values with uploaded Knack asset IDs when enabled.
+             * Replace File/Blob field values with uploaded Knack asset IDs when autoUploadAssets is enabled.
+             * Used by both createRecord and updateRecord so that callers can pass File/Blob values directly.
              * @param {Object} recordData
              * @param {Object} options
              * @returns {Promise<Object>}
              * @private
              */
-            async _prepareRecordDataForCreate(recordData, options = {}) {
+            async _prepareRecordData(recordData, options = {}) {
                 const data = recordData && typeof recordData === 'object' ? { ...recordData } : recordData;
                 if (!options?.autoUploadAssets || !data || typeof data !== 'object') {
                     return data;
@@ -4786,17 +4787,21 @@ function Ktl($, appInfo) {
              * @param {Object} recordData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
+             * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
+             * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<Object>}
              */
             async updateRecord(viewId, recordId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
+                const preparedRecordData = await this._prepareRecordData(recordData, opts);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
                         url,
                         {
                             method: 'PUT',
-                            body: this._prepareBody(recordData),
+                            body: this._prepareBody(preparedRecordData),
                             rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
                             onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
                         },
@@ -5240,7 +5245,7 @@ function Ktl($, appInfo) {
                             return;
 
                         if (staggerMs > 0)
-                            await delay(staggerMs * index);
+                            await delay(staggerMs);
 
                         if (stopScheduling && !continueOnError)
                             return;
@@ -5519,12 +5524,15 @@ function Ktl($, appInfo) {
                                 });
                             }
 
+                            // Re-throw errors already structured by _buildRequestError (e.g. thrown
+                            // for non-retryable HTTP status codes above) without a second pass.
+                            if (error instanceof Error && error.status !== undefined) {
+                                throw error;
+                            }
+
                             const status = error?.status;
                             const isRetryable = retryOnStatus.includes(status);
                             if (!isRetryable || attempt >= maxAttempts) {
-                                if (error instanceof Error && error.message && error.status !== undefined)
-                                    throw error;
-
                                 throw this._buildRequestError(error);
                             }
 
@@ -5551,7 +5559,9 @@ function Ktl($, appInfo) {
              */
             _buildRequestError(jqXHR) {
                 const status = jqXHR?.status || 0;
-                const responseText = jqXHR?.responseText || '';
+                // Accept plain objects with responseText (our internal convention) or
+                // fall back gracefully if a different shape is passed.
+                const responseText = typeof jqXHR?.responseText === 'string' ? jqXHR.responseText : '';
                 let message = jqXHR?.statusText || 'Unknown error';
 
                 try {
@@ -31334,10 +31344,6 @@ function Ktl($, appInfo) {
 
                         console.error(errorMsg, { viewId, operation, target: e ? e.target : null });
                         ktl.core.timedPopup('Bulk operation stopped: source row not found. Please retry after the view finishes loading.', 'warning', 4000);
-
-                        if (typeof ktl?.account?.isDeveloper === 'function' && ktl.account.isDeveloper()) {
-                            debugger;
-                        }
                         return;
                     }
 
@@ -31352,10 +31358,6 @@ function Ktl($, appInfo) {
 
                         console.error(errorMsg, { viewId, operation, recId });
                         ktl.core.timedPopup('Bulk operation stopped: source record not available. Please retry after the view finishes loading.', 'warning', 4000);
-
-                        if (typeof ktl?.account?.isDeveloper === 'function' && ktl.account.isDeveloper()) {
-                            debugger;
-                        }
                         return;
                     }
 
