@@ -15132,6 +15132,7 @@ function Ktl($, appInfo) {
                     //Add a start button
                     buttonLabel = params[2];
                     let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+                    if (!ktlAddonsDiv) return;
                     const buttonId = ktl.core.getCleanId(buttonLabel);
                     startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `ktlAutoClick_${viewId}-${buttonId}`);
 
@@ -15541,6 +15542,7 @@ function Ktl($, appInfo) {
                     if (applyButton) return;
 
                     let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+                    if (!ktlAddonsDiv) return;
                     let buttonId = ktl.core.getCleanId(applyButtonLabel);
                     applyButton = ktl.fields.addButton(ktlAddonsDiv, applyButtonLabel, '', ['kn-button', 'ktlButtonMargin'], `${buttonId}-${viewId}`);
 
@@ -15699,6 +15701,7 @@ function Ktl($, appInfo) {
                         hasButton = true;
                         const buttonLabel = params[0][2];
                         let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(dstViewId);
+                        if (!ktlAddonsDiv) return;
                         const startButton = ktl.fields.addButton(ktlAddonsDiv, buttonLabel, '', ['kn-button', 'ktlButtonMargin'], `cpyfrom-${dstViewId}-${buttonLabel}`);
                         const capturedForceRefresh = forceRefresh;
                         const capturedMode = mode;
@@ -16411,6 +16414,7 @@ function Ktl($, appInfo) {
             const dateTimeFormat = Knack.fields[fieldId].attributes.format.date_format;
 
             let ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+            if (!ktlAddonsDiv) return;
             ktlAddonsDiv.classList.add('ktlDateTimePickerDiv');
 
             let viewDates = loadViewDates(viewId);
@@ -31295,6 +31299,7 @@ function Ktl($, appInfo) {
             if (document.querySelector(`#${viewId} .bulkOpsControlsDiv`)) return;
 
             const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+            if (!ktlAddonsDiv) return;
 
             const bulkOpsControlsDiv = document.createElement('div');
             bulkOpsControlsDiv.classList.add('bulkOpsControlsDiv', 'ktlFeatureGroup');
