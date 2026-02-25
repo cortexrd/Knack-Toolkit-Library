@@ -32322,6 +32322,8 @@ function Ktl($, appInfo) {
     this.developerPopupTool = function () {
         if (!ktl.core.getCfg().enabled.devInfoPopup || !ktl.account.isDeveloper()) return;
 
+        const KNAVIGATOR_URL = 'https://av.knack.com/knavigator#search/';
+
         // Ensure repeated calls don't stack global handlers (a common cause of CPU spikes / tab crashes).
         $(document)
             .off('KTL.devPopupSetResultText.ktlDevPopup')
@@ -32625,6 +32627,18 @@ function Ktl($, appInfo) {
                 icon.style['background-repeat'] = 'no-repeat';
                 knackButton.appendChild(icon);
                 container.appendChild(knackButton);
+            }
+
+            // Knavigator deep link
+            const knavigatorTypes = ['scene_', 'view_', 'field_', 'object_'];
+            if (knavigatorTypes.some(type => text.startsWith(type))) {
+                const knavigatorButton = createButton('fa-search');
+                knavigatorButton.title = 'Open in Knavigator';
+                knavigatorButton.addEventListener('click', () => {
+                    const url = `${KNAVIGATOR_URL}?app=${Knack.application_id}&item=${text}`;
+                    window.open(url, 'knavigator');
+                });
+                container.appendChild(knavigatorButton);
             }
 
             return container;
