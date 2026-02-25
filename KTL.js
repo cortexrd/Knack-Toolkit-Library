@@ -12506,60 +12506,136 @@ function Ktl($, appInfo) {
             if (!keywords[kw]) return;
 
             const { key: viewId, type: viewType, columns } = view;
+            const keywordsArray = ktl.core.getKeywordsByType(viewId, kw);
 
-            if (keywords[kw].length && keywords[kw][0].options) {
-                const options = keywords[kw][0].options;
-                if (!ktl.core.hasRoleAccess(options)) return;
-            }
-
-            if (viewType === 'table' || viewType === 'search') {
-                columns.forEach(column => {
-                    const selector = `#${viewId} tbody td`;
-
-                    if (column.type === 'field') {
-                        $(`${selector}.${column.field.key}`).addClass('ktlNoInlineEdit');
-                    }
-                    else {
-                        $(selector).find('a').removeAttr('href').addClass('ktlLinkDisabled');
-                    }
-                });
-
-                $(document).on('KTL.BulkOperations.Updated', () => {
-                    $(`#${viewId} .bulkEditCb`).attr('disabled', 'disabled');
-                });
+            if (!keywordsArray.length) {
+                applyDisable(viewId, viewType, columns);
             } else {
-                let elementSelector;
-                if (viewType === 'details' || viewType === 'list') {
-                    elementSelector = `#${viewId} .kn-detail-body`;
-                } else if (viewType === 'form') {
-                    elementSelector = `#${viewId} .kn-input`;
-                } else if (viewType === 'menu') {
-                    elementSelector = `#${viewId} li`;
-                }
+                keywordsArray.forEach(keyword => {
+                    if (keyword.options && !ktl.core.hasRoleAccess(keyword.options)) return;
 
-                const elements = $(elementSelector);
+                    if (keyword.options && keyword.options.ktlCond) {
+                        const viewEl = $('#' + viewId);
+                        viewEl.addClass('ktlHidden_dv');
 
-                elements.find('a').removeAttr('href').addClass('ktlLinkDisabled');
-                elements.find('.redactor-editor').attr('contenteditable', 'false');
-                elements.find('input').attr('disabled', true);
-                elements.addClass('ktlLinkDisabled'); //To prevent clicking on dropdowns.
-                elements.find('.chzn-single').css('background-color', 'rgba(0, 0, 0, 0.1)'); //Special case for single selection dropdowns.
-                elements.find('select').attr('disabled', true);
-                elements.find('textarea').attr('disabled', true);
-                elements.find('.rateit').rateit('readonly', true);
-                elements.filter('.kn-input-signature').css('pointer-events', 'none');
+                        const disable = () => {
+                            applyDisable(viewId, viewType, columns);
+                            viewEl.removeClass('ktlHidden_dv');
+                        };
+                        const enable = () => {
+                            applyEnable(viewId, viewType, columns);
+                            viewEl.removeClass('ktlHidden_dv');
+                        };
 
-                if (viewType === 'form') {
-                    $(document).one('KTL.persistentForm.completed.scene', () => {
-                        // Persistent Form is adding and removing the attribute during its process
-                        $(`#${viewId} .kn-button`).attr('disabled', true);
-                        ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
-                    });
-                }
+                        const conditions = keyword.options.ktlCond.replace(']', '').split(',').map(e => e.trim());
+                        const viewParam = conditions[3] || '';
+                        const viewParamId = ktl.scenes.findViewWithTitle(viewParam);
+                        const condViewType = ktl.views.getViewType(viewParamId);
+
+                        if (condViewType === 'form') {
+                            $(document).one('KTL.persistentForm.completed.scene', () => {
+                                ktl.views.hideUnhideValidateKtlCond(keyword.options, disable, enable, undefined, viewId);
+                            });
+                        } else {
+                            ktl.views.hideUnhideValidateKtlCond(keyword.options, disable, enable, undefined, viewId);
+                        }
+                    } else {
+                        applyDisable(viewId, viewType, columns);
+                    }
+                });
             }
 
-            $(`#${viewId} .kn-button`).attr('disabled', true);
-            ktl.scenes.spinnerWatchdog(false); //Don't let the disabled Submit cause a page reload.
+            function applyDisable(viewId, viewType, columns) {
+                if (viewType === 'table' || viewType === 'search') {
+                    columns.forEach(column => {
+                        const selector = `#${viewId} tbody td`;
+
+                        if (column.type === 'field') {
+                            $(`${selector}.${column.field.key}`).addClass('ktlNoInlineEdit');
+                        } else {
+                            $(selector).find('a').each(function () {
+                                $(this).data('ktl-dv-href', $(this).attr('href'));
+                            }).removeAttr('href').addClass('ktlLinkDisabled');
+                        }
+                    });
+
+                    $(document).on('KTL.BulkOperations.Updated', () => {
+                        $(`#${viewId} .bulkEditCb`).attr('disabled', 'disabled');
+                    });
+                } else {
+                    let elementSelector;
+                    if (viewType === 'details' || viewType === 'list') {
+                        elementSelector = `#${viewId} .kn-detail-body`;
+                    } else if (viewType === 'form') {
+                        elementSelector = `#${viewId} .kn-input`;
+                    } else if (viewType === 'menu') {
+                        elementSelector = `#${viewId} li`;
+                    }
+
+                    const elements = $(elementSelector);
+
+                    elements.find('a').each(function () {
+                        $(this).data('ktl-dv-href', $(this).attr('href'));
+                    }).removeAttr('href').addClass('ktlLinkDisabled');
+                    elements.find('.redactor-editor').attr('contenteditable', 'false');
+                    elements.find('input').attr('disabled', true);
+                    elements.addClass('ktlLinkDisabled'); //To prevent clicking on dropdowns.
+                    elements.find('.chzn-single').css('background-color', 'rgba(0, 0, 0, 0.1)'); //Special case for single selection dropdowns.
+                    elements.find('select').attr('disabled', true);
+                    elements.find('textarea').attr('disabled', true);
+                    elements.find('.rateit').rateit('readonly', true);
+                    elements.filter('.kn-input-signature').css('pointer-events', 'none');
+
+                }
+
+                $(`#${viewId} .kn-submit`).hide();
+                ktl.scenes.spinnerWatchdog(false);
+            }
+
+            function applyEnable(viewId, viewType, columns) {
+                if (viewType === 'table' || viewType === 'search') {
+                    columns.forEach(column => {
+                        const selector = `#${viewId} tbody td`;
+
+                        if (column.type === 'field') {
+                            $(`${selector}.${column.field.key}`).removeClass('ktlNoInlineEdit');
+                        } else {
+                            $(selector).find('a.ktlLinkDisabled').each(function () {
+                                const savedHref = $(this).data('ktl-dv-href');
+                                if (savedHref) $(this).attr('href', savedHref);
+                            }).removeClass('ktlLinkDisabled');
+                        }
+                    });
+
+                    $(`#${viewId} .bulkEditCb`).removeAttr('disabled');
+                } else {
+                    let elementSelector;
+                    if (viewType === 'details' || viewType === 'list') {
+                        elementSelector = `#${viewId} .kn-detail-body`;
+                    } else if (viewType === 'form') {
+                        elementSelector = `#${viewId} .kn-input`;
+                    } else if (viewType === 'menu') {
+                        elementSelector = `#${viewId} li`;
+                    }
+
+                    const elements = $(elementSelector);
+
+                    elements.find('a.ktlLinkDisabled').each(function () {
+                        const savedHref = $(this).data('ktl-dv-href');
+                        if (savedHref) $(this).attr('href', savedHref);
+                    }).removeClass('ktlLinkDisabled');
+                    elements.find('.redactor-editor').attr('contenteditable', 'true');
+                    elements.find('input').removeAttr('disabled');
+                    elements.removeClass('ktlLinkDisabled');
+                    elements.find('.chzn-single').css('background-color', '');
+                    elements.find('select').removeAttr('disabled');
+                    elements.find('textarea').removeAttr('disabled');
+                    elements.find('.rateit').rateit('readonly', false);
+                    elements.filter('.kn-input-signature').css('pointer-events', '');
+                }
+
+                $(`#${viewId} .kn-submit`).show();
+            }
         }
 
         function removeOptions(view, keywords) {
@@ -20090,9 +20166,19 @@ function Ktl($, appInfo) {
                     const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
 
                     const operator = conditions[0] || '';
-                    const value = conditions[1] || '';
+                    let value = conditions[1] || '';
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
+
+                    if (value === 'ktlLoggedInUser') {
+                        const userAttr = Knack.getUserAttributes();
+                        if (userAttr !== 'No user found')
+                            value = userAttr.name;
+                        else {
+                            unhide();
+                            return resolve();
+                        }
+                    }
 
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
@@ -20255,10 +20341,18 @@ function Ktl($, appInfo) {
                     const conditions = options.ktlCond.replace(']', '').split(',').map(e => e.trim());
 
                     const operator = conditions[0] || '';
-                    const value = conditions[1] || '';
+                    let value = conditions[1] || '';
                     const field = conditions[2] || '';
                     let fieldId;
                     const view = conditions[3] || '';
+
+                    if (value === 'ktlLoggedInUser') {
+                        const userAttr = Knack.getUserAttributes();
+                        if (userAttr !== 'No user found')
+                            value = userAttr.name;
+                        else
+                            return resolve(false);
+                    }
 
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
@@ -23660,6 +23754,8 @@ function Ktl($, appInfo) {
                 if (!ktl.account.isDeveloper() && !ktl.core.isKiosk())
                     keywords._km && ktl.core.kioskMode(true);
                 keywords._hv && ktl.views.hideView(viewId, keywords);
+                if (keywords._dv?.some(kw => kw.options?.ktlCond))
+                    $('#' + viewId).addClass('ktlHidden_dv');
                 //keywords._hc && ktl.views.hideColumns(viewObj, keywords, false);
                 //keywords._rc && ktl.views.removeColumns(viewObj, keywords, false);
                 keywords._cls && ktl.views.addRemoveClass(viewId, keywords);
