@@ -4527,10 +4527,17 @@ function Ktl($, appInfo) {
              */
             async findRecords(viewId, fieldId, value, options = {}) {
                 const opts = options || {};
-                const filter = { match: 'and', rules: [{ field: fieldId, operator: 'is', value }] };
-                const mergedFilters = opts.filters
-                    ? { match: 'and', rules: [filter, ...(opts.filters.rules || [opts.filters])] }
-                    : filter;
+                const baseRule = { field: fieldId, operator: 'is', value };
+                let mergedFilters = { match: 'and', rules: [baseRule] };
+
+                if (opts.filters) {
+                    if (opts.filters.match && Array.isArray(opts.filters.rules)) {
+                        mergedFilters = { match: 'and', rules: [baseRule, ...opts.filters.rules] };
+                    } else {
+                        mergedFilters = { match: 'and', rules: [baseRule, opts.filters] };
+                    }
+                }
+
                 return this.getAllRecords(viewId, { ...opts, filters: mergedFilters });
             }
 
@@ -5468,7 +5475,8 @@ function Ktl($, appInfo) {
 
                 // Deduplicate identical concurrent GET requests.
                 if (method === 'GET') {
-                    const key = url;
+                    const timeoutKey = Number.isFinite(timeoutOverride) ? timeoutOverride : 'default';
+                    const key = `${url}::${timeoutKey}`;
                     if (this._inflightGets.has(key)) {
                         return this._inflightGets.get(key);
                     }
@@ -5612,9 +5620,16 @@ function Ktl($, appInfo) {
              */
             _buildRequestError(jqXHR) {
                 const status = jqXHR?.status || 0;
-                // Accept plain objects with responseText (our internal convention) or
-                // fall back gracefully if a different shape is passed.
-                const responseText = typeof jqXHR?.responseText === 'string' ? jqXHR.responseText : '';
+                // Accept plain objects with responseText (our internal convention).
+                // Also tolerate fetch Response-like objects where body text may not be pre-read.
+                const hasResponseLikeShape = !!jqXHR && typeof jqXHR === 'object'
+                    && typeof jqXHR.status === 'number'
+                    && typeof jqXHR.statusText === 'string'
+                    && typeof jqXHR.text === 'function';
+
+                const responseText = typeof jqXHR?.responseText === 'string'
+                    ? jqXHR.responseText
+                    : (typeof jqXHR?.body === 'string' ? jqXHR.body : '');
                 let message = jqXHR?.statusText || 'Unknown error';
 
                 try {
@@ -5622,6 +5637,10 @@ function Ktl($, appInfo) {
                     message = json?.message || json?.error || message;
                 } catch (e) {
                     // ignore parse errors
+                }
+
+                if (!responseText && hasResponseLikeShape) {
+                    message = `${message} (response body not pre-read)`;
                 }
 
                 const error = new Error(`API error ${status}: ${message}`);
@@ -31476,6 +31495,7 @@ function Ktl($, appInfo) {
 
                     showProgress(0);
                     ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                        autoUploadAssets: true,
                         onProgress: ({ updated }) => showProgress(updated),
                         continueOnError: false,
                         staggerMs: 40
@@ -31511,6 +31531,7 @@ function Ktl($, appInfo) {
                     const recordsToCreate = Array.from({ length: numToProcess }, () => ({ ...apiData }));
 
                     ktl.api.createRecords(bulkOpsViewId, recordsToCreate, [], {
+                        autoUploadAssets: true,
                         onProgress: ({ created, failed }) => {
                             countDone = created + failed;
                             showProgress();
