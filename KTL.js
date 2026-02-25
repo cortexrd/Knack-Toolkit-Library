@@ -38,7 +38,7 @@ function Ktl($, appInfo) {
 
     const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
-    //KEC stands for "KTL Event Code".  Next:  KEC_1028
+    //KEC stands for "KTL Event Code".  Next:  KEC_1033
 
     //window.ktlParserStart = window.performance.now();
     //Parser step 1 : Add view keywords.
@@ -4404,6 +4404,7 @@ function Ktl($, appInfo) {
 
                 this._initLogSettings();
                 this._initWriteQueue();
+                this._inflightGets = new Map();
             }
 
             /**
@@ -4437,22 +4438,21 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Get all records from a view across pages.
+             * Get all records from a view across pages, fetching remaining pages in parallel batches.
              * @param {string} viewId
              * @param {Object} [options]
+             * @param {number} [options.pageConcurrency=5] - Max pages to fetch concurrently after the first.
              * @returns {Promise<Array<Object>>}
              */
             async getAllRecords(viewId, options = {}) {
                 const opts = options || {};
                 const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
-                const firstPage = await this.getRecords(viewId, {
-                    filters: opts.filters,
-                    sorters: opts.sorters,
-                    page: 1,
-                    rows,
-                    rawResponse: true,
-                    timeout: opts.timeout
-                });
+                const pageConcurrency = Number.isFinite(opts.pageConcurrency) && opts.pageConcurrency > 0
+                    ? Math.floor(opts.pageConcurrency)
+                    : 5;
+                const pageOpts = { filters: opts.filters, sorters: opts.sorters, rows, rawResponse: true, timeout: opts.timeout };
+
+                const firstPage = await this.getRecords(viewId, { ...pageOpts, page: 1 });
 
                 const totalPages = Number(firstPage?.total_pages || 0);
                 const totalRecords = Number(firstPage?.total_records || 0);
@@ -4460,27 +4460,27 @@ function Ktl($, appInfo) {
 
                 if (totalRecords === 0 || totalPages <= 1) return allRecords;
 
-                for (let page = 2; page <= totalPages; page += 1) {
-                    const nextPage = await this.getRecords(viewId, {
-                        filters: opts.filters,
-                        sorters: opts.sorters,
-                        page,
-                        rows,
-                        rawResponse: true,
-                        timeout: opts.timeout
-                    });
+                // Fetch remaining pages in parallel batches to reduce wall-clock time.
+                for (let batchStart = 2; batchStart <= totalPages; batchStart += pageConcurrency) {
+                    const batchEnd = Math.min(totalPages, batchStart + pageConcurrency - 1);
+                    const pageNumbers = [];
+                    for (let p = batchStart; p <= batchEnd; p++) pageNumbers.push(p);
 
-                    if (Array.isArray(nextPage?.records)) {
-                        allRecords.push(...nextPage.records);
+                    const batchResults = await Promise.all(
+                        pageNumbers.map(page => this.getRecords(viewId, { ...pageOpts, page }))
+                    );
+
+                    for (const nextPage of batchResults) {
+                        if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
                     }
 
                     if (typeof opts.onProgress === 'function') {
                         opts.onProgress({
-                            page,
+                            page: batchEnd,
                             totalPages,
                             recordsLoaded: allRecords.length,
                             totalRecords,
-                            percentage: totalPages > 0 ? Math.round((page / totalPages) * 100) : 100
+                            percentage: Math.round((batchEnd / totalPages) * 100)
                         });
                     }
                 }
@@ -4505,38 +4505,37 @@ function Ktl($, appInfo) {
              * Fetch child records connected to a parent record.
              * @param {string} viewId
              * @param {string} recordId
-             * @param {string} connectionFieldKey
+             * @param {string} connectionSlug
              * @param {Object} [options]
              * @returns {Promise<Array<Object>|Object>}
              */
-            async getRecordChildren(viewId, recordId, connectionFieldKey, options = {}) {
+            async getChildRecords(viewId, recordId, connectionSlug, options = {}) {
                 const opts = options || {};
                 const params = this._buildQueryParams(opts);
-                params[`${connectionFieldKey}_id`] = recordId;
+                params[`${connectionSlug}_id`] = recordId;
                 const url = this._formatApiUrl(viewId) + this._formatParams(params);
                 const responseData = await this._request(url, { method: 'GET' }, opts.timeout);
                 return opts.rawResponse ? responseData : responseData?.records;
             }
 
             /**
-             * Fetch all connected child records.
+             * Fetch all connected child records, fetching remaining pages in parallel batches.
              * @param {string} viewId
              * @param {string} recordId
-             * @param {string} connectionFieldKey
+             * @param {string} connectionSlug
              * @param {Object} [options]
+             * @param {number} [options.pageConcurrency=5] - Max pages to fetch concurrently after the first.
              * @returns {Promise<Array<Object>>}
              */
-            async getAllRecordChildren(viewId, recordId, connectionFieldKey, options = {}) {
+            async getAllChildRecords(viewId, recordId, connectionSlug, options = {}) {
                 const opts = options || {};
                 const rows = Number.isFinite(opts.rows) ? opts.rows : 1000;
-                const firstPage = await this.getRecordChildren(viewId, recordId, connectionFieldKey, {
-                    filters: opts.filters,
-                    sorters: opts.sorters,
-                    page: 1,
-                    rows,
-                    rawResponse: true,
-                    timeout: opts.timeout
-                });
+                const pageConcurrency = Number.isFinite(opts.pageConcurrency) && opts.pageConcurrency > 0
+                    ? Math.floor(opts.pageConcurrency)
+                    : 5;
+                const pageOpts = { filters: opts.filters, sorters: opts.sorters, rows, rawResponse: true, timeout: opts.timeout };
+
+                const firstPage = await this.getChildRecords(viewId, recordId, connectionSlug, { ...pageOpts, page: 1 });
 
                 const totalPages = Number(firstPage?.total_pages || 0);
                 const totalRecords = Number(firstPage?.total_records || 0);
@@ -4544,27 +4543,27 @@ function Ktl($, appInfo) {
 
                 if (totalRecords === 0 || totalPages <= 1) return allRecords;
 
-                for (let page = 2; page <= totalPages; page += 1) {
-                    const nextPage = await this.getRecordChildren(viewId, recordId, connectionFieldKey, {
-                        filters: opts.filters,
-                        sorters: opts.sorters,
-                        page,
-                        rows,
-                        rawResponse: true,
-                        timeout: opts.timeout
-                    });
+                // Fetch remaining pages in parallel batches to reduce wall-clock time.
+                for (let batchStart = 2; batchStart <= totalPages; batchStart += pageConcurrency) {
+                    const batchEnd = Math.min(totalPages, batchStart + pageConcurrency - 1);
+                    const pageNumbers = [];
+                    for (let p = batchStart; p <= batchEnd; p++) pageNumbers.push(p);
 
-                    if (Array.isArray(nextPage?.records)) {
-                        allRecords.push(...nextPage.records);
+                    const batchResults = await Promise.all(
+                        pageNumbers.map(page => this.getChildRecords(viewId, recordId, connectionSlug, { ...pageOpts, page }))
+                    );
+
+                    for (const nextPage of batchResults) {
+                        if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
                     }
 
                     if (typeof opts.onProgress === 'function') {
                         opts.onProgress({
-                            page,
+                            page: batchEnd,
                             totalPages,
                             recordsLoaded: allRecords.length,
                             totalRecords,
-                            percentage: totalPages > 0 ? Math.round((page / totalPages) * 100) : 100
+                            percentage: Math.round((batchEnd / totalPages) * 100)
                         });
                     }
                 }
@@ -4573,32 +4572,60 @@ function Ktl($, appInfo) {
             }
 
             /**
+             * Find all records where a field equals a value. Convenience wrapper around getAllRecords.
+             * @param {string} viewId
+             * @param {string} fieldId - The field key to filter on (e.g. 'field_1').
+             * @param {*} value - The value to match.
+             * @param {Object} [options] - Same options as getAllRecords.
+             * @returns {Promise<Array<Object>>}
+             */
+            async findRecords(viewId, fieldId, value, options = {}) {
+                const opts = options || {};
+                const baseRule = { field: fieldId, operator: 'is', value };
+                let mergedFilters = { match: 'and', rules: [baseRule] };
+
+                if (opts.filters) {
+                    if (opts.filters.match && Array.isArray(opts.filters.rules)) {
+                        mergedFilters = { match: 'and', rules: [baseRule, ...opts.filters.rules] };
+                    } else {
+                        mergedFilters = { match: 'and', rules: [baseRule, opts.filters] };
+                    }
+                }
+
+                return this.getAllRecords(viewId, { ...opts, filters: mergedFilters });
+            }
+
+            /**
              * Create a record in a view.
              * @param {string} viewId
              * @param {Object} recordData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
+             * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
+             * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<Object>}
              */
             async createRecord(viewId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId);
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                if (staggerMs > 0) {
-                    await new Promise(resolve => setTimeout(resolve, staggerMs));
-                }
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
+
+                const preparedRecordData = await this._prepareRecordData(recordData, opts);
+
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
                         url,
                         {
                             method: 'POST',
-                            body: this._prepareBody(recordData),
+                            body: this._prepareBody(preparedRecordData),
                             rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
                             onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
                         },
                         opts.timeout
                     );
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
                     return result;
                 });
             }
@@ -4609,9 +4636,13 @@ function Ktl($, appInfo) {
              * @param {Object[]} recordsData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
+             * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
+             * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
+             * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
              */
             async createRecords(viewId, recordsData, refreshViews, options = {}) {
@@ -4619,51 +4650,45 @@ function Ktl($, appInfo) {
                 const total = payloads.length;
                 if (!total) return { total: 0, created: 0, failed: 0, records: [] };
 
-                const opts = options || {};
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let created = 0;
                 let failed = 0;
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedIndices = [];
                 const createdRecords = [];
-                const requestOptions = {
-                    ...opts,
-                    _on429: () => {
-                        rateLimit429Count += 1;
-                    }
-                };
-
-                const tasks = payloads.map((recordData, index) => delay(staggerMs * index).then(() => this.createRecord(viewId, recordData, [], requestOptions))
-                    .then((record) => {
-                        created += 1;
-                        createdRecords[index] = record;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ created, failed, total, index, record });
-                    })
-                    .catch((error) => {
-                        failed += 1;
-                        failedIndices.push(index);
-                        if (!firstError) firstError = error;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ created, failed, total, index, error });
-                        if (!opts.continueOnError) throw error;
-                    }));
+                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                    rateLimit429Count += 1;
+                });
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
 
                 try {
-                    if (opts.continueOnError) {
-                        await Promise.allSettled(tasks);
-                    } else {
-                        await Promise.all(tasks);
-                    }
+                    const batchResult = await this._runBatchWorkers({
+                        total,
+                        workerCount,
+                        staggerMs,
+                        continueOnError: opts.continueOnError,
+                        execute: async (index) => {
+                            try {
+                                const record = await this.createRecord(viewId, payloads[index], [], requestOptions);
+                                created += 1;
+                                createdRecords[index] = record;
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ created, failed, total, index, record });
+                            } catch (error) {
+                                failed += 1;
+                                failedIndices.push(index);
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ created, failed, total, index, error });
+                                if (!opts.continueOnError)
+                                    throw error;
+                            }
+                        }
+                    });
+                    firstError = batchResult.firstError;
 
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
 
-                    if (failedIndices.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                        const errorMsg = `KEC_1027 - API create failed for view ${viewId}. Failed records (${failedIndices.length}/${total}) at indices: ${failedIndices.join(', ')}`;
-                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                    }
+                    this._logBatchFailures('KEC_1028', 'create', viewId, failedIndices.length, total, `at indices: ${failedIndices.join(', ')}`);
 
                     if (firstError && !opts.continueOnError)
                         throw firstError;
@@ -4671,8 +4696,141 @@ function Ktl($, appInfo) {
                     return { total, created, failed, records: createdRecords.filter(Boolean) };
                 } finally {
                     const processed = created + failed;
-                    console.log(`[KTL API] Concurrent create summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                    this._logBatchSummary('create', viewId, processed, total, rateLimit429Count);
                 }
+            }
+
+            /**
+             * Upload a file or image asset to Knack and return the uploaded asset metadata.
+             * @param {File|Blob} file
+             * @param {Object} [options]
+             * @param {'file'|'image'} [options.assetType] - Optional override. Auto-detected from mime type when omitted.
+             * @param {number} [options.timeout]
+             * @returns {Promise<Object>} Uploaded asset payload (must include `id`).
+             */
+            async uploadAsset(file, options = {}) {
+                if (!(file instanceof Blob)) {
+                    throw new Error('KTL API error: uploadAsset requires a File/Blob.');
+                }
+
+                const opts = options || {};
+                const appId = Knack?.application_id;
+                if (!appId) {
+                    throw new Error('KTL API error: missing Knack application id.');
+                }
+
+                const inferredType = (file?.type || '').startsWith('image/') ? 'image' : 'file';
+                const assetType = opts.assetType === 'image' || opts.assetType === 'file' ? opts.assetType : inferredType;
+                const base = this._getApiBaseUrl().replace(/\/$/, '');
+                const url = `${base}/applications/${appId}/assets/${assetType}/upload`;
+
+                const formData = new FormData();
+                const fileName = typeof file?.name === 'string' && file.name.length ? file.name : 'upload.bin';
+                formData.append('files', file, fileName);
+
+                const timeoutMs = Number.isFinite(opts.timeout) ? opts.timeout : this.options.timeout;
+
+                return await this._enqueueWrite(async () => {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                    this._toggleSpinner(true);
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: this._buildUploadHeaders(),
+                            body: formData,
+                            signal: controller.signal
+                        });
+
+                        const responseText = await response.text();
+                        if (!response.ok) {
+                            throw this._buildRequestError({
+                                status: response.status,
+                                statusText: response.statusText,
+                                responseText,
+                                headers: response.headers
+                            });
+                        }
+
+                        let parsed;
+                        try {
+                            parsed = responseText ? JSON.parse(responseText) : {};
+                        } catch (e) {
+                            parsed = responseText || {};
+                        }
+
+                        const asset = Array.isArray(parsed) ? parsed[0] : parsed;
+                        if (!asset || !asset.id) {
+                            throw new Error('KTL API error: asset upload succeeded but no asset id was returned.');
+                        }
+
+                        return asset;
+                    } catch (error) {
+                        if (error?.name === 'AbortError') {
+                            throw this._buildRequestError({ status: 0, statusText: 'Request timeout', responseText: '' });
+                        }
+                        throw error;
+                    } finally {
+                        clearTimeout(timeoutId);
+                        this._toggleSpinner(false);
+                    }
+                });
+            }
+
+            /**
+             * Replace File/Blob field values with uploaded Knack asset IDs when autoUploadAssets is enabled.
+             * Used by both createRecord and updateRecord so that callers can pass File/Blob values directly.
+             * @param {Object} recordData
+             * @param {Object} options
+             * @returns {Promise<Object>}
+             * @private
+             */
+            async _prepareRecordData(recordData, options = {}) {
+                const data = recordData && typeof recordData === 'object' ? { ...recordData } : recordData;
+                if (!options?.autoUploadAssets || !data || typeof data !== 'object') {
+                    return data;
+                }
+
+                const allowList = Array.isArray(options.assetFieldIds)
+                    ? new Set(options.assetFieldIds)
+                    : null;
+                const typesByField = options.assetTypesByField || {};
+
+                for (const [fieldKey, value] of Object.entries(data)) {
+                    if (!(value instanceof Blob)) continue;
+                    if (allowList && !allowList.has(fieldKey)) continue;
+                    if (!allowList && !this._isAssetField(fieldKey)) continue;
+
+                    const assetType = typesByField[fieldKey];
+                    const asset = await this.uploadAsset(value, {
+                        timeout: options.timeout,
+                        assetType
+                    });
+                    data[fieldKey] = asset.id;
+                }
+
+                return data;
+            }
+
+            /**
+             * Determine if a field key is a Knack file/image field.
+             * @param {string} fieldKey
+             * @returns {boolean}
+             * @private
+             */
+            _isAssetField(fieldKey = '') {
+                if (!fieldKey || typeof fieldKey !== 'string') return false;
+
+                const fromKtl = typeof ktl?.fields?.getFieldType === 'function'
+                    ? ktl.fields.getFieldType(fieldKey)
+                    : null;
+                if (fromKtl === 'file' || fromKtl === 'image') {
+                    return true;
+                }
+
+                const fieldModel = Knack?.objects?.getField?.(fieldKey);
+                const fieldType = fieldModel?.attributes?.type || null;
+                return fieldType === 'file' || fieldType === 'image';
             }
 
             /**
@@ -4682,97 +4840,122 @@ function Ktl($, appInfo) {
              * @param {Object} recordData
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
+             * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
+             * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<Object>}
              */
             async updateRecord(viewId, recordId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
+                const preparedRecordData = await this._prepareRecordData(recordData, opts);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
                         url,
                         {
                             method: 'PUT',
-                            body: this._prepareBody(recordData),
+                            body: this._prepareBody(preparedRecordData),
                             rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
                             onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
                         },
                         opts.timeout
                     );
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
                     return result;
                 });
             }
 
             /**
              * Update multiple records in a view using write concurrency.
+             *
+             * Accepts two calling shapes:
+             *   - Shared data:   updateRecords(viewId, recordIds, recordData, refreshViews, options)
+             *   - Per-record:    updateRecords(viewId, records, refreshViews, options)
+             *     where `records` is Array<{id: string, data: Object}>
+             *
              * @param {string} viewId
-             * @param {string[]} recordIds
-             * @param {Object} recordData
+             * @param {string[]|Array<{id:string,data:Object}>} recordIds - Array of record IDs (shared-data shape) or per-record objects.
+             * @param {Object|Array|string} recordData - Shared record data (shared-data shape) or the refreshViews param (per-record shape).
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
              * @returns {Promise<{ total: number, updated: number, failed: number }>}
              */
             async updateRecords(viewId, recordIds, recordData, refreshViews, options = {}) {
-                const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
-                const total = ids.length;
+                // Detect per-record shape: Array<{id, data}>
+                const isPerRecord = Array.isArray(recordIds)
+                    && recordIds.length > 0
+                    && recordIds[0] !== null
+                    && typeof recordIds[0] === 'object'
+                    && 'id' in recordIds[0]
+                    && 'data' in recordIds[0];
+
+                let records, effectiveRefresh, opts;
+                if (isPerRecord) {
+                    // updateRecords(viewId, [{id, data}, ...], refreshViews, options)
+                    records = recordIds.filter(r => r && r.id);
+                    effectiveRefresh = recordData; // positional shift
+                    opts = refreshViews || {};
+                } else {
+                    records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
+                    effectiveRefresh = options?.refreshViews !== undefined ? options.refreshViews : refreshViews;
+                    opts = options || {};
+                }
+
+                const total = records.length;
                 if (!total) return { total: 0, updated: 0, failed: 0 };
 
-                const opts = options || {};
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let updated = 0;
                 let failed = 0;
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
-                const requestOptions = {
-                    ...opts,
-                    _on429: () => {
-                        rateLimit429Count += 1;
-                    }
-                };
-
-                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.updateRecord(viewId, recordId, recordData, [], requestOptions))
-                    .then(() => {
-                        updated += 1;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ updated, failed, total, recordId });
-                    })
-                    .catch((error) => {
-                        failed += 1;
-                        failedRecordIds.push(recordId);
-                        if (!firstError) firstError = error;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ updated, failed, total, recordId });
-                        if (!opts.continueOnError) throw error;
-                    }));
+                const { opts: batchOpts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, opts, () => {
+                    rateLimit429Count += 1;
+                });
 
                 try {
-                    if (opts.continueOnError) {
-                        await Promise.allSettled(tasks);
-                    } else {
-                        await Promise.all(tasks);
-                    }
+                    const batchResult = await this._runBatchWorkers({
+                        total,
+                        workerCount,
+                        staggerMs,
+                        continueOnError: batchOpts.continueOnError,
+                        execute: async (index) => {
+                            const { id: recordId, data } = records[index];
+                            try {
+                                await this.updateRecord(viewId, recordId, data, [], requestOptions);
+                                updated += 1;
+                                if (typeof batchOpts.onProgress === 'function')
+                                    batchOpts.onProgress({ updated, failed, total, recordId });
+                            } catch (error) {
+                                failed += 1;
+                                failedRecordIds.push(recordId);
+                                if (typeof batchOpts.onProgress === 'function')
+                                    batchOpts.onProgress({ updated, failed, total, recordId });
+                                if (!batchOpts.continueOnError)
+                                    throw error;
+                            }
+                        }
+                    });
+                    firstError = batchResult.firstError;
 
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
 
                     // Log failed records if any (only after all retries exhausted)
-                    if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                        const recordList = failedRecordIds.join(', ');
-                        const errorMsg = `KEC_1027 - API update failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
-                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                    }
+                    this._logBatchFailures('KEC_1029', 'update', viewId, failedRecordIds.length, total, `: ${failedRecordIds.join(', ')}`);
 
-                    if (firstError && !opts.continueOnError)
+                    if (firstError && !batchOpts.continueOnError)
                         throw firstError;
 
                     return { total, updated, failed };
                 } finally {
                     const processed = updated + failed;
-                    console.log(`[KTL API] Concurrent update summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                    this._logBatchSummary('update', viewId, processed, total, rateLimit429Count);
                 }
             }
 
@@ -4782,10 +4965,12 @@ function Ktl($, appInfo) {
              * @param {string} recordId
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @returns {Promise<Object>}
              */
             async deleteRecord(viewId, recordId, refreshViews, options = {}) {
                 const opts = options || {};
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
                 const url = this._formatApiUrl(viewId, recordId);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -4797,7 +4982,7 @@ function Ktl($, appInfo) {
                         },
                         opts.timeout
                     );
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
                     return result;
                 });
             }
@@ -4808,6 +4993,7 @@ function Ktl($, appInfo) {
              * @param {string[]} recordIds
              * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
@@ -4818,51 +5004,45 @@ function Ktl($, appInfo) {
                 const total = ids.length;
                 if (!total) return { total: 0, deleted: 0, failed: 0 };
 
-                const opts = options || {};
-                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
-                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                 let deleted = 0;
                 let failed = 0;
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
-                const requestOptions = {
-                    ...opts,
-                    _on429: () => {
-                        rateLimit429Count += 1;
-                    }
-                };
-
-                const tasks = ids.map((recordId, index) => delay(staggerMs * index).then(() => this.deleteRecord(viewId, recordId, [], requestOptions))
-                    .then(() => {
-                        deleted += 1;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ deleted, failed, total, recordId });
-                    })
-                    .catch((error) => {
-                        failed += 1;
-                        failedRecordIds.push(recordId);
-                        if (!firstError) firstError = error;
-                        if (typeof opts.onProgress === 'function')
-                            opts.onProgress({ deleted, failed, total, recordId });
-                        if (!opts.continueOnError) throw error;
-                    }));
+                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                    rateLimit429Count += 1;
+                });
+                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
 
                 try {
-                    if (opts.continueOnError) {
-                        await Promise.allSettled(tasks);
-                    } else {
-                        await Promise.all(tasks);
-                    }
+                    const batchResult = await this._runBatchWorkers({
+                        total,
+                        workerCount,
+                        staggerMs,
+                        continueOnError: opts.continueOnError,
+                        execute: async (index) => {
+                            const recordId = ids[index];
+                            try {
+                                await this.deleteRecord(viewId, recordId, [], requestOptions);
+                                deleted += 1;
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ deleted, failed, total, recordId });
+                            } catch (error) {
+                                failed += 1;
+                                failedRecordIds.push(recordId);
+                                if (typeof opts.onProgress === 'function')
+                                    opts.onProgress({ deleted, failed, total, recordId });
+                                if (!opts.continueOnError)
+                                    throw error;
+                            }
+                        }
+                    });
+                    firstError = batchResult.firstError;
 
-                    await this._refreshAfterWrite(refreshViews);
+                    await this._refreshAfterWrite(effectiveRefresh);
 
                     // Log failed records if any (only after all retries exhausted)
-                    if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
-                        const recordList = failedRecordIds.join(', ');
-                        const errorMsg = `KEC_1027 - API delete failed for view ${viewId}. Failed records (${failedRecordIds.length}/${total}): ${recordList}`;
-                        ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
-                    }
+                    this._logBatchFailures('KEC_1030', 'delete', viewId, failedRecordIds.length, total, `: ${failedRecordIds.join(', ')}`);
 
                     if (firstError && !opts.continueOnError)
                         throw firstError;
@@ -4870,7 +5050,7 @@ function Ktl($, appInfo) {
                     return { total, deleted, failed };
                 } finally {
                     const processed = deleted + failed;
-                    console.log(`[KTL API] Concurrent delete summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                    this._logBatchSummary('delete', viewId, processed, total, rateLimit429Count);
                 }
             }
 
@@ -4880,10 +5060,19 @@ function Ktl($, appInfo) {
              * @returns {Promise<void|void[]>}
              */
             async refreshView(viewId) {
+                const refreshOne = async (id) => {
+                    if (!id) return;
+                    try {
+                        await ktl.views.refreshView(id);
+                    } catch (error) {
+                        this._log('View refresh failed', { viewId: id, error }, 'warn');
+                    }
+                };
+
                 if (Array.isArray(viewId)) {
-                    return Promise.all(viewId.map(id => this._refreshSingleView(id)));
+                    return Promise.all(viewId.map(id => refreshOne(id)));
                 }
-                return this._refreshSingleView(viewId);
+                return refreshOne(viewId);
             }
 
             /**
@@ -5050,6 +5239,117 @@ function Ktl($, appInfo) {
             }
 
             /**
+             * Build common batch execution settings for bulk write methods.
+             * @param {number} total
+             * @param {Object} [options]
+             * @param {Function} [on429]
+             * @returns {{opts:Object,staggerMs:number,workerCount:number,requestOptions:Object}}
+             * @private
+             */
+            _buildBatchContext(total, options = {}, on429 = () => { }) {
+                const opts = options || {};
+                const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
+                const queue = this._writeQueue || {};
+                const workerCount = Math.max(1, Math.min(total, Math.floor(queue.current || this.options.writeConcurrency || 1)));
+                const requestOptions = {
+                    ...opts,
+                    _on429: () => {
+                        typeof on429 === 'function' && on429();
+                    }
+                };
+
+                return { opts, staggerMs, workerCount, requestOptions };
+            }
+
+            /**
+             * Log standardized summary for bulk API operations.
+             * @param {'create'|'update'|'delete'} operation
+             * @param {string} viewId
+             * @param {number} processed
+             * @param {number} total
+             * @param {number} rateLimit429Count
+             * @private
+             */
+            _logBatchSummary(operation, viewId, processed, total, rateLimit429Count) {
+                console.log(`[KTL API] Concurrent ${operation} summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+            }
+
+            /**
+             * Log standardized failure details for bulk API operations.
+             * @param {string} code
+             * @param {'create'|'update'|'delete'} operation
+             * @param {string} viewId
+             * @param {number} failedCount
+             * @param {number} total
+             * @param {string} detailsSuffix
+             * @private
+             */
+            _logBatchFailures(code, operation, viewId, failedCount, total, detailsSuffix = '') {
+                if (failedCount <= 0 || typeof ktl?.log?.addLog !== 'function') return;
+                const errorMsg = `${code} - API ${operation} failed for view ${viewId}. Failed records (${failedCount}/${total})${detailsSuffix}`;
+                ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+            }
+
+            /**
+             * Run indexed tasks using bounded worker concurrency.
+             * @param {Object} config
+             * @param {number} config.total
+             * @param {number} config.workerCount
+             * @param {number} [config.staggerMs=0]
+             * @param {boolean} [config.continueOnError=false]
+             * @param {(index:number)=>Promise<void>} config.execute
+             * @returns {Promise<{firstError: Error|null}>}
+             * @private
+             */
+            async _runBatchWorkers(config = {}) {
+                const total = Number.isFinite(config.total) ? config.total : 0;
+                const workerCount = Number.isFinite(config.workerCount) ? Math.max(1, Math.floor(config.workerCount)) : 1;
+                const staggerMs = Number.isFinite(config.staggerMs) ? Math.max(0, Math.floor(config.staggerMs)) : 0;
+                const continueOnError = config.continueOnError === true;
+                const execute = typeof config.execute === 'function' ? config.execute : null;
+
+                if (!execute)
+                    throw new TypeError('KTL API error: _runBatchWorkers requires an execute callback');
+
+                if (total <= 0)
+                    return { firstError: null };
+
+                const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                let nextIndex = 0;
+                let stopScheduling = false;
+                let firstError = null;
+
+                const runWorker = async () => {
+                    while (true) {
+                        if (stopScheduling && !continueOnError)
+                            return;
+
+                        const index = nextIndex;
+                        nextIndex += 1;
+                        if (index >= total)
+                            return;
+
+                        if (staggerMs > 0)
+                            await delay(staggerMs);
+
+                        if (stopScheduling && !continueOnError)
+                            return;
+
+                        try {
+                            await execute(index);
+                        } catch (error) {
+                            if (!firstError) firstError = error;
+                            if (!continueOnError)
+                                stopScheduling = true;
+                        }
+                    }
+                };
+
+                await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+                return { firstError };
+            }
+
+            /**
              * Enqueue a write task respecting concurrency limits.
              * @param {() => Promise<any>} task
              * @returns {Promise<any>}
@@ -5170,6 +5470,23 @@ function Ktl($, appInfo) {
             }
 
             /**
+             * Build headers for multipart asset upload calls.
+             * @returns {Object}
+             * @private
+             */
+            _buildUploadHeaders() {
+                const headers = {
+                    'X-Knack-Application-Id': Knack.application_id,
+                    'X-Knack-REST-API-Key': 'knack'
+                };
+                const token = typeof Knack?.getUserToken === 'function' ? Knack.getUserToken() : null;
+                if (token) {
+                    headers.Authorization = token;
+                }
+                return headers;
+            }
+
+            /**
              * Format API URL for view-based operations.
              * @param {string} viewId
              * @param {string} [recordId]
@@ -5198,7 +5515,9 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Perform an Ajax request with retries, backoff, and timeout.
+             * Perform an HTTP request with retries, backoff, and timeout.
+             * Identical concurrent GET requests are deduplicated: the second caller shares the
+             * first in-flight promise rather than dispatching a redundant fetch.
              * @param {string} url
              * @param {Object} options
              * @param {number} [timeoutOverride]
@@ -5206,6 +5525,34 @@ function Ktl($, appInfo) {
              * @private
              */
             async _request(url, options = {}, timeoutOverride) {
+                const method = ((options || {}).method || 'GET').toUpperCase();
+
+                // Deduplicate identical concurrent GET requests.
+                if (method === 'GET') {
+                    const timeoutKey = Number.isFinite(timeoutOverride) ? timeoutOverride : 'default';
+                    const key = `${url}::${timeoutKey}`;
+                    if (this._inflightGets.has(key)) {
+                        return this._inflightGets.get(key);
+                    }
+                    const promise = this._requestInner(url, options, timeoutOverride).finally(() => {
+                        this._inflightGets.delete(key);
+                    });
+                    this._inflightGets.set(key, promise);
+                    return promise;
+                }
+
+                return this._requestInner(url, options, timeoutOverride);
+            }
+
+            /**
+             * Inner fetch-with-retry implementation, called by _request.
+             * @param {string} url
+             * @param {Object} options
+             * @param {number} [timeoutOverride]
+             * @returns {Promise<Object>}
+             * @private
+             */
+            async _requestInner(url, options = {}, timeoutOverride) {
                 const maxRetries = this.options.maxRetries;
                 const maxAttempts = 1 + maxRetries;
                 const retryOnStatus = this.options.retryOnStatus;
@@ -5215,36 +5562,45 @@ function Ktl($, appInfo) {
                 const timeoutMs = Number.isFinite(timeoutOverride) ? timeoutOverride : this.options.timeout;
 
                 let attempt = 0;
-                const { rateLimitHandler, onRateLimit429, ...ajaxOptions } = options || {};
+                const { rateLimitHandler, onRateLimit429, ...requestOptions } = options || {};
 
                 this._toggleSpinner(true);
 
                 try {
                     while (attempt < maxAttempts) {
                         attempt += 1;
+                        const method = (requestOptions.method || 'GET').toUpperCase();
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
                         try {
-                            const result = await new Promise((resolve, reject) => {
-                                $.ajax({
-                                    url: url,
-                                    type: ajaxOptions.method || 'GET',
-                                    crossDomain: true,
-                                    timeout: timeoutMs,
-                                    headers: this._buildHeaders(),
-                                    data: ajaxOptions.body,
-                                    success: function (data) {
-                                        resolve(data);
-                                    },
-                                    error: function (jqXHR) {
-                                        reject(jqXHR);
-                                    }
-                                });
-                            });
+                            const fetchOptions = {
+                                method,
+                                headers: this._buildHeaders(),
+                                signal: controller.signal
+                            };
 
-                            this._log('API response', result);
-                            return result;
-                        } catch (jqXHR) {
-                            const status = jqXHR?.status;
+                            if (requestOptions.body !== undefined && requestOptions.body !== null && !['GET', 'HEAD'].includes(method)) {
+                                fetchOptions.body = requestOptions.body;
+                            }
+
+                            const response = await fetch(url, fetchOptions);
+                            const responseText = await response.text();
+
+                            if (response.ok) {
+                                const result = responseText ? (() => {
+                                    try {
+                                        return JSON.parse(responseText);
+                                    } catch (e) {
+                                        return responseText;
+                                    }
+                                })() : {};
+
+                                this._log('API response', result);
+                                return result;
+                            }
+
+                            const status = response?.status;
 
                             if (status === 429 && typeof onRateLimit429 === 'function') {
                                 onRateLimit429();
@@ -5252,12 +5608,17 @@ function Ktl($, appInfo) {
 
                             const isRetryable = retryOnStatus.includes(status);
                             if (!isRetryable || attempt >= maxAttempts) {
-                                throw this._buildRequestError(jqXHR);
+                                throw this._buildRequestError({
+                                    status,
+                                    statusText: response?.statusText,
+                                    responseText,
+                                    headers: response?.headers
+                                });
                             }
 
                             const retryIndex = attempt - 1;
                             const backoffDelay = this._computeBackoffMs(baseDelay, maxDelay, retryIndex);
-                            const retryAfterDelay = this._getRetryAfterDelayMs(jqXHR);
+                            const retryAfterDelay = this._getRetryAfterDelayMs(response);
                             const delay = status === 429
                                 ? Math.max(backoffDelay, Number(min429Delay) || 0, retryAfterDelay)
                                 : backoffDelay;
@@ -5268,6 +5629,34 @@ function Ktl($, appInfo) {
 
                             this._log('Retrying request', { status, attempt, delay }, 'warn');
                             await new Promise(resolve => setTimeout(resolve, delay));
+                        } catch (error) {
+                            const isTimeout = error?.name === 'AbortError';
+                            if (isTimeout) {
+                                throw this._buildRequestError({
+                                    status: 0,
+                                    statusText: 'Request timeout',
+                                    responseText: ''
+                                });
+                            }
+
+                            // Re-throw errors already structured by _buildRequestError (e.g. thrown
+                            // for non-retryable HTTP status codes above) without a second pass.
+                            if (error instanceof Error && error.status !== undefined) {
+                                throw error;
+                            }
+
+                            const status = error?.status;
+                            const isRetryable = retryOnStatus.includes(status);
+                            if (!isRetryable || attempt >= maxAttempts) {
+                                throw this._buildRequestError(error);
+                            }
+
+                            const retryIndex = attempt - 1;
+                            const delay = this._computeBackoffMs(baseDelay, maxDelay, retryIndex);
+                            this._log('Retrying request', { status, attempt, delay }, 'warn');
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                        } finally {
+                            clearTimeout(timeoutId);
                         }
                     }
                 } finally {
@@ -5278,14 +5667,23 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Build a structured error from a jQuery XHR object.
+             * Build a structured error from an HTTP/jqXHR error-like object.
              * @param {Object} jqXHR
              * @returns {Error}
              * @private
              */
             _buildRequestError(jqXHR) {
                 const status = jqXHR?.status || 0;
-                const responseText = jqXHR?.responseText || '';
+                // Accept plain objects with responseText (our internal convention).
+                // Also tolerate fetch Response-like objects where body text may not be pre-read.
+                const hasResponseLikeShape = !!jqXHR && typeof jqXHR === 'object'
+                    && typeof jqXHR.status === 'number'
+                    && typeof jqXHR.statusText === 'string'
+                    && typeof jqXHR.text === 'function';
+
+                const responseText = typeof jqXHR?.responseText === 'string'
+                    ? jqXHR.responseText
+                    : (typeof jqXHR?.body === 'string' ? jqXHR.body : '');
                 let message = jqXHR?.statusText || 'Unknown error';
 
                 try {
@@ -5293,6 +5691,10 @@ function Ktl($, appInfo) {
                     message = json?.message || json?.error || message;
                 } catch (e) {
                     // ignore parse errors
+                }
+
+                if (!responseText && hasResponseLikeShape) {
+                    message = `${message} (response body not pre-read)`;
                 }
 
                 const error = new Error(`API error ${status}: ${message}`);
@@ -5323,9 +5725,15 @@ function Ktl($, appInfo) {
              * @private
              */
             _getRetryAfterDelayMs(jqXHR) {
-                if (!jqXHR || typeof jqXHR.getResponseHeader !== 'function') return 0;
+                if (!jqXHR) return 0;
 
-                const retryAfter = jqXHR.getResponseHeader('Retry-After');
+                let retryAfter = null;
+                if (typeof jqXHR.getResponseHeader === 'function') {
+                    retryAfter = jqXHR.getResponseHeader('Retry-After');
+                } else if (jqXHR.headers && typeof jqXHR.headers.get === 'function') {
+                    retryAfter = jqXHR.headers.get('Retry-After');
+                }
+
                 if (!retryAfter) return 0;
 
                 const seconds = Number(retryAfter);
@@ -5393,21 +5801,6 @@ function Ktl($, appInfo) {
             }
 
             /**
-             * Refresh a single view with fallbacks.
-             * @param {string} viewId
-             * @returns {Promise<void>}
-             * @private
-             */
-            async _refreshSingleView(viewId) {
-                if (!viewId) return;
-                try {
-                    await ktl.views.refreshView(viewId);
-                } catch (error) {
-                    this._log('View refresh failed', { viewId, error }, 'warn');
-                }
-            }
-
-            /**
              * Prepare a JSON body for requests.
              * @param {Object} data
              * @returns {string}
@@ -5461,12 +5854,12 @@ function Ktl($, appInfo) {
                 return apiInstance.getRecord(...args);
             },
 
-            getRecordChildren: function (...args) {
-                return apiInstance.getRecordChildren(...args);
+            getChildRecords: function (...args) {
+                return apiInstance.getChildRecords(...args);
             },
 
-            getAllRecordChildren: function (...args) {
-                return apiInstance.getAllRecordChildren(...args);
+            getAllChildRecords: function (...args) {
+                return apiInstance.getAllChildRecords(...args);
             },
 
             createRecord: function (...args) {
@@ -5475,6 +5868,10 @@ function Ktl($, appInfo) {
 
             createRecords: function (...args) {
                 return apiInstance.createRecords(...args);
+            },
+
+            uploadAsset: function (...args) {
+                return apiInstance.uploadAsset(...args);
             },
 
             updateRecord: function (...args) {
@@ -5491,6 +5888,10 @@ function Ktl($, appInfo) {
 
             deleteRecords: function (...args) {
                 return apiInstance.deleteRecords(...args);
+            },
+
+            findRecords: function (...args) {
+                return apiInstance.findRecords(...args);
             },
 
             refreshView: function (...args) {
@@ -6580,6 +6981,12 @@ function Ktl($, appInfo) {
 
             getFieldKeywords: function (fieldId, fieldKeywords = {}) {
                 if (!fieldId) return;
+                // Fast path: keywords were pre-parsed at startup into ktlKeywords.
+                if (ktlKeywords[fieldId]) {
+                    fieldKeywords[fieldId] = ktlKeywords[fieldId];
+                    return fieldKeywords;
+                }
+                // Fallback: field was not in ktlKeywords (e.g. dynamically added or no keywords).
                 var fieldDesc = ktl.fields.getFieldDescription(fieldId);
                 if (fieldDesc) {
                     fieldDesc = fieldDesc.replace(/(\r\n|\n|\r)|<[^>]*>/gm, ' ').replace(/ {2,}/g, ' ').trim();
@@ -11255,6 +11662,9 @@ function Ktl($, appInfo) {
         var gotoDateObj = new Date();
         var prevType = '';
         var prevStartDate = '';
+        // Cache for getAllFieldsWithKeywordsInView results — keyed by viewId.
+        // Keywords and view field lists are static after startup, so this is safe to persist for the session.
+        const _fieldsWithKwCache = new Map();
         let chooseGridColumnsGlobalListenerAdded = false;
         let chooseGridColumnsGlobalClickHandler = null;
         let chooseGridColumnsGlobalKeyHandler = null;
@@ -14315,7 +14725,7 @@ function Ktl($, appInfo) {
 
                 if (typeof ktl?.log?.addLog === 'function') {
                     const recordList = failedRecordIds.join(', ');
-                    const errorMsg = `KEC_1027 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${ids.length}): ${recordList}`;
+                    const errorMsg = `KEC_1031 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${ids.length}): ${recordList}`;
                     ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
                 }
 
@@ -14411,7 +14821,7 @@ function Ktl($, appInfo) {
             // Log failed records if any (only after all retries exhausted)
             if (failedRecordIds.length > 0 && typeof ktl?.log?.addLog === 'function') {
                 const recordList = failedRecordIds.join(', ');
-                const errorMsg = `KEC_1027 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${recordIds.length}): ${recordList}`;
+                const errorMsg = `KEC_1031 - API tags ${mode} failed for view ${viewId}. Failed records (${failedRecordIds.length}/${recordIds.length}): ${recordList}`;
                 ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
             }
 
@@ -19685,6 +20095,9 @@ function Ktl($, appInfo) {
             getAllFieldsWithKeywordsInView: function (viewId) {
                 if (!viewId || !Knack.views[viewId] || !Knack.views[viewId].model) return {};
 
+                // Return cached result when available — view field lists and keywords are static after startup.
+                if (_fieldsWithKwCache.has(viewId)) return _fieldsWithKwCache.get(viewId);
+
                 //Scan all fields in view to find any keywords.
                 const view = Knack.views[viewId].model.view;
                 var foundFields = [];
@@ -19755,6 +20168,7 @@ function Ktl($, appInfo) {
                 for (var j = 0; j < foundFields.length; j++)
                     ktl.fields.getFieldKeywords(foundFields[j], fieldsWithKwObj);
 
+                _fieldsWithKwCache.set(viewId, fieldsWithKwObj);
                 return fieldsWithKwObj;
             },
 
@@ -23053,12 +23467,14 @@ function Ktl($, appInfo) {
                             }
 
                             showProgress(0);
-                            ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
-                                onProgress: ({ updated }) => showProgress(updated),
-                                continueOnError: false,
-                                staggerMs: 40
-                            })
-                                .then(async (result) => {
+                            (async () => {
+                                try {
+                                    const result = await ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                                        onProgress: ({ updated }) => showProgress(updated),
+                                        continueOnError: false,
+                                        staggerMs: 40
+                                    });
+
                                     automatedBulkOpsQueue[bulkOpsViewId] = [];
                                     delete automatedBulkOpsQueue[bulkOpsViewId];
 
@@ -23074,12 +23490,12 @@ function Ktl($, appInfo) {
                                     }
 
                                     resolve(result.updated);
-                                })
-                                .catch(async (error) => {
+                                } catch (error) {
                                     await restoreDefaultPageState();
                                     const errorMessage = error.message || 'processAutomatedBulkOps error';
                                     reject(errorMessage);
-                                });
+                                }
+                            })();
 
                             async function restoreDefaultPageState() {
                                 ktl.core.removeInfoPopup();
@@ -31132,9 +31548,32 @@ function Ktl($, appInfo) {
                 if (!$.isEmptyObject(apiData) && e.target.id === 'ktl-bulk-paste-' + viewId) {
                     processBulkEdit(); //Paste button.
                 } else {
-                    recId = recId || e.target.closest('tr[id]').id;
-                    const src = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId].attributes)
-                        || Knack.views[viewId].model.data._byId[recId].attributes;
+                    const sourceRow = (e && e.target && typeof e.target.closest === 'function') ? e.target.closest('tr[id]') : null;
+                    if (!recId && !sourceRow) {
+                        const errorMsg = `KEC_1032 - Bulk operation aborted: source row not found. viewId=${viewId}, operation=${operation}`;
+                        if (typeof ktl?.log?.addLog === 'function')
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+
+                        console.error(errorMsg, { viewId, operation, target: e ? e.target : null });
+                        ktl.core.timedPopup('Bulk operation stopped: source row not found. Please retry after the view finishes loading.', 'warning', 4000);
+                        return;
+                    }
+
+                    recId = recId || sourceRow.id;
+                    const srcRecord = (Knack.views[viewId].model.results_model && Knack.views[viewId].model.results_model.data._byId[recId])
+                        || (Knack.views[viewId].model.data && Knack.views[viewId].model.data._byId[recId]);
+
+                    if (!srcRecord || !srcRecord.attributes) {
+                        const errorMsg = `KEC_1032 - Bulk operation aborted: source record missing. viewId=${viewId}, operation=${operation}, recId=${recId}`;
+                        if (typeof ktl?.log?.addLog === 'function')
+                            ktl.log.addLog(ktl.const.LS_APP_ERROR, errorMsg);
+
+                        console.error(errorMsg, { viewId, operation, recId });
+                        ktl.core.timedPopup('Bulk operation stopped: source record not available. Please retry after the view finishes loading.', 'warning', 4000);
+                        return;
+                    }
+
+                    const src = srcRecord.attributes;
 
                     //Add all selected fields from header.
                     let checkedFields = $(`#${viewId} ${bulkOpsHeaderCheckboxSelector}:is(:checked)`);
@@ -31178,11 +31617,12 @@ function Ktl($, appInfo) {
 
                     const showProgress = (updatedCount) => {
                         const done = Number.isFinite(updatedCount) ? updatedCount : 0;
-                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + pluralizeObjectName(objName, arrayLen) + '.    Records left: ' + (arrayLen - done));
+                        ktl.core.setInfoPopupText('Updating ' + arrayLen + ' ' + pluralizeObjectName(objName, arrayLen) + '.    Records updated: ' + done + ' of ' + arrayLen);
                     };
 
                     showProgress(0);
                     ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                        autoUploadAssets: true,
                         onProgress: ({ updated }) => showProgress(updated),
                         continueOnError: false,
                         staggerMs: 40
@@ -31210,7 +31650,7 @@ function Ktl($, appInfo) {
                     let countDone = 0;
 
                     function showProgress() {
-                        ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + pluralizeObjectName(objName, numToProcess) + '.    Records created: ' + countDone);
+                        ktl.core.setInfoPopupText('Creating ' + numToProcess + ' ' + pluralizeObjectName(objName, numToProcess) + '.    Records processed: ' + countDone + ' of ' + numToProcess);
                     }
 
                     showProgress();
@@ -31218,6 +31658,7 @@ function Ktl($, appInfo) {
                     const recordsToCreate = Array.from({ length: numToProcess }, () => ({ ...apiData }));
 
                     ktl.api.createRecords(bulkOpsViewId, recordsToCreate, [], {
+                        autoUploadAssets: true,
                         onProgress: ({ created, failed }) => {
                             countDone = created + failed;
                             showProgress();
@@ -33816,6 +34257,7 @@ function Ktl($, appInfo) {
         //KTL exposed objects
         const: this.const,
         core: this.core,
+        api: this.api,
         storage: this.storage,
         fields: this.fields,
         views: this.views,
