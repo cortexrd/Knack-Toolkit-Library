@@ -3,5 +3,6 @@ compare.txt
 .claude
 tmpclaude-*
 .playwright-mcp/
+.reviews/
 Announcement.md
 .reviews/
