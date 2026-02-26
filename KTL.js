@@ -9583,7 +9583,7 @@ function Ktl($, appInfo) {
 
             // Inline edit CSS - always generate, class only added if feature enabled at runtime
             css += `
-                td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]):not(.bulkEditSelectedRow) {
+                td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]):not(.bulkEditSelectedRow):not(.ktlNoInlineEdit) {
                     background-color: var(--ktlInlineEditableCellsBgColor) !important;
                 }
             `;
@@ -25171,6 +25171,8 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableHeaderBg) !important;
                                 color: var(--ktlTheme_headersAndLabelsText) !important;
                                 border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .knTable th:not(:first-child) {
                                 border-left-color: transparent !important;
                             }
                             .ktlUserTheme .knTable td:not([style*="background"]):not(.ktlInlineEditableCellsStyle):not(.ktlStickyCell):not(.bulkEditSelectedRow) {
@@ -25181,6 +25183,8 @@ function Ktl($, appInfo) {
                             }
                             .ktlUserTheme .knTable td:not(.bulkEditSelectedCol) {
                                 border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .knTable td:not(.bulkEditSelectedCol):not(:first-child) {
                                 border-left-color: transparent !important;
                             }
                             .ktlUserTheme .kn-content .fc-widget-header,
@@ -25194,7 +25198,7 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_tableSummaryBg) !important;
                                 color: var(--ktlTheme_tableSummaryText) !important;
                             }
-                            .ktlUserTheme td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]):not(.bulkEditSelectedRow) {
+                            .ktlUserTheme td.cell-edit.ktlInlineEditableCellsStyle:not([style*="background"]):not(.bulkEditSelectedRow):not(.ktlNoInlineEdit) {
                                 background-color: var(--ktlTheme_inlineEditBg) !important;
                             }
 
