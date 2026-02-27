@@ -19180,7 +19180,6 @@ function Ktl($, appInfo) {
                         await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
 
                         //Rebuild each totals row so cells align with header columns.
-                        //Uses pristine cells captured before keyword processing, with DOM fallback.
                         const headers = Array.from(document.querySelectorAll(`#${viewId} thead tr th`));
                         const schemaColumns = viewObj.columns || (viewObj.results && viewObj.results.columns);
                         if (headers.length && schemaColumns) {
@@ -19189,6 +19188,10 @@ function Ktl($, appInfo) {
                                 const originalCells = Array.from(totalsRow.querySelectorAll('td'))
                                     .filter(td => !td.classList.contains('blankCell'));
 
+                                // When all schema columns are rendered (no "Hide empty columns" / _cgc),
+                                // originalCells[i] maps to schemaColumns[i] — use direct index lookup.
+                                // When fewer cells exist, they're a sequential subset — use sequential index.
+                                const directLookup = originalCells.length >= schemaColumns.length;
                                 let cellIdx = 0;
                                 let schemaSearch = 0;
                                 totalsRow.innerHTML = '';
@@ -19196,6 +19199,7 @@ function Ktl($, appInfo) {
                                 headers.forEach((th, headerIdx) => {
                                     let td;
                                     let isSchemaCol = false;
+                                    let matchedSchemaIdx = -1;
                                     const thField = getFieldClass(th);
                                     const thText = th.textContent.trim();
 
@@ -19209,16 +19213,21 @@ function Ktl($, appInfo) {
 
                                             if (thField ? thField === schemaField : thText === (col.header || '').trim()) {
                                                 isSchemaCol = true;
+                                                matchedSchemaIdx = s;
                                                 schemaSearch = s + 1;
                                                 break;
                                             }
                                         }
                                     }
 
-                                    if (isSchemaCol && cellIdx < originalCells.length) {
-                                        td = originalCells[cellIdx];
-                                        cellIdx++;
-                                    } else {
+                                    if (isSchemaCol) {
+                                        if (directLookup && matchedSchemaIdx < originalCells.length)
+                                            td = originalCells[matchedSchemaIdx];
+                                        else if (!directLookup && cellIdx < originalCells.length)
+                                            td = originalCells[cellIdx++];
+                                    }
+
+                                    if (!td) {
                                         td = document.createElement('td');
                                         td.style.backgroundColor = '#eee';
                                         td.style.borderTop = '1px solid #dadada';
@@ -19226,6 +19235,12 @@ function Ktl($, appInfo) {
                                             td.className = 'blankCell';
                                     }
 
+                                    // Strip then re-propagate ktlDisplayNone classes from the header.
+                                    // hideColumns uses nth-child which can target the wrong totals cell
+                                    // when synthetic/grouping columns shift column indices.
+                                    Array.from(td.classList)
+                                        .filter(c => c.startsWith('ktlDisplayNone'))
+                                        .forEach(c => td.classList.remove(c));
                                     Array.from(th.classList)
                                         .filter(c => c.startsWith('ktlDisplayNone'))
                                         .forEach(c => td.classList.add(c));
