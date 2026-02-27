@@ -4634,7 +4634,15 @@ function Ktl($, appInfo) {
 
                 if (opts.filters) {
                     if (opts.filters.match && Array.isArray(opts.filters.rules)) {
-                        mergedFilters = { match: 'and', rules: [baseRule, opts.filters] };
+                        if (this._hasNestedFilterGroups(opts.filters)) {
+                            throw new Error('KTL API error: nested filter groups are not supported by Knack. Use flat rules or separate API calls and merge results.');
+                        }
+
+                        if (String(opts.filters.match).toLowerCase() !== 'and') {
+                            throw new Error('KTL API error: findRecords cannot merge grouped filters unless match is "and". Use separate queries and merge results for "or" logic.');
+                        }
+
+                        mergedFilters = { match: 'and', rules: [baseRule, ...opts.filters.rules] };
                     } else {
                         mergedFilters = { match: 'and', rules: [baseRule, opts.filters] };
                     }
@@ -5172,6 +5180,10 @@ function Ktl($, appInfo) {
                 if (!filters) return {};
 
                 if (filters.match && filters.rules) {
+                    if (this._hasNestedFilterGroups(filters)) {
+                        throw new Error('KTL API error: nested filter groups are not supported by Knack. Use flat rules or run separate queries and merge results.');
+                    }
+
                     return { filters: JSON.stringify(filters) };
                 }
 
@@ -5217,6 +5229,24 @@ function Ktl($, appInfo) {
                 });
 
                 return formatted;
+            }
+
+            /**
+             * Returns true when any rule contains a nested match/rules group.
+             * @param {Object} filters
+             * @returns {boolean}
+             * @private
+             */
+            _hasNestedFilterGroups(filters) {
+                if (!filters || !Array.isArray(filters.rules)) return false;
+
+                const hasNestedRule = (rule) => {
+                    if (!rule || typeof rule !== 'object') return false;
+                    if (rule.match && Array.isArray(rule.rules)) return true;
+                    return false;
+                };
+
+                return filters.rules.some(hasNestedRule);
             }
 
             /**

@@ -132,13 +132,16 @@ Refreshes one or many views.
 ### `buildFilters(filters)`
 Builds Knack filter query params.
 
+- Nested filter groups are rejected with a clear error because Knack does not reliably support nested group logic.
+
 ### `buildSorters(sorters)`
 Builds Knack sorter query params.
 
 ### `findRecords(viewId, fieldId, value, options?)`
 Convenience wrapper that ANDs a base equality rule with caller filters.
 
-- Caller filter groups with `match/rules` are nested as a single rule to preserve caller boolean logic (including top-level `or` groups)
+- Grouped caller filters are supported only when `match: 'and'` and rules are flat (non-nested).
+- Grouped `or` logic is rejected with a clear error; use separate queries and merge client-side.
 
 ### `getApplication(applicationId?, options?)`
 Fetches Knack application details.
