@@ -163,6 +163,16 @@ The KTL “keyword-based” approach is an ideal tool for non-coders. But behind
 
 If ever you’re interested in some basic or advanced coding, click the following links to know more about [Advanced Features](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Features) and [Advanced Development Modes](https://github.com/cortexrd/Knack-Toolkit-Library/wiki/Advanced-Development-Modes).
 
+## KTL MCP Server (for AI coding assistants)
+
+A minimal MCP server is available at `NodeJS/KTL_MCP_Server.js` to help AI tools discover KTL functionality.
+
+- Start it with: `node NodeJS/KTL_MCP_Server.js`
+- Supported tools:
+  - `list_ktl_capabilities`
+  - `search_ktl_functions`
+  - `get_ktl_guidance`
+
 # Future Improvements
 
 -   Direct front-end external data Import from an Excel or CSV file.  We've done this successfully for Morbern Inc. the main sponsor of this project, and it works flawlessly.

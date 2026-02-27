@@ -10,7 +10,8 @@ const files = [
   { remote: 'KTL.css', local: 'Lib\\KTL\\KTL.css' },
   { remote: 'KTL_Defaults.js', local: 'Lib\\KTL\\KTL_Defaults.js' },
   { remote: 'FileServer.bat', local: 'Lib\\KTL\\FileServer.bat' },
-  { remote: 'NodeJS/NodeJS_FileServer.js', local: 'Lib\\KTL\\NodeJS\\NodeJS_FileServer.js' }
+  { remote: 'NodeJS/NodeJS_FileServer.js', local: 'Lib\\KTL\\NodeJS\\NodeJS_FileServer.js' },
+  { remote: 'NodeJS/KTL_MCP_Server.js', local: 'Lib\\KTL\\NodeJS\\KTL_MCP_Server.js' }
 ];
 
 fs.mkdirSync(path.join(root, 'KnackApps'), { recursive: true });
