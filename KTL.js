@@ -11876,7 +11876,6 @@ function Ktl($, appInfo) {
                 }
 
                 ktl.bulkOps.prepareBulkOps(view, data);
-                ktl.views.fixTableRowsAlignment(viewId);
                 ktlProcessKeywords(view, data);
             }
         }
@@ -12169,6 +12168,8 @@ function Ktl($, appInfo) {
                 })
 
                 processViewKeywords && processViewKeywords(view, keywords, data);
+
+                ktl.views.fixTableRowsAlignment(viewId);
             }
             catch (err) { console.log('err', err); };
         }
@@ -19177,57 +19178,95 @@ function Ktl($, appInfo) {
                     const sel = `#${viewId} tr.kn-table-totals`;
                     try {
                         await ktl.core.waitSelector(sel, SUMMARY_WAIT_TIMEOUT);
-                        if (bulkOpsActive) {
-                            //Insert blankCells at first column for each summary row.
-                            const totalRows = $(sel);
-                            if (!$(`#${viewId} tr.kn-table-totals td`)[0].classList.contains('blankCell')) {
-                                const visibleColumns = ktl.views.getGridColspan(viewId);
-                                const totals = $(`#${viewId} tr.kn-table-totals:first`).children('td:not([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])');
-                                if (visibleColumns > totals.length) {
-                                    for (let i = totalRows.length - 1; i >= 0; i--) {
-                                        const row = totalRows[i];
-                                        $(row).prepend('<td class="blankCell" style="background-color: #eee; border-top: 1px solid #dadada;"></td>');
-                                    }
-                                }
-                            }
-                        }
 
-                        //Hide summary columns to match hidden columns.
-                        const hiddenHeaders = $(`#${viewId} thead tr th:is([class^=ktlDisplayNone_], [class*=" ktlDisplayNone_"])`);
-                        if (hiddenHeaders.length) {
-                            const visibleColumns = ktl.views.getGridColspan(viewId);
-                            const visibleTotals = $(`#${viewId} tr.kn-table-totals:first`).children('td:visible');
-                            if (visibleColumns < visibleTotals.length) {
-                                hiddenHeaders.each((ix, el) => {
-                                    const cellIndex = el.cellIndex;
-                                    if (cellIndex >= 0) {
-                                        $view.find(`tr.kn-table-totals td:nth-child(${cellIndex + 1})`).addClass('ktlDisplayNone_hc');
+                        //Rebuild each totals row so cells align with header columns.
+                        //Uses pristine cells captured before keyword processing, with DOM fallback.
+                        const headers = Array.from(document.querySelectorAll(`#${viewId} thead tr th`));
+                        const schemaColumns = viewObj.columns || (viewObj.results && viewObj.results.columns);
+                        if (headers.length && schemaColumns) {
+                            const getFieldClass = el => Array.from(el.classList).find(c => c.startsWith('field_'));
+                            document.querySelectorAll(sel).forEach((totalsRow, rowIdx) => {
+                                const originalCells = Array.from(totalsRow.querySelectorAll('td'))
+                                    .filter(td => !td.classList.contains('blankCell'));
+
+                                let cellIdx = 0;
+                                let schemaSearch = 0;
+                                totalsRow.innerHTML = '';
+
+                                headers.forEach((th, headerIdx) => {
+                                    let td;
+                                    let isSchemaCol = false;
+                                    const thField = getFieldClass(th);
+                                    const thText = th.textContent.trim();
+
+                                    //Match by field class, or by text for kn-table-link action columns.
+                                    //Headers without a field class and without kn-table-link are non-schema
+                                    //(e.g. bulk-ops checkbox, app-inserted synthetic columns) and get filler cells.
+                                    if (thField || th.classList.contains('kn-table-link')) {
+                                        for (let s = schemaSearch; s < schemaColumns.length; s++) {
+                                            const col = schemaColumns[s];
+                                            const schemaField = col.field && col.field.key;
+
+                                            if (thField ? thField === schemaField : thText === (col.header || '').trim()) {
+                                                isSchemaCol = true;
+                                                schemaSearch = s + 1;
+                                                break;
+                                            }
+                                        }
                                     }
+
+                                    if (isSchemaCol && cellIdx < originalCells.length) {
+                                        td = originalCells[cellIdx];
+                                        cellIdx++;
+                                    } else {
+                                        td = document.createElement('td');
+                                        td.style.backgroundColor = '#eee';
+                                        td.style.borderTop = '1px solid #dadada';
+                                        if (bulkOpsActive && headerIdx === 0)
+                                            td.className = 'blankCell';
+                                    }
+
+                                    Array.from(th.classList)
+                                        .filter(c => c.startsWith('ktlDisplayNone'))
+                                        .forEach(c => td.classList.add(c));
+
+                                    totalsRow.appendChild(td);
                                 });
-                            }
-
-                            //Reposition summay labels that might have been hidden. Use the first blank column.
-                            const summaryLabel = Knack.views[viewId].model.view.totals[0].label;
-                            const summaryCell = $(`#${viewId} tr.kn-table-totals:first td:visible`).filter(function () {
-                                return $(this).text().trim().startsWith(summaryLabel);
                             });
+                        }
 
-                            if (!summaryCell.length) {
-                                const hiddenSummaryCell = $(`#${viewId} tr.kn-table-totals:first td.ktlDisplayNone_hc`).filter(function () {
-                                    return $(this).text().trim().startsWith(summaryLabel);
-                                });
-                                if (hiddenSummaryCell.length) {
-                                    const originalSummaryColumn = hiddenSummaryCell[0].cellIndex;
-                                    const newSummaryColumnIndex = $(`#${viewId} tr.kn-table-totals:first td:not(.blankCell)`).filter(function () {
-                                        return $(this).text().trim().replace(/\u00a0/g, '') === '';
-                                    }).first()[0].cellIndex;
-                                    $(`#${viewId} tr.kn-table-totals`).each((ix, summaryRow) => {
-                                        const cellContent = $(summaryRow).find(`td:nth-child(${originalSummaryColumn + 1})`)[0].innerHTML;
-                                        $(summaryRow).find(`td:nth-child(${newSummaryColumnIndex + 1})`)[0].innerHTML = cellContent;
-                                    });
+                        //Reposition summary label if it ended up in a hidden column.
+                        try {
+                            const totalsModel = Knack.views[viewId].model.view.totals;
+                            if (totalsModel && totalsModel.length) {
+                                const summaryLabel = totalsModel[0].label;
+                                const firstTotalsRow = document.querySelector(sel);
+                                if (firstTotalsRow && summaryLabel) {
+                                    const isHiddenCell = td => Array.from(td.classList).some(c => c.startsWith('ktlDisplayNone'));
+                                    const allCells = Array.from(firstTotalsRow.querySelectorAll('td'));
+                                    const labelVisible = allCells.some(td => !isHiddenCell(td) && td.textContent.trim().startsWith(summaryLabel));
+
+                                    if (!labelVisible) {
+                                        const hiddenLabelCell = allCells.find(td => isHiddenCell(td) && td.textContent.trim().startsWith(summaryLabel));
+                                        if (hiddenLabelCell) {
+                                            const labelIdx = hiddenLabelCell.cellIndex;
+                                            const targetCell = allCells.find(td =>
+                                                !isHiddenCell(td) && !td.classList.contains('blankCell') &&
+                                                td.textContent.trim().replace(/\u00a0/g, '') === ''
+                                            );
+                                            if (targetCell) {
+                                                const targetIdx = targetCell.cellIndex;
+                                                document.querySelectorAll(sel).forEach(row => {
+                                                    const cells = row.querySelectorAll('td');
+                                                    if (cells[targetIdx] && cells[labelIdx])
+                                                        cells[targetIdx].innerHTML = cells[labelIdx].innerHTML;
+                                                });
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
+                        } catch (e) { /* Label repositioning is best-effort. */ }
                     } catch (e) {
                         // Error handled silently
                     }
