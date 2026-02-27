@@ -172,6 +172,7 @@ A minimal MCP server is available at `NodeJS/KTL_MCP_Server.js` to help AI tools
   - `list_ktl_capabilities`
   - `search_ktl_functions`
   - `get_ktl_guidance`
+  - `recommend_ktl_functions` (suggests likely functions from a plain-English goal)
 
 # Future Improvements
 

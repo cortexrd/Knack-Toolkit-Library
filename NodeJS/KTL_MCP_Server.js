@@ -7,6 +7,16 @@ const instructionsPath = path.join(repoRoot, 'KTL_AI_Instructions.md');
 const apiDocsPath = path.join(repoRoot, 'Docs', 'KTL_API.md');
 
 const FUNCTION_LIMIT = 50;
+const GOAL_KEYWORD_MODULE_HINTS = [
+  { terms: ['api', 'record', 'records', 'rest', 'http'], modules: ['api'] },
+  { terms: ['field', 'column', 'input'], modules: ['fields'] },
+  { terms: ['view', 'table', 'grid', 'form'], modules: ['views'] },
+  { terms: ['scene', 'page', 'navigation'], modules: ['scenes'] },
+  { terms: ['log', 'debug', 'trace', 'error'], modules: ['log'] },
+  { terms: ['storage', 'cache', 'localstorage', 'persist'], modules: ['storage'] },
+  { terms: ['bulk', 'mass'], modules: ['bulkOps'] },
+  { terms: ['user', 'preference', 'prefs'], modules: ['userPrefs'] }
+];
 // Matches `this.<module> = (function () { ... return { ... }; })();` module definitions.
 const MODULE_REGEX = /this\.(\w+)\s*=\s*\(function\s*\(\)\s*\{([\s\S]*?)return\s*\{([\s\S]*?)\}\s*;\s*\}\)\(\)\s*;/g;
 const METHOD_REGEX = /^\s*([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/gm;
@@ -124,6 +134,37 @@ function makeResultText(text) {
   return { content: [{ type: 'text', text }] };
 }
 
+function recommendFunctions(goal, limit) {
+  const normalizedGoal = String(goal || '').trim().toLowerCase();
+  const words = normalizedGoal.split(/[^a-z0-9_]+/).filter(word => word.length >= 3);
+
+  const hintedModules = new Set();
+  for (const hint of GOAL_KEYWORD_MODULE_HINTS) {
+    if (hint.terms.some(term => normalizedGoal.includes(term))) {
+      for (const moduleName of hint.modules) hintedModules.add(moduleName.toLowerCase());
+    }
+  }
+
+  const scored = kb.allFunctions
+    .map(item => {
+      const loweredName = item.name.toLowerCase();
+      const loweredSignature = item.signature.toLowerCase();
+      let score = 0;
+
+      for (const word of words) {
+        if (loweredName.includes(word)) score += 3;
+        if (loweredSignature.includes(word)) score += 1;
+      }
+      if (hintedModules.has(item.module.toLowerCase())) score += 2;
+
+      return { ...item, score };
+    })
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.signature.localeCompare(b.signature));
+
+  return scored.slice(0, limit);
+}
+
 function handleToolCall(name, args = {}) {
   if (name === 'list_ktl_capabilities') {
     const moduleNames = Array.from(kb.modules.keys()).sort();
@@ -164,6 +205,26 @@ function handleToolCall(name, args = {}) {
       .slice(0, 30)
       .join('\n');
     return makeResultText(`KTL coding guidance summary:\n${guidance}`);
+  }
+
+  if (name === 'recommend_ktl_functions') {
+    const goal = String(args.goal || '').trim();
+    if (!goal) {
+      return makeResultText('Provide a short goal in `goal` (for example: "update records in bulk and refresh a view").');
+    }
+
+    const parsedLimit = Number(args.limit);
+    const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(parsedLimit, 15)) : 8;
+    const recommendations = recommendFunctions(goal, limit);
+
+    if (!recommendations.length) {
+      return makeResultText('No strong recommendations found. Try adding domain terms like view, records, api, field, or storage.');
+    }
+
+    const output = recommendations
+      .map(item => `- ${item.signature}${item.line ? ` (KTL.js:${item.line})` : ''}`)
+      .join('\n');
+    return makeResultText(`Recommended KTL functions for goal "${goal}":\n${output}`);
   }
 
   throw new Error(`Unknown tool: ${name}`);
@@ -223,6 +284,19 @@ function handleRequest(request) {
             inputSchema: {
               type: 'object',
               properties: {},
+              additionalProperties: false
+            }
+          },
+          {
+            name: 'recommend_ktl_functions',
+            description: 'Suggest likely KTL functions from a plain-English goal.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                goal: { type: 'string', description: 'What you want to build with KTL.' },
+                limit: { type: 'number', description: 'Maximum recommendations to return (1-15).' }
+              },
+              required: ['goal'],
               additionalProperties: false
             }
           }
