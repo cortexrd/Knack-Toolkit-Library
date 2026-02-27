@@ -4783,7 +4783,8 @@ function Ktl($, appInfo) {
                 const base = this._getApiBaseUrl().replace(/\/$/, '');
                 const url = `${base}/applications/${appId}/assets/${assetType}/upload`;
 
-                const fileSizeBytes = Number.isFinite(file?.size) ? file.size : 0;
+                const hasKnownFileSize = Number.isFinite(file?.size);
+                const fileSizeBytes = hasKnownFileSize ? file.size : 0;
                 const warnAssetSizeBytes = Number.isFinite(opts.warnAssetSizeBytes) && opts.warnAssetSizeBytes >= 0
                     ? opts.warnAssetSizeBytes
                     : this.options.warnAssetSizeBytes;
@@ -4796,7 +4797,18 @@ function Ktl($, appInfo) {
                     ? true
                     : (opts.enforceAssetSize === false ? false : this.options.enforceAssetSize);
 
-                if (Number.isFinite(warnAssetSizeBytes) && warnAssetSizeBytes >= 0 && fileSizeBytes > warnAssetSizeBytes) {
+                if (!hasKnownFileSize) {
+                    this._log('Asset upload size is unavailable; skipping size warning/enforcement thresholds for this file', {
+                        fileName: typeof file?.name === 'string' ? file.name : 'upload.bin',
+                        fileType: file?.type || '',
+                        fileSizeRaw: file?.size,
+                        warnAssetSizeBytes,
+                        maxAssetSizeBytes,
+                        enforceAssetSize
+                    }, 'warn');
+                }
+
+                if (hasKnownFileSize && Number.isFinite(warnAssetSizeBytes) && warnAssetSizeBytes >= 0 && fileSizeBytes > warnAssetSizeBytes) {
                     this._log('Asset upload exceeds warning threshold', {
                         fileName: typeof file?.name === 'string' ? file.name : 'upload.bin',
                         fileSizeBytes,
@@ -4806,7 +4818,7 @@ function Ktl($, appInfo) {
                     }, 'warn');
                 }
 
-                if (Number.isFinite(maxAssetSizeBytes) && maxAssetSizeBytes > 0 && fileSizeBytes > maxAssetSizeBytes) {
+                if (hasKnownFileSize && Number.isFinite(maxAssetSizeBytes) && maxAssetSizeBytes > 0 && fileSizeBytes > maxAssetSizeBytes) {
                     const sizeMessage = `KTL API error: uploadAsset file size ${this._formatByteSize(fileSizeBytes)} exceeds configured max ${this._formatByteSize(maxAssetSizeBytes)}.`;
                     if (enforceAssetSize) {
                         throw new Error(sizeMessage);
