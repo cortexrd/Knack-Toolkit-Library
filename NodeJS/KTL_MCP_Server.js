@@ -7,6 +7,10 @@ const instructionsPath = path.join(repoRoot, 'KTL_AI_Instructions.md');
 const apiDocsPath = path.join(repoRoot, 'Docs', 'KTL_API.md');
 
 const FUNCTION_LIMIT = 50;
+// Matches `this.<module> = (function () { ... return { ... }; })();` module definitions.
+const MODULE_REGEX = /this\.(\w+)\s*=\s*\(function\s*\(\)\s*\{([\s\S]*?)return\s*\{([\s\S]*?)\}\s*;\s*\}\)\(\)\s*;/g;
+const METHOD_REGEX = /^\s*([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/gm;
+const PROPERTY_FUNCTION_REGEX = /^\s*([A-Za-z_$][\w$]*)\s*:\s*(?:async\s+)?function\s*\(([^)]*)\)/gm;
 
 function readText(filePath) {
   try {
@@ -22,17 +26,15 @@ function getLineNumber(content, index) {
 
 function parseKtlFunctions(ktlJs) {
   const modules = new Map();
-  const moduleRegex = /this\.(\w+)\s*=\s*\(function\s*\(\)\s*\{([\s\S]*?)return\s*\{([\s\S]*?)\}\s*;\s*\}\)\(\)\s*;/g;
 
   let moduleMatch;
-  while ((moduleMatch = moduleRegex.exec(ktlJs)) !== null) {
+  while ((moduleMatch = MODULE_REGEX.exec(ktlJs)) !== null) {
     const moduleName = moduleMatch[1];
     const returnBody = moduleMatch[3] || '';
     const entries = [];
 
-    const methodRegex = /^\s*([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/gm;
     let methodMatch;
-    while ((methodMatch = methodRegex.exec(returnBody)) !== null) {
+    while ((methodMatch = METHOD_REGEX.exec(returnBody)) !== null) {
       const methodName = methodMatch[1];
       const args = (methodMatch[2] || '').trim();
       const absoluteIndex = moduleMatch.index + moduleMatch[0].indexOf(methodMatch[0]);
@@ -44,9 +46,8 @@ function parseKtlFunctions(ktlJs) {
       });
     }
 
-    const propertyFnRegex = /^\s*([A-Za-z_$][\w$]*)\s*:\s*(?:async\s+)?function\s*\(([^)]*)\)/gm;
     let propertyFnMatch;
-    while ((propertyFnMatch = propertyFnRegex.exec(returnBody)) !== null) {
+    while ((propertyFnMatch = PROPERTY_FUNCTION_REGEX.exec(returnBody)) !== null) {
       const methodName = propertyFnMatch[1];
       if (entries.some(item => item.name === methodName)) continue;
       const args = (propertyFnMatch[2] || '').trim();
@@ -133,7 +134,8 @@ function handleToolCall(name, args = {}) {
   if (name === 'search_ktl_functions') {
     const query = String(args.query || '').trim().toLowerCase();
     const moduleFilter = String(args.module || '').trim().toLowerCase();
-    const limit = Math.max(1, Math.min(Number(args.limit) || FUNCTION_LIMIT, FUNCTION_LIMIT));
+    const parsedLimit = Number(args.limit);
+    const limit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(parsedLimit, FUNCTION_LIMIT)) : FUNCTION_LIMIT;
 
     let matches = kb.allFunctions;
     if (moduleFilter) {
@@ -234,10 +236,11 @@ function handleRequest(request) {
       const result = handleToolCall(params?.name, params?.arguments || {});
       return { jsonrpc: '2.0', id, result };
     } catch (error) {
+      const safeMessage = error?.message && error.message.startsWith('Unknown tool:') ? error.message : 'Tool execution failed';
       return {
         jsonrpc: '2.0',
         id,
-        error: { code: -32000, message: error.message }
+        error: { code: -32000, message: safeMessage }
       };
     }
   }
@@ -276,7 +279,7 @@ process.stdin.on('data', chunk => {
     } catch (error) {
       process.stdout.write(JSON.stringify({
         jsonrpc: '2.0',
-        error: { code: -32700, message: `Parse error: ${error.message}` }
+        error: { code: -32700, message: 'Parse error' }
       }) + '\n');
     }
   }
