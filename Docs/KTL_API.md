@@ -11,6 +11,7 @@ This document describes the `this.api` module in `KTL.js`.
 - Optional debug logging with developer-role gating
 - Write queue controls (concurrency + rate limiting)
 - Bulk helpers for create/update/delete operations
+- Asset upload helper with retry/backoff and configurable size policy
 
 The module exposes a shared singleton API instance plus `create(options)` for custom instances.
 
@@ -64,6 +65,8 @@ Gets records from one view/page.
 Gets all pages from a view.
 
 - Supports `onProgress({ page, totalPages, recordsLoaded, totalRecords, percentage })`
+- Uses parallel page batches with partial recovery by default (`Promise.allSettled` behavior)
+- Optional `failOnPageError: true` to preserve fail-fast behavior if any page request fails
 
 ### `getRecord(viewId, recordId, options?)`
 Gets a single record by record id.
@@ -73,6 +76,9 @@ Gets child records linked by a connection field.
 
 ### `getAllChildRecords(viewId, recordId, connectionSlug, options?)`
 Gets all pages of child records.
+
+- Uses parallel page batches with partial recovery by default (`Promise.allSettled` behavior)
+- Optional `failOnPageError: true` to preserve fail-fast behavior if any child page request fails
 
 ---
 
@@ -94,6 +100,19 @@ Updates one record.
 Updates many records with queue controls.
 
 - Returns: `{ total, updated, failed }`
+- Supports two input shapes:
+  - Shared-data mode: `recordIds: string[]` + shared `recordData`
+  - Per-record mode: `recordIds: Array<{ id, data }>`
+- Mixed arrays (e.g., first item object, later items string IDs) now throw a clear validation error
+
+### `uploadAsset(file, options?)`
+Uploads one file/image asset and returns uploaded asset metadata.
+
+- Uses the same `_request` retry/backoff/timeout pipeline as other API methods
+- Supports size policy options:
+  - `warnAssetSizeBytes` (warn threshold)
+  - `maxAssetSizeBytes` (optional hard max)
+  - `enforceAssetSize` (reject early when max exceeded)
 
 ### `deleteRecord(viewId, recordId, refreshViews?, options?)`
 Deletes one record.
@@ -116,6 +135,11 @@ Builds Knack filter query params.
 ### `buildSorters(sorters)`
 Builds Knack sorter query params.
 
+### `findRecords(viewId, fieldId, value, options?)`
+Convenience wrapper that ANDs a base equality rule with caller filters.
+
+- Caller filter groups with `match/rules` are nested as a single rule to preserve caller boolean logic (including top-level `or` groups)
+
 ### `getApplication(applicationId?, options?)`
 Fetches Knack application details.
 
@@ -132,11 +156,18 @@ Many methods share these options:
 - `rows`: rows per page
 - `rawResponse`: return Knack raw payload instead of records array
 - `onProgress`: callback for paged or bulk operations
+- `failOnPageError`: when true, paged parallel reads throw if any page fails (default false = keep successful pages)
 
 Bulk write options:
 
 - `continueOnError` (default `false`)
 - `staggerMs` (default `0`)
+
+Asset upload options:
+
+- `warnAssetSizeBytes` (default `52428800`, i.e. 50MB)
+- `maxAssetSizeBytes` (default `null`, disabled)
+- `enforceAssetSize` (default `false`)
 
 ---
 
@@ -159,6 +190,9 @@ Defaults for a new instance:
 - `writeMinConcurrency: 1`
 - `writeMaxConcurrency: 8`
 - `writeRampDelayMs: 2000`
+- `warnAssetSizeBytes: 52428800`
+- `maxAssetSizeBytes: null`
+- `enforceAssetSize: false`
 
 ---
 
@@ -176,6 +210,7 @@ Defaults for a new instance:
 - Single write methods throw `Error` with `error.status` and `error.body` when available.
 - Bulk methods aggregate progress and return counts; with `continueOnError: false`, scheduling stops after first failure (already-started requests may still finish).
 - Bulk failure logging uses operation-specific KEC codes (`KEC_1028` create, `KEC_1029` update, `KEC_1030` delete, `KEC_1031` tags).
+- Paged reads (`getAllRecords`, `getAllChildRecords`) now keep successful pages even if one batch member fails, unless `failOnPageError` is enabled.
 
 ---
 

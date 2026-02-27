@@ -4367,6 +4367,9 @@ function Ktl($, appInfo) {
          * @property {number} [writeMinConcurrency=1] - Min concurrency after rate limiting.
          * @property {number} [writeMaxConcurrency=8] - Upper bound for adaptive concurrency. Max 8 allows scaling to 80% of Knack's 10 API/sec limit.
          * @property {number} [writeRampDelayMs=2000] - Delay before ramping concurrency.
+         * @property {number|null} [maxAssetSizeBytes=null] - Optional hard max upload size in bytes. `null` disables max-size enforcement.
+         * @property {number} [warnAssetSizeBytes=52428800] - Warn threshold in bytes (default 50MB).
+         * @property {boolean} [enforceAssetSize=false] - When true, reject uploads above `maxAssetSizeBytes` before network request.
          */
 
         class KtlKnackApi {
@@ -4399,7 +4402,14 @@ function Ktl($, appInfo) {
                     writeRatePerSecond: Number.isFinite(options.writeRatePerSecond) ? options.writeRatePerSecond : 9,
                     writeMinConcurrency: Number.isFinite(options.writeMinConcurrency) ? options.writeMinConcurrency : 1,
                     writeMaxConcurrency: Number.isFinite(options.writeMaxConcurrency) ? options.writeMaxConcurrency : 8,
-                    writeRampDelayMs: Number.isFinite(options.writeRampDelayMs) ? options.writeRampDelayMs : 2000
+                    writeRampDelayMs: Number.isFinite(options.writeRampDelayMs) ? options.writeRampDelayMs : 2000,
+                    maxAssetSizeBytes: Number.isFinite(options.maxAssetSizeBytes) && options.maxAssetSizeBytes > 0
+                        ? options.maxAssetSizeBytes
+                        : null,
+                    warnAssetSizeBytes: Number.isFinite(options.warnAssetSizeBytes) && options.warnAssetSizeBytes >= 0
+                        ? options.warnAssetSizeBytes
+                        : (50 * 1024 * 1024),
+                    enforceAssetSize: options.enforceAssetSize === true
                 };
 
                 this._initLogSettings();
@@ -4451,6 +4461,7 @@ function Ktl($, appInfo) {
                     ? Math.floor(opts.pageConcurrency)
                     : 5;
                 const pageOpts = { filters: opts.filters, sorters: opts.sorters, rows, rawResponse: true, timeout: opts.timeout };
+                const failOnPageError = Boolean(opts.failOnPageError);
 
                 const firstPage = await this.getRecords(viewId, { ...pageOpts, page: 1 });
 
@@ -4466,12 +4477,29 @@ function Ktl($, appInfo) {
                     const pageNumbers = [];
                     for (let p = batchStart; p <= batchEnd; p++) pageNumbers.push(p);
 
-                    const batchResults = await Promise.all(
+                    const batchResults = await Promise.allSettled(
                         pageNumbers.map(page => this.getRecords(viewId, { ...pageOpts, page }))
                     );
 
-                    for (const nextPage of batchResults) {
-                        if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
+                    for (let i = 0; i < batchResults.length; i++) {
+                        const result = batchResults[i];
+                        const page = pageNumbers[i];
+
+                        if (result.status === 'fulfilled') {
+                            const nextPage = result.value;
+                            if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
+                            continue;
+                        }
+
+                        this._log('Page fetch failed', {
+                            viewId,
+                            page,
+                            error: result.reason?.message || result.reason
+                        }, 'warn');
+
+                        if (failOnPageError) {
+                            throw result.reason;
+                        }
                     }
 
                     if (typeof opts.onProgress === 'function') {
@@ -4534,6 +4562,7 @@ function Ktl($, appInfo) {
                     ? Math.floor(opts.pageConcurrency)
                     : 5;
                 const pageOpts = { filters: opts.filters, sorters: opts.sorters, rows, rawResponse: true, timeout: opts.timeout };
+                const failOnPageError = Boolean(opts.failOnPageError);
 
                 const firstPage = await this.getChildRecords(viewId, recordId, connectionSlug, { ...pageOpts, page: 1 });
 
@@ -4549,12 +4578,31 @@ function Ktl($, appInfo) {
                     const pageNumbers = [];
                     for (let p = batchStart; p <= batchEnd; p++) pageNumbers.push(p);
 
-                    const batchResults = await Promise.all(
+                    const batchResults = await Promise.allSettled(
                         pageNumbers.map(page => this.getChildRecords(viewId, recordId, connectionSlug, { ...pageOpts, page }))
                     );
 
-                    for (const nextPage of batchResults) {
-                        if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
+                    for (let i = 0; i < batchResults.length; i++) {
+                        const result = batchResults[i];
+                        const page = pageNumbers[i];
+
+                        if (result.status === 'fulfilled') {
+                            const nextPage = result.value;
+                            if (Array.isArray(nextPage?.records)) allRecords.push(...nextPage.records);
+                            continue;
+                        }
+
+                        this._log('Child page fetch failed', {
+                            viewId,
+                            recordId,
+                            connectionSlug,
+                            page,
+                            error: result.reason?.message || result.reason
+                        }, 'warn');
+
+                        if (failOnPageError) {
+                            throw result.reason;
+                        }
                     }
 
                     if (typeof opts.onProgress === 'function') {
@@ -4586,7 +4634,7 @@ function Ktl($, appInfo) {
 
                 if (opts.filters) {
                     if (opts.filters.match && Array.isArray(opts.filters.rules)) {
-                        mergedFilters = { match: 'and', rules: [baseRule, ...opts.filters.rules] };
+                        mergedFilters = { match: 'and', rules: [baseRule, opts.filters] };
                     } else {
                         mergedFilters = { match: 'and', rules: [baseRule, opts.filters] };
                     }
@@ -4706,6 +4754,9 @@ function Ktl($, appInfo) {
              * @param {Object} [options]
              * @param {'file'|'image'} [options.assetType] - Optional override. Auto-detected from mime type when omitted.
              * @param {number} [options.timeout]
+             * @param {number|null} [options.maxAssetSizeBytes] - Optional per-call max upload size in bytes. `null` disables max-size enforcement.
+             * @param {number} [options.warnAssetSizeBytes] - Optional per-call warning threshold in bytes.
+             * @param {boolean} [options.enforceAssetSize] - Optional per-call override for max-size enforcement.
              * @returns {Promise<Object>} Uploaded asset payload (must include `id`).
              */
             async uploadAsset(file, options = {}) {
@@ -4724,6 +4775,44 @@ function Ktl($, appInfo) {
                 const base = this._getApiBaseUrl().replace(/\/$/, '');
                 const url = `${base}/applications/${appId}/assets/${assetType}/upload`;
 
+                const fileSizeBytes = Number.isFinite(file?.size) ? file.size : 0;
+                const warnAssetSizeBytes = Number.isFinite(opts.warnAssetSizeBytes) && opts.warnAssetSizeBytes >= 0
+                    ? opts.warnAssetSizeBytes
+                    : this.options.warnAssetSizeBytes;
+                const maxAssetSizeBytes = (opts.maxAssetSizeBytes === null)
+                    ? null
+                    : (Number.isFinite(opts.maxAssetSizeBytes) && opts.maxAssetSizeBytes > 0
+                        ? opts.maxAssetSizeBytes
+                        : this.options.maxAssetSizeBytes);
+                const enforceAssetSize = opts.enforceAssetSize === true
+                    ? true
+                    : (opts.enforceAssetSize === false ? false : this.options.enforceAssetSize);
+
+                if (Number.isFinite(warnAssetSizeBytes) && warnAssetSizeBytes >= 0 && fileSizeBytes > warnAssetSizeBytes) {
+                    this._log('Asset upload exceeds warning threshold', {
+                        fileName: typeof file?.name === 'string' ? file.name : 'upload.bin',
+                        fileSizeBytes,
+                        warnAssetSizeBytes,
+                        fileSizeLabel: this._formatByteSize(fileSizeBytes),
+                        warnSizeLabel: this._formatByteSize(warnAssetSizeBytes)
+                    }, 'warn');
+                }
+
+                if (Number.isFinite(maxAssetSizeBytes) && maxAssetSizeBytes > 0 && fileSizeBytes > maxAssetSizeBytes) {
+                    const sizeMessage = `KTL API error: uploadAsset file size ${this._formatByteSize(fileSizeBytes)} exceeds configured max ${this._formatByteSize(maxAssetSizeBytes)}.`;
+                    if (enforceAssetSize) {
+                        throw new Error(sizeMessage);
+                    }
+
+                    this._log('Asset upload exceeds configured max size but enforcement is disabled', {
+                        fileName: typeof file?.name === 'string' ? file.name : 'upload.bin',
+                        fileSizeBytes,
+                        maxAssetSizeBytes,
+                        fileSizeLabel: this._formatByteSize(fileSizeBytes),
+                        maxSizeLabel: this._formatByteSize(maxAssetSizeBytes)
+                    }, 'warn');
+                }
+
                 const formData = new FormData();
                 const fileName = typeof file?.name === 'string' && file.name.length ? file.name : 'upload.bin';
                 formData.append('files', file, fileName);
@@ -4731,49 +4820,24 @@ function Ktl($, appInfo) {
                 const timeoutMs = Number.isFinite(opts.timeout) ? opts.timeout : this.options.timeout;
 
                 return await this._enqueueWrite(async () => {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-                    this._toggleSpinner(true);
-                    try {
-                        const response = await fetch(url, {
+                    const result = await this._request(
+                        url,
+                        {
                             method: 'POST',
                             headers: this._buildUploadHeaders(),
                             body: formData,
-                            signal: controller.signal
-                        });
+                            rateLimitHandler: (delayMs) => this._notifyWriteRateLimit(delayMs),
+                            onRateLimit429: typeof opts._on429 === 'function' ? opts._on429 : null
+                        },
+                        timeoutMs
+                    );
 
-                        const responseText = await response.text();
-                        if (!response.ok) {
-                            throw this._buildRequestError({
-                                status: response.status,
-                                statusText: response.statusText,
-                                responseText,
-                                headers: response.headers
-                            });
-                        }
-
-                        let parsed;
-                        try {
-                            parsed = responseText ? JSON.parse(responseText) : {};
-                        } catch (e) {
-                            parsed = responseText || {};
-                        }
-
-                        const asset = Array.isArray(parsed) ? parsed[0] : parsed;
-                        if (!asset || !asset.id) {
-                            throw new Error('KTL API error: asset upload succeeded but no asset id was returned.');
-                        }
-
-                        return asset;
-                    } catch (error) {
-                        if (error?.name === 'AbortError') {
-                            throw this._buildRequestError({ status: 0, statusText: 'Request timeout', responseText: '' });
-                        }
-                        throw error;
-                    } finally {
-                        clearTimeout(timeoutId);
-                        this._toggleSpinner(false);
+                    const asset = Array.isArray(result) ? result[0] : result;
+                    if (!asset || !asset.id) {
+                        throw new Error('KTL API error: asset upload succeeded but no asset id was returned.');
                     }
+
+                    return asset;
                 });
             }
 
@@ -4890,10 +4954,20 @@ function Ktl($, appInfo) {
                 // Detect per-record shape: Array<{id, data}>
                 const isPerRecord = Array.isArray(recordIds)
                     && recordIds.length > 0
-                    && recordIds[0] !== null
-                    && typeof recordIds[0] === 'object'
-                    && 'id' in recordIds[0]
-                    && 'data' in recordIds[0];
+                    && recordIds.every(record =>
+                        record !== null
+                        && typeof record === 'object'
+                        && 'id' in record
+                        && 'data' in record
+                    );
+
+                const hasMixedPerRecordShape = Array.isArray(recordIds)
+                    && recordIds.some(record => record !== null && typeof record === 'object')
+                    && !isPerRecord;
+
+                if (hasMixedPerRecordShape) {
+                    throw new Error('KTL API error: updateRecords received a mixed array. Use all IDs with shared data, or all objects with {id, data}.');
+                }
 
                 let records, effectiveRefresh, opts;
                 if (isPerRecord) {
@@ -5574,9 +5648,10 @@ function Ktl($, appInfo) {
                         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
                         try {
+                            const headers = requestOptions.headers || this._buildHeaders();
                             const fetchOptions = {
                                 method,
-                                headers: this._buildHeaders(),
+                                headers,
                                 signal: controller.signal
                             };
 
@@ -5674,13 +5749,6 @@ function Ktl($, appInfo) {
              */
             _buildRequestError(jqXHR) {
                 const status = jqXHR?.status || 0;
-                // Accept plain objects with responseText (our internal convention).
-                // Also tolerate fetch Response-like objects where body text may not be pre-read.
-                const hasResponseLikeShape = !!jqXHR && typeof jqXHR === 'object'
-                    && typeof jqXHR.status === 'number'
-                    && typeof jqXHR.statusText === 'string'
-                    && typeof jqXHR.text === 'function';
-
                 const responseText = typeof jqXHR?.responseText === 'string'
                     ? jqXHR.responseText
                     : (typeof jqXHR?.body === 'string' ? jqXHR.body : '');
@@ -5691,10 +5759,6 @@ function Ktl($, appInfo) {
                     message = json?.message || json?.error || message;
                 } catch (e) {
                     // ignore parse errors
-                }
-
-                if (!responseText && hasResponseLikeShape) {
-                    message = `${message} (response body not pre-read)`;
                 }
 
                 const error = new Error(`API error ${status}: ${message}`);
@@ -5787,6 +5851,21 @@ function Ktl($, appInfo) {
                 if (level === 'warn') console.warn(prefix, payload);
                 else if (level === 'error') console.error(prefix, payload);
                 else console.log(prefix, payload);
+            }
+
+            /**
+             * Format bytes into a human-readable label.
+             * @param {number} bytes
+             * @returns {string}
+             * @private
+             */
+            _formatByteSize(bytes) {
+                if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+                const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+                if (bytes === 0) return '0 B';
+                const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+                const value = bytes / Math.pow(1024, exponent);
+                return `${value.toFixed(exponent === 0 ? 0 : 2)} ${units[exponent]}`;
             }
 
             /**

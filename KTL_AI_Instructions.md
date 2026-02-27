@@ -87,6 +87,13 @@ This guide captures the Knack Toolkit Library (KTL) architecture and conventions
 - **`KTL.css`**: prefix conventions, spacing variables, feature grouping.
 - **`KTL_Defaults.js`**: configuration patterns and defaults (when adding new settings).
 
+## 7. Documentation Maintenance Rules
+- Before changing an existing feature, check `LIB/KTL/Docs/` for a related doc (for example `KTL_API.md`).
+- If a related doc exists, update it in the same change so behavior and options remain accurate.
+- If no related doc exists, create one only when the feature/change is complex (multi-step behavior, non-obvious API contracts, advanced configuration, or cross-module impact).
+- Do not create docs for small/simple changes; keep those in code comments or commit messages.
+- When adding a new complex-feature doc, place it under `LIB/KTL/Docs/` and use a clear feature-based filename.
+
 ---
 
 These guidelines are intended to keep changes consistent with the existing KTL codebase and reduce risk when extending shared functionality.
