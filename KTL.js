@@ -4973,8 +4973,8 @@ function Ktl($, appInfo) {
                 if (isPerRecord) {
                     // updateRecords(viewId, [{id, data}, ...], refreshViews, options)
                     records = recordIds.filter(r => r && r.id);
-                    effectiveRefresh = recordData; // positional shift
                     opts = refreshViews || {};
+                    effectiveRefresh = opts?.refreshViews !== undefined ? opts.refreshViews : recordData; // positional shift
                 } else {
                     records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
                     effectiveRefresh = options?.refreshViews !== undefined ? options.refreshViews : refreshViews;
