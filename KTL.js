@@ -4784,7 +4784,7 @@ function Ktl($, appInfo) {
                 const url = `${base}/applications/${appId}/assets/${assetType}/upload`;
 
                 const hasKnownFileSize = Number.isFinite(file?.size);
-                const fileSizeBytes = hasKnownFileSize ? file.size : 0;
+                const fileSizeBytes = hasKnownFileSize ? file.size : null;
                 const warnAssetSizeBytes = Number.isFinite(opts.warnAssetSizeBytes) && opts.warnAssetSizeBytes >= 0
                     ? opts.warnAssetSizeBytes
                     : this.options.warnAssetSizeBytes;
@@ -4796,21 +4796,45 @@ function Ktl($, appInfo) {
                 const enforceAssetSize = opts.enforceAssetSize === true
                     ? true
                     : (opts.enforceAssetSize === false ? false : this.options.enforceAssetSize);
+                const fileName = typeof file?.name === 'string' ? file.name : 'upload.bin';
+                const exceedsWarnThreshold = hasKnownFileSize
+                    && Number.isFinite(warnAssetSizeBytes)
+                    && warnAssetSizeBytes >= 0
+                    && fileSizeBytes > warnAssetSizeBytes;
+                const exceedsMaxThreshold = hasKnownFileSize
+                    && Number.isFinite(maxAssetSizeBytes)
+                    && maxAssetSizeBytes > 0
+                    && fileSizeBytes > maxAssetSizeBytes;
 
                 if (!hasKnownFileSize) {
-                    this._log('Asset upload size is unavailable; skipping size warning/enforcement thresholds for this file', {
-                        fileName: typeof file?.name === 'string' ? file.name : 'upload.bin',
+                    if (enforceAssetSize && Number.isFinite(maxAssetSizeBytes) && maxAssetSizeBytes > 0) {
+                        throw new Error('KTL API error: uploadAsset cannot validate file size because the file size is unavailable and asset size enforcement is enabled.');
+                    }
+
+                    this._log('Asset upload size is unavailable; proceeding without size validation', {
+                        fileName,
                         fileType: file?.type || '',
                         fileSizeRaw: file?.size,
                         warnAssetSizeBytes,
                         maxAssetSizeBytes,
                         enforceAssetSize
                     }, 'warn');
-                }
+                } else if (exceedsMaxThreshold) {
+                    const sizeMessage = `KTL API error: uploadAsset file size ${this._formatByteSize(fileSizeBytes)} exceeds configured max ${this._formatByteSize(maxAssetSizeBytes)}.`;
+                    if (enforceAssetSize) {
+                        throw new Error(sizeMessage);
+                    }
 
-                if (hasKnownFileSize && Number.isFinite(warnAssetSizeBytes) && warnAssetSizeBytes >= 0 && fileSizeBytes > warnAssetSizeBytes) {
+                    this._log('Asset upload exceeds configured max size but enforcement is disabled', {
+                        fileName,
+                        fileSizeBytes,
+                        maxAssetSizeBytes,
+                        fileSizeLabel: this._formatByteSize(fileSizeBytes),
+                        maxSizeLabel: this._formatByteSize(maxAssetSizeBytes)
+                    }, 'warn');
+                } else if (exceedsWarnThreshold) {
                     this._log('Asset upload exceeds warning threshold', {
-                        fileName: typeof file?.name === 'string' ? file.name : 'upload.bin',
+                        fileName,
                         fileSizeBytes,
                         warnAssetSizeBytes,
                         fileSizeLabel: this._formatByteSize(fileSizeBytes),
@@ -4818,24 +4842,9 @@ function Ktl($, appInfo) {
                     }, 'warn');
                 }
 
-                if (hasKnownFileSize && Number.isFinite(maxAssetSizeBytes) && maxAssetSizeBytes > 0 && fileSizeBytes > maxAssetSizeBytes) {
-                    const sizeMessage = `KTL API error: uploadAsset file size ${this._formatByteSize(fileSizeBytes)} exceeds configured max ${this._formatByteSize(maxAssetSizeBytes)}.`;
-                    if (enforceAssetSize) {
-                        throw new Error(sizeMessage);
-                    }
-
-                    this._log('Asset upload exceeds configured max size but enforcement is disabled', {
-                        fileName: typeof file?.name === 'string' ? file.name : 'upload.bin',
-                        fileSizeBytes,
-                        maxAssetSizeBytes,
-                        fileSizeLabel: this._formatByteSize(fileSizeBytes),
-                        maxSizeLabel: this._formatByteSize(maxAssetSizeBytes)
-                    }, 'warn');
-                }
-
                 const formData = new FormData();
-                const fileName = typeof file?.name === 'string' && file.name.length ? file.name : 'upload.bin';
-                formData.append('files', file, fileName);
+                const uploadFileName = typeof file?.name === 'string' && file.name.length ? file.name : 'upload.bin';
+                formData.append('files', file, uploadFileName);
 
                 const timeoutMs = Number.isFinite(opts.timeout) ? opts.timeout : this.options.timeout;
 
@@ -5963,70 +5972,190 @@ function Ktl($, appInfo) {
                 return apiInstance.canLog();
             },
 
+            /**
+             * Get records from a view.
+             * @param {string} viewId
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>|Object>}
+             */
             getRecords: function (...args) {
                 return apiInstance.getRecords(...args);
             },
 
+            /**
+             * Get all records from a view across pages.
+             * @param {string} viewId
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>>}
+             */
             getAllRecords: function (...args) {
                 return apiInstance.getAllRecords(...args);
             },
 
+            /**
+             * Fetch a single record by ID.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
             getRecord: function (...args) {
                 return apiInstance.getRecord(...args);
             },
 
+            /**
+             * Fetch child records connected to a parent record.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {string} connectionSlug
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>|Object>}
+             */
             getChildRecords: function (...args) {
                 return apiInstance.getChildRecords(...args);
             },
 
+            /**
+             * Fetch all connected child records across pages.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {string} connectionSlug
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>>}
+             */
             getAllChildRecords: function (...args) {
                 return apiInstance.getAllChildRecords(...args);
             },
 
+            /**
+             * Create a record in a view.
+             * @param {string} viewId
+             * @param {Object} recordData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
             createRecord: function (...args) {
                 return apiInstance.createRecord(...args);
             },
 
+            /**
+             * Create multiple records in a view.
+             * @param {string} viewId
+             * @param {Object[]} recordsData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
+             */
             createRecords: function (...args) {
                 return apiInstance.createRecords(...args);
             },
 
+            /**
+             * Upload a file or image asset.
+             * @param {File|Blob} file
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
             uploadAsset: function (...args) {
                 return apiInstance.uploadAsset(...args);
             },
 
+            /**
+             * Update a record in a view.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {Object} recordData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
             updateRecord: function (...args) {
                 return apiInstance.updateRecord(...args);
             },
 
+            /**
+             * Update multiple records in a view.
+             * @param {string} viewId
+             * @param {string[]|Array<{id:string,data:Object}>} recordIds
+             * @param {Object|Array|string} recordData
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<{ total: number, updated: number, failed: number }>}
+             */
             updateRecords: function (...args) {
                 return apiInstance.updateRecords(...args);
             },
 
+            /**
+             * Delete a record in a view.
+             * @param {string} viewId
+             * @param {string} recordId
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
             deleteRecord: function (...args) {
                 return apiInstance.deleteRecord(...args);
             },
 
+            /**
+             * Delete multiple records in a view.
+             * @param {string} viewId
+             * @param {string[]} recordIds
+             * @param {Array|string} [refreshViews]
+             * @param {Object} [options]
+             * @returns {Promise<{ total: number, deleted: number, failed: number }>}
+             */
             deleteRecords: function (...args) {
                 return apiInstance.deleteRecords(...args);
             },
 
+            /**
+             * Find records by field/value matching.
+             * @param {string} viewId
+             * @param {string} fieldId
+             * @param {*} value
+             * @param {Object} [options]
+             * @returns {Promise<Array<Object>>}
+             */
             findRecords: function (...args) {
                 return apiInstance.findRecords(...args);
             },
 
+            /**
+             * Refresh one or more views.
+             * @param {string|string[]} viewId
+             * @returns {Promise<void|void[]>}
+             */
             refreshView: function (...args) {
                 return apiInstance.refreshView(...args);
             },
 
+            /**
+             * Build Knack filter query params.
+             * @param {Array<Object>|Object} filters
+             * @returns {Object}
+             */
             buildFilters: function (...args) {
                 return apiInstance.buildFilters(...args);
             },
 
+            /**
+             * Build Knack sorter query params.
+             * @param {Array<Object>|Object} sorters
+             * @returns {Object}
+             */
             buildSorters: function (...args) {
                 return apiInstance.buildSorters(...args);
             },
 
+            /**
+             * Fetch application details.
+             * @param {string} [applicationId]
+             * @param {Object} [options]
+             * @returns {Promise<Object>}
+             */
             getApplication: function (...args) {
                 return apiInstance.getApplication(...args);
             }
