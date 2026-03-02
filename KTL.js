@@ -20642,7 +20642,7 @@ function Ktl($, appInfo) {
                     const field = conditions[2] || '';
                     const view = conditions[3] || '';
 
-                    if (value === 'ktlLoggedInUser') {
+                    if (value === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found')
                             value = userAttr.name;
@@ -20818,7 +20818,7 @@ function Ktl($, appInfo) {
                     let fieldId;
                     const view = conditions[3] || '';
 
-                    if (value === 'ktlLoggedInUser') {
+                    if (value === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found')
                             value = userAttr.name;
