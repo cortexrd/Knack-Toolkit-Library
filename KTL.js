@@ -4666,7 +4666,9 @@ function Ktl($, appInfo) {
             async createRecord(viewId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId);
-                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
+                const effectiveRefresh = this._normalizeRefreshViews(
+                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
+                );
 
                 const preparedRecordData = await this._prepareRecordData(recordData, opts);
 
@@ -4715,7 +4717,9 @@ function Ktl($, appInfo) {
                 const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
                     rateLimit429Count += 1;
                 });
-                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
+                const effectiveRefresh = this._normalizeRefreshViews(
+                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
+                );
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -4796,7 +4800,7 @@ function Ktl($, appInfo) {
                 const enforceAssetSize = opts.enforceAssetSize === true
                     ? true
                     : (opts.enforceAssetSize === false ? false : this.options.enforceAssetSize);
-                const fileName = typeof file?.name === 'string' ? file.name : 'upload.bin';
+                const uploadFileName = typeof file?.name === 'string' && file.name.length ? file.name : 'upload.bin';
                 const exceedsWarnThreshold = hasKnownFileSize
                     && Number.isFinite(warnAssetSizeBytes)
                     && warnAssetSizeBytes >= 0
@@ -4812,7 +4816,7 @@ function Ktl($, appInfo) {
                     }
 
                     this._log('Asset upload size is unavailable; proceeding without size validation', {
-                        fileName,
+                        fileName: uploadFileName,
                         fileType: file?.type || '',
                         fileSizeRaw: file?.size,
                         warnAssetSizeBytes,
@@ -4826,7 +4830,7 @@ function Ktl($, appInfo) {
                     }
 
                     this._log('Asset upload exceeds configured max size but enforcement is disabled', {
-                        fileName,
+                        fileName: uploadFileName,
                         fileSizeBytes,
                         maxAssetSizeBytes,
                         fileSizeLabel: this._formatByteSize(fileSizeBytes),
@@ -4834,7 +4838,7 @@ function Ktl($, appInfo) {
                     }, 'warn');
                 } else if (exceedsWarnThreshold) {
                     this._log('Asset upload exceeds warning threshold', {
-                        fileName,
+                        fileName: uploadFileName,
                         fileSizeBytes,
                         warnAssetSizeBytes,
                         fileSizeLabel: this._formatByteSize(fileSizeBytes),
@@ -4843,7 +4847,6 @@ function Ktl($, appInfo) {
                 }
 
                 const formData = new FormData();
-                const uploadFileName = typeof file?.name === 'string' && file.name.length ? file.name : 'upload.bin';
                 formData.append('files', file, uploadFileName);
 
                 const timeoutMs = Number.isFinite(opts.timeout) ? opts.timeout : this.options.timeout;
@@ -4942,7 +4945,9 @@ function Ktl($, appInfo) {
             async updateRecord(viewId, recordId, recordData, refreshViews, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
-                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
+                const effectiveRefresh = this._normalizeRefreshViews(
+                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
+                );
                 const preparedRecordData = await this._prepareRecordData(recordData, opts);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -5002,13 +5007,16 @@ function Ktl($, appInfo) {
                 if (isPerRecord) {
                     // updateRecords(viewId, [{id, data}, ...], refreshViews, options)
                     records = recordIds.filter(r => r && r.id);
-                    opts = refreshViews || {};
-                    effectiveRefresh = opts?.refreshViews !== undefined ? opts.refreshViews : recordData; // positional shift
+                    opts = (refreshViews && typeof refreshViews === 'object' && !Array.isArray(refreshViews)) ? refreshViews : {};
+                    effectiveRefresh = opts?.refreshViews !== undefined
+                        ? opts.refreshViews
+                        : recordData; // positional shift
                 } else {
                     records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
                     effectiveRefresh = options?.refreshViews !== undefined ? options.refreshViews : refreshViews;
                     opts = options || {};
                 }
+                effectiveRefresh = this._normalizeRefreshViews(effectiveRefresh);
 
                 const total = records.length;
                 if (!total) return { total: 0, updated: 0, failed: 0 };
@@ -5073,7 +5081,9 @@ function Ktl($, appInfo) {
              */
             async deleteRecord(viewId, recordId, refreshViews, options = {}) {
                 const opts = options || {};
-                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
+                const effectiveRefresh = this._normalizeRefreshViews(
+                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
+                );
                 const url = this._formatApiUrl(viewId, recordId);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -5115,7 +5125,9 @@ function Ktl($, appInfo) {
                 const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
                     rateLimit429Count += 1;
                 });
-                const effectiveRefresh = opts.refreshViews !== undefined ? opts.refreshViews : refreshViews;
+                const effectiveRefresh = this._normalizeRefreshViews(
+                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
+                );
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -5928,6 +5940,25 @@ function Ktl($, appInfo) {
             async _refreshAfterWrite(refreshViews) {
                 if (!refreshViews) return;
                 await this.refreshView(refreshViews);
+            }
+
+            /**
+             * Normalize refresh target input to a valid view id string or string array.
+             * @param {string|string[]|*} refreshViews
+             * @returns {string|string[]|null}
+             * @private
+             */
+            _normalizeRefreshViews(refreshViews) {
+                if (typeof refreshViews === 'string') {
+                    return refreshViews;
+                }
+
+                if (Array.isArray(refreshViews)) {
+                    const normalized = refreshViews.filter(viewId => typeof viewId === 'string' && viewId.length);
+                    return normalized.length ? normalized : null;
+                }
+
+                return null;
             }
 
             /**
