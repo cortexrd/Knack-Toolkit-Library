@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.13.0*/
+/* KTL CSS version: 0.14.0*/
 
 /************ KTL Spacing Constants **************/
 :root {
@@ -68,6 +68,7 @@
 	font-weight: 900;
 	font-size: 14px;
 	white-space: nowrap;
+	cursor: pointer;
 	--ktlFlashRate: 1s;
 }
 
@@ -112,6 +113,14 @@ th[class*=" ktlHidden_"], td[class*=" ktlHidden_"] {
 
 .ktlVisibilityHidden {
 	visibility: hidden;
+}
+
+[class*="dis_ktlHidden"],
+[class*="dis_ktlDisplayNone"],
+.dis_ktlVisibilityHidden {
+	opacity: 0.6 !important;
+	outline: 2px dotted orangered !important;
+	outline-offset: -2px !important;
 }
 
 /* Dynamic Hide/Show Columns feature  - BEGIN */
@@ -580,7 +589,7 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 }
 
 .ktlLegendText {
-	white-space: nowrap;
+	white-space: normal;
 }
 
 /************Show Hide Views**************/
