@@ -4655,20 +4655,17 @@ function Ktl($, appInfo) {
              * Create a record in a view.
              * @param {string} viewId
              * @param {Object} recordData
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
-             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {Array|string} [options.refreshViews]
              * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
              * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
              * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<Object>}
              */
-            async createRecord(viewId, recordData, refreshViews, options = {}) {
+            async createRecord(viewId, recordData, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId);
-                const effectiveRefresh = this._normalizeRefreshViews(
-                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
-                );
+                const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
 
                 const preparedRecordData = await this._prepareRecordData(recordData, opts);
 
@@ -4692,9 +4689,8 @@ function Ktl($, appInfo) {
              * Create multiple records in a view using write concurrency.
              * @param {string} viewId
              * @param {Object[]} recordsData
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
-             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {Array|string} [options.refreshViews]
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
@@ -4703,7 +4699,7 @@ function Ktl($, appInfo) {
              * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
              */
-            async createRecords(viewId, recordsData, refreshViews, options = {}) {
+            async createRecords(viewId, recordsData, options = {}) {
                 const payloads = Array.isArray(recordsData) ? recordsData.filter(Boolean) : [];
                 const total = payloads.length;
                 if (!total) return { total: 0, created: 0, failed: 0, records: [] };
@@ -4717,9 +4713,7 @@ function Ktl($, appInfo) {
                 const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
                     rateLimit429Count += 1;
                 });
-                const effectiveRefresh = this._normalizeRefreshViews(
-                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
-                );
+                const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -4729,7 +4723,7 @@ function Ktl($, appInfo) {
                         continueOnError: opts.continueOnError,
                         execute: async (index) => {
                             try {
-                                const record = await this.createRecord(viewId, payloads[index], [], requestOptions);
+                                const record = await this.createRecord(viewId, payloads[index], requestOptions);
                                 created += 1;
                                 createdRecords[index] = record;
                                 if (typeof opts.onProgress === 'function')
@@ -4934,20 +4928,17 @@ function Ktl($, appInfo) {
              * @param {string} viewId
              * @param {string} recordId
              * @param {Object} recordData
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
-             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {Array|string} [options.refreshViews]
              * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
              * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
              * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<Object>}
              */
-            async updateRecord(viewId, recordId, recordData, refreshViews, options = {}) {
+            async updateRecord(viewId, recordId, recordData, options = {}) {
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
-                const effectiveRefresh = this._normalizeRefreshViews(
-                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
-                );
+                const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
                 const preparedRecordData = await this._prepareRecordData(recordData, opts);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -4969,22 +4960,21 @@ function Ktl($, appInfo) {
              * Update multiple records in a view using write concurrency.
              *
              * Accepts two calling shapes:
-             *   - Shared data:   updateRecords(viewId, recordIds, recordData, refreshViews, options)
-             *   - Per-record:    updateRecords(viewId, records, refreshViews, options)
+             *   - Shared data:   updateRecords(viewId, recordIds, recordData, options)
+             *   - Per-record:    updateRecords(viewId, records, options)
              *     where `records` is Array<{id: string, data: Object}>
              *
              * @param {string} viewId
              * @param {string[]|Array<{id:string,data:Object}>} recordIds - Array of record IDs (shared-data shape) or per-record objects.
-             * @param {Object|Array|string} recordData - Shared record data (shared-data shape) or the refreshViews param (per-record shape).
-             * @param {Array|string} [refreshViews]
+             * @param {Object|Array|string} recordData - Shared record data (shared-data shape) or the options param (per-record shape).
              * @param {Object} [options]
-             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {Array|string} [options.refreshViews]
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
              * @returns {Promise<{ total: number, updated: number, failed: number }>}
              */
-            async updateRecords(viewId, recordIds, recordData, refreshViews, options = {}) {
+            async updateRecords(viewId, recordIds, recordData, options = {}) {
                 // Detect per-record shape: Array<{id, data}>
                 const isPerRecord = Array.isArray(recordIds)
                     && recordIds.length > 0
@@ -5005,18 +4995,14 @@ function Ktl($, appInfo) {
 
                 let records, effectiveRefresh, opts;
                 if (isPerRecord) {
-                    // updateRecords(viewId, [{id, data}, ...], refreshViews, options)
+                    // updateRecords(viewId, [{id, data}, ...], options)
                     records = recordIds.filter(r => r && r.id);
-                    opts = (refreshViews && typeof refreshViews === 'object' && !Array.isArray(refreshViews)) ? refreshViews : {};
-                    effectiveRefresh = opts?.refreshViews !== undefined
-                        ? opts.refreshViews
-                        : recordData; // positional shift
+                    opts = (recordData && typeof recordData === 'object' && !Array.isArray(recordData)) ? recordData : {};
                 } else {
                     records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
-                    effectiveRefresh = options?.refreshViews !== undefined ? options.refreshViews : refreshViews;
                     opts = options || {};
                 }
-                effectiveRefresh = this._normalizeRefreshViews(effectiveRefresh);
+                effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
 
                 const total = records.length;
                 if (!total) return { total: 0, updated: 0, failed: 0 };
@@ -5039,7 +5025,7 @@ function Ktl($, appInfo) {
                         execute: async (index) => {
                             const { id: recordId, data } = records[index];
                             try {
-                                await this.updateRecord(viewId, recordId, data, [], requestOptions);
+                                await this.updateRecord(viewId, recordId, data, requestOptions);
                                 updated += 1;
                                 if (typeof batchOpts.onProgress === 'function')
                                     batchOpts.onProgress({ updated, failed, total, recordId });
@@ -5074,16 +5060,13 @@ function Ktl($, appInfo) {
              * Delete a record in a view.
              * @param {string} viewId
              * @param {string} recordId
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
-             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {Array|string} [options.refreshViews]
              * @returns {Promise<Object>}
              */
-            async deleteRecord(viewId, recordId, refreshViews, options = {}) {
+            async deleteRecord(viewId, recordId, options = {}) {
                 const opts = options || {};
-                const effectiveRefresh = this._normalizeRefreshViews(
-                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
-                );
+                const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
                 const url = this._formatApiUrl(viewId, recordId);
                 return await this._enqueueWrite(async () => {
                     const result = await this._request(
@@ -5104,15 +5087,14 @@ function Ktl($, appInfo) {
              * Delete multiple records in a view using write concurrency.
              * @param {string} viewId
              * @param {string[]} recordIds
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
-             * @param {Array|string} [options.refreshViews] - Alternative to the positional refreshViews param.
+             * @param {Array|string} [options.refreshViews]
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
              * @param {boolean} [options.continueOnError=false]
              * @returns {Promise<{ total: number, deleted: number, failed: number }>}
              */
-            async deleteRecords(viewId, recordIds, refreshViews, options = {}) {
+            async deleteRecords(viewId, recordIds, options = {}) {
                 const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
                 const total = ids.length;
                 if (!total) return { total: 0, deleted: 0, failed: 0 };
@@ -5125,9 +5107,7 @@ function Ktl($, appInfo) {
                 const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
                     rateLimit429Count += 1;
                 });
-                const effectiveRefresh = this._normalizeRefreshViews(
-                    opts.refreshViews !== undefined ? opts.refreshViews : refreshViews
-                );
+                const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -5138,7 +5118,7 @@ function Ktl($, appInfo) {
                         execute: async (index) => {
                             const recordId = ids[index];
                             try {
-                                await this.deleteRecord(viewId, recordId, [], requestOptions);
+                                await this.deleteRecord(viewId, recordId, requestOptions);
                                 deleted += 1;
                                 if (typeof opts.onProgress === 'function')
                                     opts.onProgress({ deleted, failed, total, recordId });
@@ -6062,8 +6042,8 @@ function Ktl($, appInfo) {
              * Create a record in a view.
              * @param {string} viewId
              * @param {Object} recordData
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews]
              * @returns {Promise<Object>}
              */
             createRecord: function (...args) {
@@ -6074,8 +6054,8 @@ function Ktl($, appInfo) {
              * Create multiple records in a view.
              * @param {string} viewId
              * @param {Object[]} recordsData
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews]
              * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
              */
             createRecords: function (...args) {
@@ -6097,8 +6077,8 @@ function Ktl($, appInfo) {
              * @param {string} viewId
              * @param {string} recordId
              * @param {Object} recordData
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews]
              * @returns {Promise<Object>}
              */
             updateRecord: function (...args) {
@@ -6110,8 +6090,8 @@ function Ktl($, appInfo) {
              * @param {string} viewId
              * @param {string[]|Array<{id:string,data:Object}>} recordIds
              * @param {Object|Array|string} recordData
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews]
              * @returns {Promise<{ total: number, updated: number, failed: number }>}
              */
             updateRecords: function (...args) {
@@ -6122,8 +6102,8 @@ function Ktl($, appInfo) {
              * Delete a record in a view.
              * @param {string} viewId
              * @param {string} recordId
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews]
              * @returns {Promise<Object>}
              */
             deleteRecord: function (...args) {
@@ -6134,8 +6114,8 @@ function Ktl($, appInfo) {
              * Delete multiple records in a view.
              * @param {string} viewId
              * @param {string[]} recordIds
-             * @param {Array|string} [refreshViews]
              * @param {Object} [options]
+             * @param {Array|string} [options.refreshViews]
              * @returns {Promise<{ total: number, deleted: number, failed: number }>}
              */
             deleteRecords: function (...args) {
@@ -15146,7 +15126,7 @@ function Ktl($, appInfo) {
 
                 const updatePromises = recordsToUpdate.map(async ({ recId, apiData }) => {
                     try {
-                        await ktl.api.updateRecord(viewId, recId, apiData, []);
+                        await ktl.api.updateRecord(viewId, recId, apiData);
                         updatedCount++;
                         ktl.core.setInfoPopupText(`Updated ${updatedCount} of ${recordsToUpdate.length} records...`);
                         return { recId, success: true };
@@ -23902,7 +23882,7 @@ function Ktl($, appInfo) {
                             showProgress(0);
                             (async () => {
                                 try {
-                                    const result = await ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                                    const result = await ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, {
                                         onProgress: ({ updated }) => showProgress(updated),
                                         continueOnError: false,
                                         staggerMs: 40
@@ -32061,7 +32041,7 @@ function Ktl($, appInfo) {
                     };
 
                     showProgress(0);
-                    ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, [], {
+                    ktl.api.updateRecords(bulkOpsViewId, recordIds, apiData, {
                         autoUploadAssets: true,
                         onProgress: ({ updated }) => showProgress(updated),
                         continueOnError: false,
@@ -32097,7 +32077,7 @@ function Ktl($, appInfo) {
 
                     const recordsToCreate = Array.from({ length: numToProcess }, () => ({ ...apiData }));
 
-                    ktl.api.createRecords(bulkOpsViewId, recordsToCreate, [], {
+                    ktl.api.createRecords(bulkOpsViewId, recordsToCreate, {
                         autoUploadAssets: true,
                         onProgress: ({ created, failed }) => {
                             countDone = created + failed;
@@ -32242,7 +32222,7 @@ function Ktl($, appInfo) {
                     }
 
                     showProgress(0);
-                    ktl.api.deleteRecords(view.key, deleteArray, [], {
+                    ktl.api.deleteRecords(view.key, deleteArray, {
                         onProgress: ({ deleted }) => showProgress(deleted),
                         continueOnError: false,
                         staggerMs: 40
