@@ -4963,6 +4963,7 @@ function Ktl($, appInfo) {
              *   - Shared data:   updateRecords(viewId, recordIds, recordData, options)
              *   - Per-record:    updateRecords(viewId, records, options)
              *     where `records` is Array<{id: string, data: Object}>
+             *     (legacy 4th-arg options are merged when provided)
              *
              * @param {string} viewId
              * @param {string[]|Array<{id:string,data:Object}>} recordIds - Array of record IDs (shared-data shape) or per-record objects.
@@ -4995,9 +4996,11 @@ function Ktl($, appInfo) {
 
                 let records, effectiveRefresh, opts;
                 if (isPerRecord) {
-                    // updateRecords(viewId, [{id, data}, ...], options)
+                    // updateRecords(viewId, [{id, data}, ...], options[, legacyOptions])
                     records = recordIds.filter(r => r && r.id);
-                    opts = (recordData && typeof recordData === 'object' && !Array.isArray(recordData)) ? recordData : {};
+                    const perRecordOptions = (recordData && typeof recordData === 'object' && !Array.isArray(recordData)) ? recordData : {};
+                    const legacyOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+                    opts = { ...perRecordOptions, ...legacyOptions };
                 } else {
                     records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
                     opts = options || {};
@@ -5370,6 +5373,7 @@ function Ktl($, appInfo) {
                 const workerCount = Math.max(1, Math.min(total, Math.floor(queue.current || this.options.writeConcurrency || 1)));
                 const requestOptions = {
                     ...opts,
+                    refreshViews: undefined,
                     _on429: () => {
                         typeof on429 === 'function' && on429();
                     }

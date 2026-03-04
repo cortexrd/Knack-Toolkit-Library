@@ -24,10 +24,13 @@ The module exposes a shared singleton API instance plus `create(options)` for cu
 const records = await ktl.api.getRecords('view_123');
 
 // Update one record
-await ktl.api.updateRecord('view_123', '64f...', { field_1: 'Updated' }, ['view_123']);
+await ktl.api.updateRecord('view_123', '64f...', { field_1: 'Updated' }, {
+  refreshViews: ['view_123']
+});
 
 // Bulk update with progress
-const result = await ktl.api.updateRecords('view_123', recIds, { field_2: 'Yes' }, [], {
+const result = await ktl.api.updateRecords('view_123', recIds, { field_2: 'Yes' }, {
+  refreshViews: [],
   continueOnError: false,
   staggerMs: 40,
   onProgress: ({ updated, failed, total }) => {
@@ -84,19 +87,19 @@ Gets all pages of child records.
 
 ## Write methods
 
-### `createRecord(viewId, recordData, refreshViews?, options?)`
+### `createRecord(viewId, recordData, options?)`
 Creates one record.
 
-### `createRecords(viewId, recordsData, refreshViews?, options?)`
+### `createRecords(viewId, recordsData, options?)`
 Creates many records using write queue controls.
 
 - Returns: `{ total, created, failed, records }`
 - Supports `continueOnError`, `staggerMs`, `onProgress`
 
-### `updateRecord(viewId, recordId, recordData, refreshViews?, options?)`
+### `updateRecord(viewId, recordId, recordData, options?)`
 Updates one record.
 
-### `updateRecords(viewId, recordIds, recordData, refreshViews?, options?)`
+### `updateRecords(viewId, recordIds, recordData, options?)`
 Updates many records with queue controls.
 
 - Returns: `{ total, updated, failed }`
@@ -114,10 +117,10 @@ Uploads one file/image asset and returns uploaded asset metadata.
   - `maxAssetSizeBytes` (optional hard max)
   - `enforceAssetSize` (reject early when max exceeded)
 
-### `deleteRecord(viewId, recordId, refreshViews?, options?)`
+### `deleteRecord(viewId, recordId, options?)`
 Deletes one record.
 
-### `deleteRecords(viewId, recordIds, refreshViews?, options?)`
+### `deleteRecords(viewId, recordIds, options?)`
 Deletes many records with queue controls.
 
 - Returns: `{ total, deleted, failed }`
@@ -163,6 +166,7 @@ Many methods share these options:
 
 Bulk write options:
 
+- `refreshViews` (`string | string[]`): view id(s) to refresh after write completion
 - `continueOnError` (default `false`)
 - `staggerMs` (default `0`)
 
