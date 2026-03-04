@@ -4710,10 +4710,12 @@ function Ktl($, appInfo) {
                 let firstError = null;
                 const failedIndices = [];
                 const createdRecords = [];
-                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                const effectiveRefresh = this._normalizeRefreshViews(options?.refreshViews);
+                const batchOptions = { ...(options || {}) };
+                delete batchOptions.refreshViews;
+                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, batchOptions, () => {
                     rateLimit429Count += 1;
                 });
-                const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -5003,6 +5005,8 @@ function Ktl($, appInfo) {
                     opts = options || {};
                 }
                 effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
+                const batchOptions = { ...opts };
+                delete batchOptions.refreshViews;
 
                 const total = records.length;
                 if (!total) return { total: 0, updated: 0, failed: 0 };
@@ -5012,7 +5016,7 @@ function Ktl($, appInfo) {
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
-                const { opts: batchOpts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, opts, () => {
+                const { opts: batchOpts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, batchOptions, () => {
                     rateLimit429Count += 1;
                 });
 
@@ -5104,10 +5108,12 @@ function Ktl($, appInfo) {
                 let rateLimit429Count = 0;
                 let firstError = null;
                 const failedRecordIds = [];
-                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, options, () => {
+                const effectiveRefresh = this._normalizeRefreshViews(options?.refreshViews);
+                const batchOptions = { ...(options || {}) };
+                delete batchOptions.refreshViews;
+                const { opts, staggerMs, workerCount, requestOptions } = this._buildBatchContext(total, batchOptions, () => {
                     rateLimit429Count += 1;
                 });
-                const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
 
                 try {
                     const batchResult = await this._runBatchWorkers({
@@ -5368,10 +5374,8 @@ function Ktl($, appInfo) {
                 const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
                 const queue = this._writeQueue || {};
                 const workerCount = Math.max(1, Math.min(total, Math.floor(queue.current || this.options.writeConcurrency || 1)));
-                const requestOpts = { ...opts };
-                delete requestOpts.refreshViews;
                 const requestOptions = {
-                    ...requestOpts,
+                    ...opts,
                     _on429: () => {
                         typeof on429 === 'function' && on429();
                     }
