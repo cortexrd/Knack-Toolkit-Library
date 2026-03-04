@@ -5368,9 +5368,10 @@ function Ktl($, appInfo) {
                 const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
                 const queue = this._writeQueue || {};
                 const workerCount = Math.max(1, Math.min(total, Math.floor(queue.current || this.options.writeConcurrency || 1)));
+                const requestOpts = { ...opts };
+                delete requestOpts.refreshViews;
                 const requestOptions = {
-                    ...opts,
-                    refreshViews: undefined,
+                    ...requestOpts,
                     _on429: () => {
                         typeof on429 === 'function' && on429();
                     }
