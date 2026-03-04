@@ -4963,7 +4963,6 @@ function Ktl($, appInfo) {
              *   - Shared data:   updateRecords(viewId, recordIds, recordData, options)
              *   - Per-record:    updateRecords(viewId, records, options)
              *     where `records` is Array<{id: string, data: Object}>
-             *     (legacy 4th-arg options are merged when provided)
              *
              * @param {string} viewId
              * @param {string[]|Array<{id:string,data:Object}>} recordIds - Array of record IDs (shared-data shape) or per-record objects.
@@ -4996,11 +4995,9 @@ function Ktl($, appInfo) {
 
                 let records, effectiveRefresh, opts;
                 if (isPerRecord) {
-                    // updateRecords(viewId, [{id, data}, ...], options[, legacyOptions])
+                    // updateRecords(viewId, [{id, data}, ...], options)
                     records = recordIds.filter(r => r && r.id);
-                    const perRecordOptions = (recordData && typeof recordData === 'object' && !Array.isArray(recordData)) ? recordData : {};
-                    const legacyOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-                    opts = { ...perRecordOptions, ...legacyOptions };
+                    opts = (recordData && typeof recordData === 'object' && !Array.isArray(recordData)) ? recordData : {};
                 } else {
                     records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
                     opts = options || {};
