@@ -4663,6 +4663,9 @@ function Ktl($, appInfo) {
              * @returns {Promise<Object>}
              */
             async createRecord(viewId, recordData, options = {}) {
+                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
+                    throw new Error('KTL API: The positional refreshViews argument has been removed from createRecord. Use options.refreshViews instead, e.g. createRecord(viewId, data, { refreshViews: [...] }).');
+                }
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId);
                 const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
@@ -4700,6 +4703,9 @@ function Ktl($, appInfo) {
              * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
              */
             async createRecords(viewId, recordsData, options = {}) {
+                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
+                    throw new Error('KTL API: The positional refreshViews argument has been removed from createRecords. Use options.refreshViews instead, e.g. createRecords(viewId, data, { refreshViews: [...] }).');
+                }
                 const payloads = Array.isArray(recordsData) ? recordsData.filter(Boolean) : [];
                 const total = payloads.length;
                 if (!total) return { total: 0, created: 0, failed: 0, records: [] };
@@ -4938,6 +4944,9 @@ function Ktl($, appInfo) {
              * @returns {Promise<Object>}
              */
             async updateRecord(viewId, recordId, recordData, options = {}) {
+                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
+                    throw new Error('KTL API: The positional refreshViews argument has been removed from updateRecord. Use options.refreshViews instead, e.g. updateRecord(viewId, recordId, data, { refreshViews: [...] }).');
+                }
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
                 const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
@@ -4993,6 +5002,20 @@ function Ktl($, appInfo) {
 
                 if (hasMixedPerRecordShape) {
                     throw new Error('KTL API error: updateRecords received a mixed array. Use all IDs with shared data, or all objects with {id, data}.');
+                }
+
+                if (isPerRecord) {
+                    // Per-record shape: updateRecords(viewId, [{id, data}], options)
+                    // Guard against legacy updateRecords(viewId, records, refreshViews, options)
+                    if (recordData !== undefined && (Array.isArray(recordData) || typeof recordData === 'string')) {
+                        throw new Error('KTL API: The positional refreshViews argument has been removed from updateRecords. Use options.refreshViews instead, e.g. updateRecords(viewId, records, { refreshViews: [...] }).');
+                    }
+                } else {
+                    // Shared-data shape: updateRecords(viewId, recordIds, recordData, options)
+                    // Guard against legacy updateRecords(viewId, recordIds, recordData, refreshViews, options)
+                    if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
+                        throw new Error('KTL API: The positional refreshViews argument has been removed from updateRecords. Use options.refreshViews instead, e.g. updateRecords(viewId, recordIds, data, { refreshViews: [...] }).');
+                    }
                 }
 
                 let records, effectiveRefresh, opts;
@@ -5069,6 +5092,9 @@ function Ktl($, appInfo) {
              * @returns {Promise<Object>}
              */
             async deleteRecord(viewId, recordId, options = {}) {
+                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
+                    throw new Error('KTL API: The positional refreshViews argument has been removed from deleteRecord. Use options.refreshViews instead, e.g. deleteRecord(viewId, recordId, { refreshViews: [...] }).');
+                }
                 const opts = options || {};
                 const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
                 const url = this._formatApiUrl(viewId, recordId);
@@ -5099,6 +5125,9 @@ function Ktl($, appInfo) {
              * @returns {Promise<{ total: number, deleted: number, failed: number }>}
              */
             async deleteRecords(viewId, recordIds, options = {}) {
+                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
+                    throw new Error('KTL API: The positional refreshViews argument has been removed from deleteRecords. Use options.refreshViews instead, e.g. deleteRecords(viewId, recordIds, { refreshViews: [...] }).');
+                }
                 const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
                 const total = ids.length;
                 if (!total) return { total: 0, deleted: 0, failed: 0 };
