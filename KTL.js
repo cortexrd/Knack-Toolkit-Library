@@ -4968,7 +4968,7 @@ function Ktl($, appInfo) {
              *
              * @param {string} viewId
              * @param {string[]|Array<{id:string,data:Object}>} recordIds - Array of record IDs (shared-data shape) or per-record objects.
-             * @param {Object|Array|string} recordData - Shared record data (shared-data shape) or the options param (per-record shape).
+             * @param {Object} recordData - Shared record data (shared-data shape) or the options object (per-record shape).
              * @param {Object} [options]
              * @param {Array|string} [options.refreshViews]
              * @param {Function} [options.onProgress]
@@ -6095,7 +6095,7 @@ function Ktl($, appInfo) {
              * Update multiple records in a view.
              * @param {string} viewId
              * @param {string[]|Array<{id:string,data:Object}>} recordIds
-             * @param {Object|Array|string} recordData
+             * @param {Object} recordData - Shared record data (shared-data shape) or the options object (per-record shape).
              * @param {Object} [options]
              * @param {Array|string} [options.refreshViews]
              * @returns {Promise<{ total: number, updated: number, failed: number }>}
