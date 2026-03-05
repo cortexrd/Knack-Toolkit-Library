@@ -163,10 +163,10 @@ Many methods share these options:
 - `rawResponse`: return Knack raw payload instead of records array
 - `onProgress`: callback for paged or bulk operations
 - `failOnPageError`: when true, paged parallel reads throw if any page fails (default false = keep successful pages)
+- `refreshViews` (`string | string[]`): view id(s) to refresh after write completion (supported by all write methods)
 
 Bulk write options:
 
-- `refreshViews` (`string | string[]`): view id(s) to refresh after write completion
 - `continueOnError` (default `false`)
 - `staggerMs` (default `0`)
 
