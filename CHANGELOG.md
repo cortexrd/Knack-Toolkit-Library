@@ -1,5 +1,14 @@
 # Knack Toolkit Library Changelog
 
+## 0.41.1    *2026-03-06*
+
+- `ktl.api` bulk write defaults and validation hardening:
+  - Change default `continueOnError` to `true` for `createRecords`, `updateRecords`, and `deleteRecords`
+  - Enforce plain-object `options` across write methods (`createRecord(s)`, `updateRecord(s)`, `deleteRecord(s)`)
+  - Improve worker scheduling for `continueOnError: false` to reduce additional tasks being claimed after first failure
+- `ktl.api` logging cleanup:
+  - Route concurrent bulk summary logs through debug-gated API logger (no unconditional console output)
+
 
 ## 0.41.0    *2026-02-21*
 

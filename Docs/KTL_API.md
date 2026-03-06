@@ -94,7 +94,7 @@ Creates one record.
 Creates many records using write queue controls.
 
 - Returns: `{ total, created, failed, records }`
-- Supports `continueOnError`, `staggerMs`, `onProgress`
+- Supports `continueOnError` (default `true`), `staggerMs`, `onProgress`
 
 ### `updateRecord(viewId, recordId, recordData, options?)`
 Updates one record.
@@ -103,10 +103,8 @@ Updates one record.
 Updates many records with queue controls.
 
 - Returns: `{ total, updated, failed }`
-- Supports two input shapes:
-  - Shared-data mode: `recordIds: string[]` + shared `recordData`
-  - Per-record mode: `recordIds: Array<{ id, data }>`
-- Mixed arrays (e.g., first item object, later items string IDs) now throw a clear validation error
+- Requires `recordIds: string[]` plus shared `recordData: Object`
+- `recordData` must be a plain object
 
 ### `uploadAsset(file, options?)`
 Uploads one file/image asset and returns uploaded asset metadata.
@@ -167,8 +165,12 @@ Many methods share these options:
 
 Bulk write options:
 
-- `continueOnError` (default `false`)
+- `continueOnError` (default `true`)
 - `staggerMs` (default `0`)
+
+Write-method validation:
+
+- All write method `options` must be a plain object when provided
 
 Asset upload options:
 
