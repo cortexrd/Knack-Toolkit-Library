@@ -4663,9 +4663,7 @@ function Ktl($, appInfo) {
              * @returns {Promise<Object>}
              */
             async createRecord(viewId, recordData, options = {}) {
-                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
-                    throw new Error('KTL API: The positional refreshViews argument has been removed from createRecord. Use options.refreshViews instead, e.g. createRecord(viewId, data, { refreshViews: [...] }).');
-                }
+                this._assertWriteOptions(options, 'createRecord');
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId);
                 const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
@@ -4696,16 +4694,14 @@ function Ktl($, appInfo) {
              * @param {Array|string} [options.refreshViews]
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
-             * @param {boolean} [options.continueOnError=false]
+             * @param {boolean} [options.continueOnError=true]
              * @param {boolean} [options.autoUploadAssets=false] - When true, File/Blob values are uploaded first and replaced by asset ids.
              * @param {string[]} [options.assetFieldIds] - Optional allow-list of field keys eligible for auto asset upload.
              * @param {Object<string, 'file'|'image'>} [options.assetTypesByField] - Optional per-field asset type override.
              * @returns {Promise<{ total: number, created: number, failed: number, records: Object[] }>}
              */
             async createRecords(viewId, recordsData, options = {}) {
-                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
-                    throw new Error('KTL API: The positional refreshViews argument has been removed from createRecords. Use options.refreshViews instead, e.g. createRecords(viewId, data, { refreshViews: [...] }).');
-                }
+                this._assertWriteOptions(options, 'createRecords');
                 const payloads = Array.isArray(recordsData) ? recordsData.filter(Boolean) : [];
                 const total = payloads.length;
                 if (!total) return { total: 0, created: 0, failed: 0, records: [] };
@@ -4944,9 +4940,7 @@ function Ktl($, appInfo) {
              * @returns {Promise<Object>}
              */
             async updateRecord(viewId, recordId, recordData, options = {}) {
-                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
-                    throw new Error('KTL API: The positional refreshViews argument has been removed from updateRecord. Use options.refreshViews instead, e.g. updateRecord(viewId, recordId, data, { refreshViews: [...] }).');
-                }
+                this._assertWriteOptions(options, 'updateRecord');
                 const opts = options || {};
                 const url = this._formatApiUrl(viewId, recordId);
                 const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
@@ -4970,63 +4964,29 @@ function Ktl($, appInfo) {
             /**
              * Update multiple records in a view using write concurrency.
              *
-             * Accepts two calling shapes:
-             *   - Shared data:   updateRecords(viewId, recordIds, recordData, options)
-             *   - Per-record:    updateRecords(viewId, records, options)
-             *     where `records` is Array<{id: string, data: Object}>
-             *
              * @param {string} viewId
-             * @param {string[]|Array<{id:string,data:Object}>} recordIds - Array of record IDs (shared-data shape) or per-record objects.
-             * @param {Object} recordData - Shared record data (shared-data shape) or the options object (per-record shape).
+             * @param {string[]} recordIds
+             * @param {Object} recordData
              * @param {Object} [options]
              * @param {Array|string} [options.refreshViews]
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
-             * @param {boolean} [options.continueOnError=false]
+             * @param {boolean} [options.continueOnError=true]
              * @returns {Promise<{ total: number, updated: number, failed: number }>}
              */
             async updateRecords(viewId, recordIds, recordData, options = {}) {
-                // Detect per-record shape: Array<{id, data}>
-                const isPerRecord = Array.isArray(recordIds)
-                    && recordIds.length > 0
-                    && recordIds.every(record =>
-                        record !== null
-                        && typeof record === 'object'
-                        && 'id' in record
-                        && 'data' in record
-                    );
-
-                const hasMixedPerRecordShape = Array.isArray(recordIds)
-                    && recordIds.some(record => record !== null && typeof record === 'object')
-                    && !isPerRecord;
-
-                if (hasMixedPerRecordShape) {
-                    throw new Error('KTL API error: updateRecords received a mixed array. Use all IDs with shared data, or all objects with {id, data}.');
+                this._assertWriteOptions(options, 'updateRecords');
+                if (!Array.isArray(recordIds)) {
+                    throw new Error('KTL API error: updateRecords requires recordIds to be an array.');
                 }
 
-                if (isPerRecord) {
-                    // Per-record shape: updateRecords(viewId, [{id, data}], options)
-                    // Guard against legacy updateRecords(viewId, records, refreshViews, options)
-                    if (recordData !== undefined && (Array.isArray(recordData) || typeof recordData === 'string')) {
-                        throw new Error('KTL API: The positional refreshViews argument has been removed from updateRecords. Use options.refreshViews instead, e.g. updateRecords(viewId, records, { refreshViews: [...] }).');
-                    }
-                } else {
-                    // Shared-data shape: updateRecords(viewId, recordIds, recordData, options)
-                    // Guard against legacy updateRecords(viewId, recordIds, recordData, refreshViews, options)
-                    if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
-                        throw new Error('KTL API: The positional refreshViews argument has been removed from updateRecords. Use options.refreshViews instead, e.g. updateRecords(viewId, recordIds, data, { refreshViews: [...] }).');
-                    }
+                if (!recordData || typeof recordData !== 'object' || Array.isArray(recordData)) {
+                    throw new Error('KTL API error: updateRecords requires recordData to be an object.');
                 }
 
-                let records, effectiveRefresh, opts;
-                if (isPerRecord) {
-                    // updateRecords(viewId, [{id, data}, ...], options)
-                    records = recordIds.filter(r => r && r.id);
-                    opts = (recordData && typeof recordData === 'object' && !Array.isArray(recordData)) ? recordData : {};
-                } else {
-                    records = (Array.isArray(recordIds) ? recordIds.filter(Boolean) : []).map(id => ({ id, data: recordData }));
-                    opts = options || {};
-                }
+                const records = recordIds.filter(Boolean).map(id => ({ id, data: recordData }));
+                const opts = options || {};
+                let effectiveRefresh;
                 effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
                 const batchOptions = { ...opts };
                 delete batchOptions.refreshViews;
@@ -5092,9 +5052,7 @@ function Ktl($, appInfo) {
              * @returns {Promise<Object>}
              */
             async deleteRecord(viewId, recordId, options = {}) {
-                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
-                    throw new Error('KTL API: The positional refreshViews argument has been removed from deleteRecord. Use options.refreshViews instead, e.g. deleteRecord(viewId, recordId, { refreshViews: [...] }).');
-                }
+                this._assertWriteOptions(options, 'deleteRecord');
                 const opts = options || {};
                 const effectiveRefresh = this._normalizeRefreshViews(opts.refreshViews);
                 const url = this._formatApiUrl(viewId, recordId);
@@ -5121,13 +5079,11 @@ function Ktl($, appInfo) {
              * @param {Array|string} [options.refreshViews]
              * @param {Function} [options.onProgress]
              * @param {number} [options.staggerMs=0]
-             * @param {boolean} [options.continueOnError=false]
+             * @param {boolean} [options.continueOnError=true]
              * @returns {Promise<{ total: number, deleted: number, failed: number }>}
              */
             async deleteRecords(viewId, recordIds, options = {}) {
-                if (options !== undefined && (Array.isArray(options) || typeof options === 'string')) {
-                    throw new Error('KTL API: The positional refreshViews argument has been removed from deleteRecords. Use options.refreshViews instead, e.g. deleteRecords(viewId, recordIds, { refreshViews: [...] }).');
-                }
+                this._assertWriteOptions(options, 'deleteRecords');
                 const ids = Array.isArray(recordIds) ? recordIds.filter(Boolean) : [];
                 const total = ids.length;
                 if (!total) return { total: 0, deleted: 0, failed: 0 };
@@ -5399,18 +5355,21 @@ function Ktl($, appInfo) {
              * @private
              */
             _buildBatchContext(total, options = {}, on429 = () => { }) {
+                this._assertWriteOptions(options, 'batch operation');
                 const opts = options || {};
+                const continueOnError = opts.continueOnError !== false;
                 const staggerMs = Math.max(0, Number(opts.staggerMs) || 0);
                 const queue = this._writeQueue || {};
                 const workerCount = Math.max(1, Math.min(total, Math.floor(queue.current || this.options.writeConcurrency || 1)));
                 const requestOptions = {
                     ...opts,
+                    continueOnError,
                     _on429: () => {
                         typeof on429 === 'function' && on429();
                     }
                 };
 
-                return { opts, staggerMs, workerCount, requestOptions };
+                return { opts: { ...opts, continueOnError }, staggerMs, workerCount, requestOptions };
             }
 
             /**
@@ -5423,7 +5382,11 @@ function Ktl($, appInfo) {
              * @private
              */
             _logBatchSummary(operation, viewId, processed, total, rateLimit429Count) {
-                console.log(`[KTL API] Concurrent ${operation} summary for view ${viewId}: processed ${processed}/${total}, 429s ${rateLimit429Count}`);
+                this._log(
+                    `Concurrent ${operation} summary`,
+                    { viewId, processed, total, rateLimit429Count },
+                    'info'
+                );
             }
 
             /**
@@ -5448,7 +5411,7 @@ function Ktl($, appInfo) {
              * @param {number} config.total
              * @param {number} config.workerCount
              * @param {number} [config.staggerMs=0]
-             * @param {boolean} [config.continueOnError=false]
+             * @param {boolean} [config.continueOnError=true]
              * @param {(index:number)=>Promise<void>} config.execute
              * @returns {Promise<{firstError: Error|null}>}
              * @private
@@ -5457,7 +5420,7 @@ function Ktl($, appInfo) {
                 const total = Number.isFinite(config.total) ? config.total : 0;
                 const workerCount = Number.isFinite(config.workerCount) ? Math.max(1, Math.floor(config.workerCount)) : 1;
                 const staggerMs = Number.isFinite(config.staggerMs) ? Math.max(0, Math.floor(config.staggerMs)) : 0;
-                const continueOnError = config.continueOnError === true;
+                const continueOnError = config.continueOnError !== false;
                 const execute = typeof config.execute === 'function' ? config.execute : null;
 
                 if (!execute)
@@ -5476,15 +5439,15 @@ function Ktl($, appInfo) {
                         if (stopScheduling && !continueOnError)
                             return;
 
-                        const index = nextIndex;
-                        nextIndex += 1;
-                        if (index >= total)
-                            return;
-
                         if (staggerMs > 0)
                             await delay(staggerMs);
 
                         if (stopScheduling && !continueOnError)
+                            return;
+
+                        const index = nextIndex;
+                        nextIndex += 1;
+                        if (index >= total)
                             return;
 
                         try {
@@ -5499,6 +5462,31 @@ function Ktl($, appInfo) {
 
                 await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
                 return { firstError };
+            }
+
+            /**
+             * Check whether a value is a plain object.
+             * @param {*} value
+             * @returns {boolean}
+             * @private
+             */
+            _isPlainObject(value) {
+                if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+                const proto = Object.getPrototypeOf(value);
+                return proto === Object.prototype || proto === null;
+            }
+
+            /**
+             * Assert that method options are a plain object when provided.
+             * @param {*} options
+             * @param {string} methodName
+             * @private
+             */
+            _assertWriteOptions(options, methodName) {
+                if (options === undefined) return;
+                if (!this._isPlainObject(options)) {
+                    throw new Error(`KTL API error: ${methodName} options must be a plain object.`);
+                }
             }
 
             /**
@@ -6123,8 +6111,8 @@ function Ktl($, appInfo) {
             /**
              * Update multiple records in a view.
              * @param {string} viewId
-             * @param {string[]|Array<{id:string,data:Object}>} recordIds
-             * @param {Object} recordData - Shared record data (shared-data shape) or the options object (per-record shape).
+             * @param {string[]} recordIds
+             * @param {Object} recordData
              * @param {Object} [options]
              * @param {Array|string} [options.refreshViews]
              * @returns {Promise<{ total: number, updated: number, failed: number }>}
