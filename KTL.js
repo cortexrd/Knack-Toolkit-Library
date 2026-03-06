@@ -36,6 +36,17 @@ function Ktl($, appInfo) {
 
     var ktl = this;
 
+    // Prevents multi-tab version toggling: only save/log if current code is newer than stored.
+    function isNewerVersion(current, stored) {
+        const parse = (v) => v.split(' - ').flatMap(p => p.split('.').map(Number));
+        const c = parse(current), s = parse(stored);
+        for (let i = 0; i < c.length; i++) {
+            if (c[i] > s[i]) return true;
+            if (c[i] < s[i]) return false;
+        }
+        return false;
+    }
+
     const TEXT_DATA_TYPES = ['address', 'date_time', 'email', 'link', 'name', 'number', 'paragraph_text', 'phone', 'short_text', 'currency', 'timer'];
 
     //KEC stands for "KTL Event Code".  Next:  KEC_1033
@@ -24279,8 +24290,10 @@ function Ktl($, appInfo) {
 
             var lastSavedVersion = ktl.storage.lsGetItem('APP_KTL_VERSIONS');
             if (!lastSavedVersion || lastSavedVersion !== APP_KTL_VERSIONS) {
-                ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1013 - Updated software: ' + APP_KTL_VERSIONS);
-                ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
+                if (!lastSavedVersion || isNewerVersion(APP_KTL_VERSIONS, lastSavedVersion)) {
+                    ktl.log.addLog(ktl.const.LS_INFO, 'KEC_1013 - Updated software: ' + APP_KTL_VERSIONS);
+                    ktl.storage.lsSetItem('APP_KTL_VERSIONS', APP_KTL_VERSIONS);
+                }
             }
 
             addFooter();
