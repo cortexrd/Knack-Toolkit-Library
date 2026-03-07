@@ -25801,6 +25801,52 @@ function Ktl($, appInfo) {
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
                             }
 
+                            /* Highcharts (Report Charts) */
+                            .ktlUserTheme .highcharts-background {
+                                fill: var(--ktlTheme_pageBg) !important;
+                            }
+                            .ktlUserTheme .highcharts-title,
+                            .ktlUserTheme .highcharts-subtitle,
+                            .ktlUserTheme .highcharts-caption {
+                                fill: var(--ktlTheme_headersAndLabelsText) !important;
+                            }
+                            .ktlUserTheme .highcharts-legend-item text,
+                            .ktlUserTheme .highcharts-legend-title {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-xaxis-labels text,
+                            .ktlUserTheme .highcharts-yaxis-labels text,
+                            .ktlUserTheme .highcharts-axis-title {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-grid-line {
+                                stroke: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .highcharts-axis-line,
+                            .ktlUserTheme .highcharts-tick {
+                                stroke: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .highcharts-data-label text {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-text-outline {
+                                stroke: var(--ktlTheme_pageBg) !important;
+                            }
+                            .ktlUserTheme .highcharts-pie-series .highcharts-data-label text {
+                                fill: white !important;
+                            }
+                            .ktlUserTheme .highcharts-tooltip text {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-tooltip > span {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-label-box {
+                                fill: var(--ktlTheme_tableHeaderBg) !important;
+                                stroke: var(--ktlTheme_tableGridColor) !important;
+                            }
+
                             /* Debug Window */
                             .ktlUserTheme #dbgWndId {
                                 background-color: var(--ktlTheme_pageBg) !important;
