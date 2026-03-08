@@ -24628,10 +24628,18 @@ function Ktl($, appInfo) {
                     mobileContainer.append(bookmarkContainer);
                 }
             } else {
-                // For desktop - insert after logout link
+                // For desktop - insert after logout link, or append to header for public pages
                 $('.ktlBookmarkToggle').remove();
                 if ($('.kn-log-out').length > 0) {
                     $('.kn-log-out').after(bookmarkIcon);
+                } else {
+                    const infoBar = document.querySelector('.kn-info-bar');
+                    if (infoBar) {
+                        infoBar.style.display = 'block';
+                        const knInfo = infoBar.querySelector('.kn-info');
+                        bookmarkIcon.css({ 'float': 'right' });
+                        $(knInfo || infoBar).append(bookmarkIcon);
+                    }
                 }
             }
 
@@ -25405,6 +25413,10 @@ function Ktl($, appInfo) {
 
                     existingStyle.textContent = `
                             /* Top-Level Page Elements */
+                            .ktlUserTheme ~ html,
+                            html:has(.ktlUserTheme) {
+                                background-color: var(--ktlTheme_pageBg) !important;
+                            }
                             #knack-body.ktlUserTheme {
                                 background-color: var(--ktlTheme_pageBg) !important;
                                 background-image: none !important;
@@ -25845,6 +25857,28 @@ function Ktl($, appInfo) {
                             .ktlUserTheme .highcharts-label-box {
                                 fill: var(--ktlTheme_tableHeaderBg) !important;
                                 stroke: var(--ktlTheme_tableGridColor) !important;
+                            }
+
+                            /* Virtual Keyboard (simple-keyboard) */
+                            .ktlUserTheme .simple-keyboard {
+                                background-color: transparent !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-rows {
+                                background-color: var(--ktlTheme_pageButtonBg) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-button {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
+                                border-bottom-color: var(--ktlTheme_tableGridColor) !important;
+                                box-shadow: 0 0 3px -1px rgba(255, 255, 255, 0.15) !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-button:active {
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-functionBtn {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
                             }
 
                             /* Debug Window */
