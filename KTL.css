@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.14.0*/
+/* KTL CSS version: 0.14.1*/
 
 /************ KTL Spacing Constants **************/
 :root {
@@ -930,6 +930,16 @@ td.bulkEditSelectedCol.bulkEditSelectedRow {
 
 .ktlConsoleDiv::-webkit-scrollbar-track {
 	background-color: var(--ktlTheme_scrollbarTrack, #ffffff);
+}
+
+.ktlSearchStatusBar {
+	font-family: monospace;
+	font-size: 12px;
+	padding: 12px 0 0;
+	color: var(--ktlTheme_inputFieldText, #555);
+	min-height: 16px;
+	width: 100%;
+	text-align: center;
 }
 
 /* Hotkey Settings Popup */

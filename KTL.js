@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.42.2';
+    const KTL_VERSION = '0.42.3';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -3128,18 +3128,21 @@ function Ktl($, appInfo) {
                     }
                 }
 
+                if (isKeyword && foundItemsCount === 0)
+                    return NO_RESULTS;
+
                 if (result)
                     result += `<br><hr><br>`;
 
                 if (isKeyword) {
-                    result += `<strong>Summary: ${foundItemsCount} items found</strong><br><br>`;
+                    result += `<strong>Summary: ${foundItemsCount} item${foundItemsCount === 1 ? '' : 's'} found</strong><br><br>`;
                 }
 
                 const en = window.performance.now();
                 console.log(`\nFinding all keywords took ${Math.trunc(en - st)} ms`);
 
                 if (isKeyword) {
-                    console.log(`\nSummary: ${foundItemsCount} items found`);
+                    console.log(`\nSummary: ${foundItemsCount} item${foundItemsCount === 1 ? '' : 's'} found`);
                 }
 
                 return result || NO_RESULTS;
@@ -3533,6 +3536,101 @@ function Ktl($, appInfo) {
                     });
                 }
 
+                // Search parsed keywords (options like ktlCond, ktlRefVal, etc.)
+                if (window.ktlKeywords) {
+                    for (const kwKey in ktlKeywords) {
+                        if (results.length >= opts.maxResults) break;
+                        const kwInfo = ktlKeywords[kwKey];
+                        const str = JSON.stringify(kwInfo);
+
+                        if (mode === 'all') {
+                            if (!matchesQueryAll(str)) continue;
+                        } else {
+                            if (!matchesQuerySingle(str)) continue;
+                        }
+
+                        let contextObj = { sceneId: null, viewId: null, viewTitle: '', url: '', appUrl: null };
+                        let isTask = false;
+
+                        if (kwKey.startsWith('view_')) {
+                            for (const scene of Knack.scenes.models) {
+                                const view = scene.views.models.find(v => v?.attributes?.key === kwKey);
+                                if (view) {
+                                    const attr = view.attributes;
+                                    contextObj = {
+                                        sceneId: scene.attributes.key,
+                                        viewId: kwKey,
+                                        viewTitle: attr.title || '',
+                                        url: `/${attr.type || ''}`,
+                                        appUrl: `${Knack.url_base}#${scene.attributes.slug}`
+                                    };
+                                    break;
+                                }
+                            }
+                        } else if (kwKey.startsWith('scene_')) {
+                            isTask = true;
+                            const scene = Knack.scenes.getByKey(kwKey);
+                            if (scene) {
+                                contextObj = {
+                                    viewTitle: scene.attributes.name || '',
+                                    url: `/pages/${kwKey}`,
+                                    appUrl: `${Knack.url_base}#${scene.attributes.slug}`
+                                };
+                            }
+                        } else if (kwKey.startsWith('field_')) {
+                            isTask = true;
+                            const field = Knack.objects?.getField(kwKey);
+                            if (field) {
+                                const objectId = field.attributes.object_key;
+                                contextObj = {
+                                    viewTitle: field.attributes.name || '',
+                                    url: `/schema/list/objects/${objectId}/fields/${kwKey}/settings`
+                                };
+                            }
+                        }
+
+                        // Build full keyword text for each matching keyword
+                        for (const kwName in kwInfo) {
+                            if (!kwName.startsWith('_') || results.length >= opts.maxResults) continue;
+                            const instances = kwInfo[kwName];
+                            if (!Array.isArray(instances)) continue;
+
+                            for (const inst of instances) {
+                                if (!inst) continue;
+                                const fullText = `${kwName}=${inst.paramStr || '[]'}`;
+                                const fullTextLower = fullText.toLowerCase();
+                                const matches = searchTerms.some(term => fullTextLower.includes(term));
+                                if (!matches) continue;
+                                if (excluded.some(term => fullTextLower.includes(term))) continue;
+
+                                const builderUrl = isTask
+                                    ? `${baseURL}${contextObj.url}`
+                                    : `${baseURL}/pages/${contextObj.sceneId}/views/${contextObj.viewId}${contextObj.url}`;
+
+                                results.push({
+                                    type: isTask ? 'task' : 'view',
+                                    sceneId: contextObj.sceneId || null,
+                                    viewId: contextObj.viewId || null,
+                                    viewTitle: contextObj.viewTitle || '',
+                                    matchedText: fullText,
+                                    fullText: fullText,
+                                    path: `keywords[${kwKey}]`,
+                                    builderUrl: builderUrl,
+                                    appUrl: contextObj.appUrl || null
+                                });
+
+                                if (opts.outputFormat === 'console' || opts.outputFormat === 'both') {
+                                    console.log(`Found: "${fullText}" in keywords[${kwKey}]`);
+                                    console.log(`%cBuilder: ${builderUrl}`, 'color: blue; cursor: pointer;');
+                                    if (contextObj.appUrl) {
+                                        console.log(`%cApp: ${contextObj.appUrl}`, 'color: green; cursor: pointer;');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 const en = window.performance.now();
                 const searchTime = Math.trunc(en - st);
 
@@ -3547,7 +3645,7 @@ function Ktl($, appInfo) {
                     const modeDesc = mode === 'all' ? 'AND' : 'OR';
                     const excludeDesc = excluded.length > 0 ? ` (excluding: ${excluded.join(', ')})` : '';
                     html = `<strong>Search: "${query}" [${modeDesc}]${excludeDesc}</strong><br>`;
-                    html += `<strong>${results.length} result(s) found in ${searchTime} ms</strong><br><br>`;
+                    html += `<strong>${results.length} result${results.length === 1 ? '' : 's'} found in ${searchTime} ms</strong><br><br>`;
 
                     results.forEach((result, idx) => {
                         html += `<strong>${idx + 1}. ${result.viewId || 'Task'}${result.viewTitle ? ': ' + result.viewTitle : ''}</strong><br>`;
@@ -24628,10 +24726,18 @@ function Ktl($, appInfo) {
                     mobileContainer.append(bookmarkContainer);
                 }
             } else {
-                // For desktop - insert after logout link
+                // For desktop - insert after logout link, or append to header for public pages
                 $('.ktlBookmarkToggle').remove();
                 if ($('.kn-log-out').length > 0) {
                     $('.kn-log-out').after(bookmarkIcon);
+                } else {
+                    const infoBar = document.querySelector('.kn-info-bar');
+                    if (infoBar) {
+                        infoBar.style.display = 'block';
+                        const knInfo = infoBar.querySelector('.kn-info');
+                        bookmarkIcon.css({ 'float': 'right' });
+                        $(knInfo || infoBar).append(bookmarkIcon);
+                    }
                 }
             }
 
@@ -25405,6 +25511,10 @@ function Ktl($, appInfo) {
 
                     existingStyle.textContent = `
                             /* Top-Level Page Elements */
+                            .ktlUserTheme ~ html,
+                            html:has(.ktlUserTheme) {
+                                background-color: var(--ktlTheme_pageBg) !important;
+                            }
                             #knack-body.ktlUserTheme {
                                 background-color: var(--ktlTheme_pageBg) !important;
                                 background-image: none !important;
@@ -25773,6 +25883,9 @@ function Ktl($, appInfo) {
                             .ktlUserTheme #resultWndTextDivId::-webkit-scrollbar-corner {
                                 background-color: var(--ktlTheme_tableHeaderBg, #404040) !important;
                             }
+                            .ktlUserTheme #ktlSearchStatusBarId {
+                                color: var(--ktlTheme_headersAndLabelsText) !important;
+                            }
 
                             /* Confirm Dialog (selectOption) */
                             .ktlUserTheme .ktlConfirmOverlay {
@@ -25799,6 +25912,74 @@ function Ktl($, appInfo) {
                                 background-color: var(--ktlTheme_inputFieldBg) !important;
                                 color: var(--ktlTheme_inputFieldText) !important;
                                 border-color: var(--ktlTheme_tableHeaderBg) !important;
+                            }
+
+                            /* Highcharts (Report Charts) */
+                            .ktlUserTheme .highcharts-background {
+                                fill: var(--ktlTheme_pageBg) !important;
+                            }
+                            .ktlUserTheme .highcharts-title,
+                            .ktlUserTheme .highcharts-subtitle,
+                            .ktlUserTheme .highcharts-caption {
+                                fill: var(--ktlTheme_headersAndLabelsText) !important;
+                            }
+                            .ktlUserTheme .highcharts-legend-item text,
+                            .ktlUserTheme .highcharts-legend-title {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-xaxis-labels text,
+                            .ktlUserTheme .highcharts-yaxis-labels text,
+                            .ktlUserTheme .highcharts-axis-title {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-grid-line {
+                                stroke: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .highcharts-axis-line,
+                            .ktlUserTheme .highcharts-tick {
+                                stroke: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .highcharts-data-label text {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-text-outline {
+                                stroke: var(--ktlTheme_pageBg) !important;
+                            }
+                            .ktlUserTheme .highcharts-pie-series .highcharts-data-label text {
+                                fill: white !important;
+                            }
+                            .ktlUserTheme .highcharts-tooltip text {
+                                fill: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-tooltip > span {
+                                background-color: var(--ktlTheme_tableHeaderBg) !important;
+                                color: var(--ktlTheme_lightText) !important;
+                            }
+                            .ktlUserTheme .highcharts-label-box {
+                                fill: var(--ktlTheme_tableHeaderBg) !important;
+                                stroke: var(--ktlTheme_tableGridColor) !important;
+                            }
+
+                            /* Virtual Keyboard (simple-keyboard) */
+                            .ktlUserTheme .simple-keyboard {
+                                background-color: transparent !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-rows {
+                                background-color: var(--ktlTheme_pageButtonBg) !important;
+                                border-color: var(--ktlTheme_tableGridColor) !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-button {
+                                background-color: var(--ktlTheme_inputFieldBg) !important;
+                                color: var(--ktlTheme_inputFieldText) !important;
+                                border-bottom-color: var(--ktlTheme_tableGridColor) !important;
+                                box-shadow: 0 0 3px -1px rgba(255, 255, 255, 0.15) !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-button:active {
+                                background-color: var(--ktlTheme_tableCellBg) !important;
+                            }
+                            .ktlUserTheme .simple-keyboard .hg-functionBtn {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
                             }
 
                             /* Debug Window */
@@ -26496,14 +26677,14 @@ function Ktl($, appInfo) {
                     slider.min = '-100';
                     slider.max = '100';
                     const defaultBrightness = currentSettings.mode === 'dark' ? -10 : 0;
-                    if (currentSettings.overrides.rowHoverBrightness === undefined) {
-                        currentSettings.overrides.rowHoverBrightness = defaultBrightness;
-                    }
-                    slider.value = currentSettings.overrides.rowHoverBrightness;
+                    const brightnessValue = currentSettings.overrides.rowHoverBrightness !== undefined
+                        ? currentSettings.overrides.rowHoverBrightness
+                        : defaultBrightness;
+                    slider.value = brightnessValue;
                     slider.style.width = '100px';
                     const sliderValue = document.createElement('span');
                     sliderValue.id = 'ktlTheme_rowHoverBrightnessValue';
-                    sliderValue.textContent = currentSettings.overrides.rowHoverBrightness + '%';
+                    sliderValue.textContent = brightnessValue + '%';
                     sliderValue.style.width = '45px';
                     sliderValue.style.textAlign = 'right';
 
@@ -28173,6 +28354,12 @@ function Ktl($, appInfo) {
                                     searchInput.setAttribute('id', 'ktlDevToolsSearchInputId');
                                     searchInput.classList.add('ktlDevToolsSearchInput');
                                     devToolSearchDiv.appendChild(searchInput);
+
+                                    var searchStatusBar = document.createElement('div');
+                                    searchStatusBar.setAttribute('id', 'ktlSearchStatusBarId');
+                                    searchStatusBar.classList.add('ktlSearchStatusBar');
+                                    devToolSearchDiv.appendChild(searchStatusBar);
+
                                     searchInput.focus();
                                     searchInput.select();
 
@@ -28362,7 +28549,8 @@ function Ktl($, appInfo) {
 
                                     function performSearch(query) {
                                         if (!query) return;
-                                        searchInput.classList.remove('ktlNotValid');
+                                        searchInput.style.removeProperty('background-color');
+                                        searchStatusBar.textContent = '';
                                         console.log('Searching for:', query);
 
                                         $('.ktlDevToolLink').remove();
@@ -28503,8 +28691,13 @@ function Ktl($, appInfo) {
                                             kwResults = ktl.core.findAllKeywords(query);
                                         } else {
                                             // Use unified universal search for general text
-                                            const searchResult = ktl.core.universalSearch(query, { outputFormat: 'html' });
-                                            kwResults = searchResult.html || NO_RESULTS;
+                                            try {
+                                                var searchResult = ktl.core.universalSearch(query, { outputFormat: 'html' });
+                                                kwResults = searchResult.html || NO_RESULTS;
+                                            } catch (e) {
+                                                console.error('universalSearch error:', e);
+                                                kwResults = NO_RESULTS;
+                                            }
                                         }
 
                                         // Helper to extract paramStr from keyword value
@@ -28616,14 +28809,28 @@ function Ktl($, appInfo) {
                                                 if (appUrl) kwResults += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
                                             }
 
-                                            if (kwResults) {
-                                                if (kwResults === NO_RESULTS) {
-                                                    searchInput.classList.add('ktlNotValid');
-                                                    ktl.core.timedPopup(`"${query}" not found`, 'warning', 2000);
+                                            if (kwResults && kwResults !== NO_RESULTS) {
+                                                $(document).trigger('KTL.devPopupSetResultText', kwResults);
+                                                if (searchResult && searchResult.totalMatches !== undefined) {
+                                                    searchStatusBar.textContent = `${searchResult.totalMatches} result${searchResult.totalMatches === 1 ? '' : 's'} found in ${searchResult.searchTime} ms`;
                                                 } else {
-                                                    $(document).trigger('KTL.devPopupSetResultText', kwResults);
+                                                    const countMatch = kwResults.match(/Summary:\s*(\d+)\s*items?\s*found/i)
+                                                        || kwResults.match(/(\d+)\s*result\(s\)\s*found/i);
+                                                    const count = countMatch ? parseInt(countMatch[1]) : 0;
+                                                    searchStatusBar.textContent = countMatch ? `${count} item${count === 1 ? '' : 's'} found` : 'Search completed';
                                                 }
                                             }
+                                        } else {
+                                            searchStatusBar.textContent = `"${query}" Not found`;
+                                            let blinkCount = 0;
+                                            const blinkInterval = setInterval(() => {
+                                                searchInput.style.setProperty('background-color', blinkCount % 2 === 0 ? '#fdb0b0' : '', 'important');
+                                                blinkCount++;
+                                                if (blinkCount >= 6) {
+                                                    clearInterval(blinkInterval);
+                                                    searchInput.style.removeProperty('background-color');
+                                                }
+                                            }, 150);
                                         }
                                     }
                                 })
