@@ -26677,14 +26677,14 @@ function Ktl($, appInfo) {
                     slider.min = '-100';
                     slider.max = '100';
                     const defaultBrightness = currentSettings.mode === 'dark' ? -10 : 0;
-                    if (currentSettings.overrides.rowHoverBrightness === undefined) {
-                        currentSettings.overrides.rowHoverBrightness = defaultBrightness;
-                    }
-                    slider.value = currentSettings.overrides.rowHoverBrightness;
+                    const brightnessValue = currentSettings.overrides.rowHoverBrightness !== undefined
+                        ? currentSettings.overrides.rowHoverBrightness
+                        : defaultBrightness;
+                    slider.value = brightnessValue;
                     slider.style.width = '100px';
                     const sliderValue = document.createElement('span');
                     sliderValue.id = 'ktlTheme_rowHoverBrightnessValue';
-                    sliderValue.textContent = currentSettings.overrides.rowHoverBrightness + '%';
+                    sliderValue.textContent = brightnessValue + '%';
                     sliderValue.style.width = '45px';
                     sliderValue.style.textAlign = 'right';
 
