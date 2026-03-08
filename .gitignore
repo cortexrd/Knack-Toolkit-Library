@@ -3,4 +3,5 @@ compare.txt
 .claude
 tmpclaude-*
 .playwright-mcp/
+.reviews/
 Untracked/
