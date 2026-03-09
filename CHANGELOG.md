@@ -1,5 +1,34 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.3    *2026-03-08*
+
+- Fix false "Discard unsaved changes?" prompt in Theme Editor on first use
+- Enhance dev tools search with keyword options support and not-found feedback
+- Add dark theme support for virtual keyboard and fix html background color
+- Add dark theme support for Highcharts report charts
+
+## 0.42.2    *2026-03-07*
+
+- `ktl.api` simplify method signatures by removing `refreshViews` parameter
+- Prevent multi-tab version toggling in service worker update log
+
+## 0.42.1    *2026-03-02*
+
+- `ktl.api` fix `findRecords` filter merge to preserve caller boolean logic
+- `_dv` keyword: rename `ktlLoggedInUser` to `ktlLoggedInAccount` in `ktlCond` value checks
+- Fix `fixTableRowsAlignment`: handle grouping columns and `hideColumns` index mismatch in totals alignment
+- Rewrite `fixTableRowsAlignment` with schema-based positional rebuild
+- Fix CSS specificity issues with inline edit background and grid left borders
+
+## 0.42.0    *2026-03-02*
+
+- `_qt` keyword: add `confirm` dialog and directional `mode` (`f2t`, `t2f`) parameter groups, and `quickToggle` event
+- `_dv` keyword: add `ktlCond` support and `ktlLoggedInUser` special value
+- Add Knavigator deep-link button to developer popup
+- `ktl.api` refactor: unify bulk batch execution and standardize progress and logging
+- Add null guards for `getKtlAddOnsDiv` callers
+- Add clickable indicator and visual style for force-shown hidden elements, improve dev tool window positioning
+
 ## 0.41.1    *2026-03-06*
 
 - `ktl.api` bulk write defaults and validation hardening:
