@@ -32678,15 +32678,12 @@ function Ktl($, appInfo) {
                     }
 
                     let allOk = true;
-                    let viewsToCheck = [];
                     let reason = '';
 
                     for (const view of Knack.router.scene_view.model.views.models) {
                         const viewId = view.id;
-                        if (viewId && !Knack.views[viewId]) //Check to be sure it's not a "dead" view that remains in the Builder.  That's a bug in Knack.
+                        if (viewId && !Knack.views[viewId] && !document.getElementById(viewId)) //Dead view that remains in the Builder (Knack bug) — skip only if also absent from DOM.
                             continue;
-
-                        viewsToCheck.push(viewId);
 
                         const viewSelector = `#${viewId}`;
                         const viewElement = document.querySelector(viewSelector);
@@ -33056,7 +33053,7 @@ function Ktl($, appInfo) {
 
         function generateTableContainer(event, scene) {
             const dynamicTableDiv = document.createElement('div');
-            dynamicTableDiv.classList.add('kn-table', 'kn-table-table', 'is-bordered', 'is-striped', 'can-overflow-x');
+            dynamicTableDiv.classList.add('knTable', 'kn-table', 'kn-table-table', 'is-bordered', 'is-striped', 'can-overflow-x');
             dynamicTableDiv.setAttribute('id', 'accountLogsDynamicTable');
             dynamicTableDiv.style.width = '100%';
             dynamicTableDiv.style.minHeight = '70px';
