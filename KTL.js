@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.42.3';
+    const KTL_VERSION = '0.42.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -7243,7 +7243,7 @@ function Ktl($, appInfo) {
                                         if (typeof fieldsAr === 'object') {
                                             for (var i = 0; i < fieldsAr.length; i++) {
                                                 var field = Knack.objects.getField(type === 'form' ? fieldsAr[i].id : fieldsAr[i].key);
-                                                if (typeof field.attributes.meta === 'object') {
+                                                if (typeof field?.attributes?.meta === 'object') {
                                                     var fldDescr = field.attributes.meta && field.attributes.meta.description;
                                                     if (fldDescr && fldDescr.includes(descr)) {
                                                         resolve({ viewId: viewId, fieldId: field.attributes.key });
@@ -29361,6 +29361,7 @@ function Ktl($, appInfo) {
                 for (var i = 0; i < logArray.length; i++)
                     msg += logArray[i] + ' ';
                 msg = msg.slice(0, -1);
+                ktl.core.logCaller(2);
                 console.log('%c' + msg, 'color:' + color + ';font-weight:bold');
             },
 
