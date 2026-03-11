@@ -3104,6 +3104,7 @@ function Ktl($, appInfo) {
                             } else {
                                 console.log(`\t${search}=${kwInstanceStr}\n`);
                                 result += `   ${search}=${kwInstanceStr}<br>`;
+                                foundItemsCount++;
                             }
                             console.log('\n');
                             result += `<br>`;
