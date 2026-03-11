@@ -1,5 +1,10 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.4    *2026-03-11*
+
+- Add caller tracing to `clog` via `ktl.core.logCaller`
+- Fix null field access in `findFieldWithDescription` with optional chaining
+
 ## 0.42.3    *2026-03-08*
 
 - Fix false "Discard unsaved changes?" prompt in Theme Editor on first use
