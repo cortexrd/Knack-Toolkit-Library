@@ -34518,6 +34518,9 @@ function Ktl($, appInfo) {
                     });
 
                     $(document).on('click', '.cell-edit', (event) => {
+                        const viewId = event.target.closest('.kn-view')?.id;
+                        if (viewId && !ktl.views.viewHasInlineEdit(viewId)) return;
+
                         ktl.core.waitSelector("#cell-editor").then(() => {
                             setTimeout(() => { // Wait for cell-editor's content to change
                                 $("#cell-editor").find('div:not(.chzn-search) > input:visible').trigger('focus');
