@@ -1,5 +1,9 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.4    *2026-03-10*
+
+- Add `_dhh` keyword for dynamic grid header line clamping via per-view injected styles
+
 ## 0.42.3    *2026-03-08*
 
 - Fix false "Discard unsaved changes?" prompt in Theme Editor on first use

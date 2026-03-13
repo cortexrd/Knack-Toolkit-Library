@@ -12521,6 +12521,8 @@ function Ktl($, appInfo) {
                     keywords._cgc && ktl.views.chooseGridColumns(view, keywords);
                 }
 
+                dynamicHeaderHeight(viewId, keywords);
+
                 //This section is for features that can be applied with or without a keyword.
                 //When used without a keyword, they are controlled by a global flag.
                 headerAlignment(view, keywords);
@@ -14609,6 +14611,76 @@ function Ktl($, appInfo) {
             }
 
             $('#' + viewId + ' thead [href]').addClass('ktlSortDisabled');
+        }
+
+        function dynamicHeaderHeight(viewId, keywords) {
+            const kw = '_dhh';
+            if (!viewId) return;
+
+            const kwInstance = keywords && keywords[kw] && keywords[kw][0];
+            if (!kwInstance) {
+                removeDynamicHeaderHeight(viewId);
+                return;
+            }
+
+            if (kwInstance.options && !ktl.core.hasRoleAccess(kwInstance.options)) {
+                removeDynamicHeaderHeight(viewId);
+                return;
+            }
+
+            const parsedLineCount = Number(kwInstance.params?.[0]?.[0]);
+            if (!Number.isFinite(parsedLineCount) || parsedLineCount < 1) {
+                removeDynamicHeaderHeight(viewId);
+                return;
+            }
+
+            applyDynamicHeaderHeight(viewId, Math.floor(parsedLineCount));
+        }
+
+        function applyDynamicHeaderHeight(viewId, lineCount) {
+            if (!viewId || !Number.isFinite(lineCount) || lineCount < 1) return;
+
+            const lineHeightEm = 1.3;
+            const maxHeightEm = (lineCount * lineHeightEm) + 0.15;
+
+            const styleId = `ktl-dhh-${viewId}`;
+            let styleTag = document.getElementById(styleId);
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = styleId;
+                document.head.appendChild(styleTag);
+            }
+
+            styleTag.textContent = `
+                #${viewId} table thead th {
+                    white-space: normal !important;
+                    word-break: normal;
+                    overflow-wrap: normal;
+                    vertical-align: top;
+                }
+
+                #${viewId} table thead th a,
+                #${viewId} table thead th span,
+                #${viewId} table thead th div {
+                    display: block;
+                    overflow: hidden;
+                    text-overflow: clip;
+                    white-space: normal !important;
+                    line-height: ${lineHeightEm}em;
+                    max-height: ${maxHeightEm}em;
+                    word-break: normal;
+                    overflow-wrap: normal;
+                    hyphens: manual;
+                }
+            `;
+        }
+
+        function removeDynamicHeaderHeight(viewId) {
+            if (!viewId) return;
+
+            const styleTag = document.getElementById(`ktl-dhh-${viewId}`);
+            if (styleTag)
+                styleTag.remove();
         }
 
         //Adjust header alignment of Grids and Pivot Tables
