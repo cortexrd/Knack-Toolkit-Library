@@ -1,8 +1,10 @@
 # Knack Toolkit Library Changelog
 
-## 0.42.4    *2026-03-10*
+## 0.42.4    *2026-03-11*
 
-- Add `_dhh` keyword for dynamic grid header line clamping via per-view injected styles
+- Add caller tracing to `clog` via `ktl.core.logCaller`
+- Fix null field access in `findFieldWithDescription` with optional chaining
+
 
 ## 0.42.3    *2026-03-08*
 
