@@ -14644,6 +14644,8 @@ function Ktl($, appInfo) {
             const lineHeightEm = 1.3;
             const maxHeightEm = (lineCount * lineHeightEm) + 0.15;
 
+            markDynamicHeaderHeightTargets(viewId);
+
             const styleId = `ktl-dhh-${viewId}`;
             let styleTag = document.getElementById(styleId);
             if (!styleTag) {
@@ -14655,25 +14657,150 @@ function Ktl($, appInfo) {
             styleTag.textContent = `
                 #${viewId} table thead th {
                     white-space: normal !important;
-                    word-break: normal;
-                    overflow-wrap: normal;
                     vertical-align: top;
                 }
 
-                #${viewId} table thead th a,
-                #${viewId} table thead th span,
-                #${viewId} table thead th div {
+                #${viewId} table thead th.ktlDynamicHeaderHeightHasIcon {
+                    position: relative;
+                    padding-left: 12px;
+                }
+
+                #${viewId} table thead th.ktlDynamicHeaderHeightHasIcon > .ktlHideShowColumnIcon {
+                    position: absolute;
+                    left: 3px;
+                    top: 4px;
+                    margin: 0;
+                    line-height: 1;
+                }
+
+                #${viewId} table thead th .table-fixed-label {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 3px;
+                    width: 100%;
+                }
+
+                #${viewId} table thead th .ktlDynamicHeaderHeightText {
                     display: block;
+                    flex: 1 1 auto;
+                    min-width: 0;
                     overflow: hidden;
                     text-overflow: clip;
                     white-space: normal !important;
                     line-height: ${lineHeightEm}em;
                     max-height: ${maxHeightEm}em;
-                    word-break: normal;
+                    word-break: keep-all;
                     overflow-wrap: normal;
-                    hyphens: manual;
+                    hyphens: none;
+                }
+
+                #${viewId} table thead th .table-fixed-label > .ktlDynamicHeaderHeightRightIcon {
+                    flex: 0 0 auto;
+                    white-space: nowrap;
+                    align-self: flex-start;
+                }
+
+                #${viewId} table thead th .table-fixed-label > .ktlDynamicHeaderHeightRightIconLead {
+                    margin-left: auto !important;
                 }
             `;
+        }
+
+        function markDynamicHeaderHeightTargets(viewId) {
+            if (!viewId) return;
+
+            const unwrapGeneratedNodes = (root) => {
+                root.querySelectorAll('.ktlDynamicHeaderHeightText[data-ktl-dhh-wrap="1"]').forEach((el) => {
+                    while (el.firstChild) {
+                        el.parentNode.insertBefore(el.firstChild, el);
+                    }
+                    el.remove();
+                });
+
+                root.querySelectorAll('.ktlDynamicHeaderHeightText').forEach((el) => {
+                    el.classList.remove('ktlDynamicHeaderHeightText');
+                    el.removeAttribute('data-ktl-dhh-wrap');
+                });
+
+                root.querySelectorAll('.ktlDynamicHeaderHeightSortIcon').forEach((el) => {
+                    el.classList.remove('ktlDynamicHeaderHeightSortIcon');
+                });
+
+                root.querySelectorAll('.ktlDynamicHeaderHeightRightIcon').forEach((el) => {
+                    el.classList.remove('ktlDynamicHeaderHeightRightIcon');
+                    el.classList.remove('ktlDynamicHeaderHeightRightIconLead');
+                });
+            };
+
+            const wrapDirectTextNodes = (container) => {
+                if (!container) return;
+
+                Array.from(container.childNodes).forEach((node) => {
+                    if (node.nodeType !== Node.TEXT_NODE) return;
+
+                    const text = String(node.textContent || '');
+                    if (!text.trim()) return;
+
+                    const wrapper = document.createElement('span');
+                    wrapper.className = 'ktlDynamicHeaderHeightText';
+                    wrapper.setAttribute('data-ktl-dhh-wrap', '1');
+                    wrapper.textContent = text.replace(/\s+/g, ' ').trim();
+                    node.parentNode.replaceChild(wrapper, node);
+                });
+            };
+
+            const markDirectChildElements = (container) => {
+                if (!container) return;
+
+                const rightSideIcons = [];
+
+                Array.from(container.children).forEach((child) => {
+                    if (!(child instanceof HTMLElement)) return;
+                    if (child.classList.contains('ktlHideShowColumnIcon')) return;
+                    if (child.classList.contains('ktlTooltipIcon')) {
+                        child.classList.add('ktlDynamicHeaderHeightRightIcon');
+                        rightSideIcons.push(child);
+                        return;
+                    }
+                    if (child.classList.contains('kn-table-column-order')) {
+                        child.classList.add('ktlDynamicHeaderHeightSortIcon');
+                        child.classList.add('ktlDynamicHeaderHeightRightIcon');
+                        rightSideIcons.push(child);
+                        return;
+                    }
+                    if (child.classList.contains('icon') && child.querySelector('i[class*="fa-sort-"]')) {
+                        child.classList.add('ktlDynamicHeaderHeightSortIcon');
+                        child.classList.add('ktlDynamicHeaderHeightRightIcon');
+                        rightSideIcons.push(child);
+                        return;
+                    }
+                    if (child.tagName === 'I' && child.className.includes('fa-sort-')) {
+                        child.classList.add('ktlDynamicHeaderHeightSortIcon');
+                        child.classList.add('ktlDynamicHeaderHeightRightIcon');
+                        rightSideIcons.push(child);
+                        return;
+                    }
+                    if (!['A', 'SPAN', 'DIV'].includes(child.tagName)) return;
+
+                    child.classList.add('ktlDynamicHeaderHeightText');
+                });
+
+                if (rightSideIcons.length)
+                    rightSideIcons[0].classList.add('ktlDynamicHeaderHeightRightIconLead');
+            };
+
+            document.querySelectorAll(`#${viewId} table thead th`).forEach((header) => {
+                unwrapGeneratedNodes(header);
+                header.classList.remove('ktlDynamicHeaderHeightHasIcon');
+
+                if (header.querySelector(':scope > .ktlHideShowColumnIcon')) {
+                    header.classList.add('ktlDynamicHeaderHeightHasIcon');
+                }
+
+                const labelContainer = header.querySelector('.table-fixed-label') || header;
+                wrapDirectTextNodes(labelContainer);
+                markDirectChildElements(labelContainer);
+            });
         }
 
         function removeDynamicHeaderHeight(viewId) {
@@ -14682,6 +14809,31 @@ function Ktl($, appInfo) {
             const styleTag = document.getElementById(`ktl-dhh-${viewId}`);
             if (styleTag)
                 styleTag.remove();
+
+            document.querySelectorAll(`#${viewId} table thead th`).forEach((header) => {
+                header.classList.remove('ktlDynamicHeaderHeightHasIcon');
+
+                header.querySelectorAll('.ktlDynamicHeaderHeightText[data-ktl-dhh-wrap="1"]').forEach((el) => {
+                    while (el.firstChild) {
+                        el.parentNode.insertBefore(el.firstChild, el);
+                    }
+                    el.remove();
+                });
+
+                header.querySelectorAll('.ktlDynamicHeaderHeightText').forEach((el) => {
+                    el.classList.remove('ktlDynamicHeaderHeightText');
+                    el.removeAttribute('data-ktl-dhh-wrap');
+                });
+
+                header.querySelectorAll('.ktlDynamicHeaderHeightSortIcon').forEach((el) => {
+                    el.classList.remove('ktlDynamicHeaderHeightSortIcon');
+                });
+
+                header.querySelectorAll('.ktlDynamicHeaderHeightRightIcon').forEach((el) => {
+                    el.classList.remove('ktlDynamicHeaderHeightRightIcon');
+                    el.classList.remove('ktlDynamicHeaderHeightRightIconLead');
+                });
+            });
         }
 
         //Adjust header alignment of Grids and Pivot Tables
@@ -23330,12 +23482,16 @@ function Ktl($, appInfo) {
                 if ($(`${tooltipIconPosition} .ktlTooltipIcon`).length)
                     $(`${tooltipIconPosition} .ktlTooltipIcon`).remove();
 
-                $(tooltipIconPosition)
-                    .append(icon)
-                    .find('.table-fixed-label')
-                    .css('display', 'inline-flex');
+                const tooltipPosition = $(tooltipIconPosition);
+                const tableFixedLabel = tooltipPosition.find('.table-fixed-label').first();
 
-                const pos = $(tooltipIconPosition);
+                if (tableFixedLabel.length) {
+                    tableFixedLabel.append(icon).css('display', 'inline-flex');
+                } else {
+                    tooltipPosition.append(icon);
+                }
+
+                const pos = tooltipPosition;
                 if (pos.length) {
                     const isColumnCollapsed = pos[0].classList.contains('ktlCollapsedColumn');
                     if (isColumnCollapsed) {
