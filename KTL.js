@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.42.5';
+    const KTL_VERSION = '0.42.6';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -28957,23 +28957,23 @@ function Ktl($, appInfo) {
                                 sendKtlUsageBtn.appendChild(helpIcon);
 
                                 ktl.fields.addButton(devBtnsDiv, 'Reset Auto-Login', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                                    ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
-                                    var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
-                                    if (loginInfo) {
-                                        if (loginInfo === 'SkipAutoLogin')
-                                            ktl.storage.lsRemoveItem('AES_LI', true, false, false);
-                                        else
-                                            ktl.storage.lsRemoveItem('AES_LI', true, false, true);
-                                    }
+                                    if (confirm('Are you sure?')) {
+                                        ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
+                                        var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
+                                        if (loginInfo) {
+                                            if (loginInfo === 'SkipAutoLogin')
+                                                ktl.storage.lsRemoveItem('AES_LI', true, false, false);
+                                            else
+                                                ktl.storage.lsRemoveItem('AES_LI', true, false, true);
+                                        }
 
-                                    ktl.storage.lsRemoveItem('AES_EK', true, false, false);
+                                        ktl.storage.lsRemoveItem('AES_EK', true, false, false);
 
-                                    setTimeout(() => {
-                                        if (confirm('Do you want to logout?')) {
+                                        setTimeout(() => {
                                             ktl.account.logout();
                                             processLogoutBtn();
-                                        }
-                                    }, 500)
+                                        }, 500)
+                                    }
                                 })
 
                                 //Logout button with user name
@@ -30019,8 +30019,11 @@ function Ktl($, appInfo) {
                                     } else {
                                         loginInfo = JSON.stringify({ email: email, pw: pw });
                                         ktl.storage.lsSetItem('AES_LI', loginInfo, true, false, true);
+                                        setTimeout(() => {
+                                            ktl.account.logout();
+                                            location.reload();
+                                        }, 500);
                                     }
-                                    location.reload();
                                 })
                                 .catch(reason => { ktl.log.clog('purple', reason); });
                         } else
