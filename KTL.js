@@ -32214,7 +32214,7 @@ function Ktl($, appInfo) {
 
             if (numToProcess > 0) {
                 if (!$.isEmptyObject(apiData) && e.target.id === 'ktl-bulk-paste-' + viewId) {
-                    processBulkEdit(); //Paste button.
+                    processBulkEdit(viewId); //Paste button.
                 } else {
                     const sourceRow = (e && e.target && typeof e.target.closest === 'function') ? e.target.closest('tr[id]') : null;
                     if (!recId && !sourceRow) {
@@ -32267,12 +32267,13 @@ function Ktl($, appInfo) {
                     }
 
                     if (operation === 'ktl-bulk-duplicate-' + viewId)
-                        processBulkDuplicate();
+                        processBulkDuplicate(viewId);
                     else
-                        processBulkEdit();
+                        processBulkEdit(viewId);
                 }
 
-                function processBulkEdit() {
+                function processBulkEdit(viewId) {
+                    if (!bulkOpsViewId) bulkOpsViewId = viewId;
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
                     addLudLubFieldsToApiData(apiData);
@@ -32308,7 +32309,8 @@ function Ktl($, appInfo) {
                         });
                 }
 
-                function processBulkDuplicate() {
+                function processBulkDuplicate(viewId) {
+                    if (!bulkOpsViewId) bulkOpsViewId = viewId;
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
                     addLudLubFieldsToApiData(apiData);

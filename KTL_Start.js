@@ -109,7 +109,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = 'min', noC
 
     function loadFilesAndRunApp() {
         //Append this to end of filename to force loading new code without requiring Ctrl+F5.
-        let bypassCacheSuffix = (!noCacheBust && ktlCode !== 'local') ? `?v=${new Date().getTime()}` : '';
+        let bypassCacheSuffix = (!noCacheBust && ['dev', 'beta'].includes(ktlVersion)) ? `?v=${new Date().getTime()}` : '';
 
         let cssFile = ktlSvr + 'Lib/KTL/' + prodFolder + (cssVersion ? 'KTL-' + cssVersion : 'KTL') + '.css' + bypassCacheSuffix;
         let ktlFile = ktlSvr + 'Lib/KTL/' + prodFolder + (ktlVersion ? 'KTL-' + ktlVersion : 'KTL') + (fullCode === 'forcefull' ? '' : '.min') + '.js' + bypassCacheSuffix;
