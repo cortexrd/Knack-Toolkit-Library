@@ -24339,12 +24339,48 @@ function Ktl($, appInfo) {
         var idleWatchDogTimeout = null;
         let appIsIdle = false;
         var processMutation = null;
+        const pendingHiddenElementsTimeouts = new Set();
+
+        /**
+         * Cancel pending delayed hidden-element refreshes so stale scenes cannot repaint the current DOM.
+         * @returns {void}
+         */
+        function clearPendingHiddenElementsRefreshes() {
+            pendingHiddenElementsTimeouts.forEach(function (timeoutId) {
+                clearTimeout(timeoutId);
+            });
+            pendingHiddenElementsTimeouts.clear();
+        }
+
+        /**
+         * Schedule a hidden-elements refresh for a specific rendered root.
+         * @param {ParentNode|null} rootElement Scene or view element to refresh.
+         * @param {Function} [onComplete] Optional callback after refresh.
+         * @returns {void}
+         */
+        function scheduleHiddenElementsRefresh(rootElement, onComplete) {
+            const timeoutId = setTimeout(function () {
+                pendingHiddenElementsTimeouts.delete(timeoutId);
+
+                if (!rootElement || !rootElement.isConnected) return;
+
+                const showHiddenElements = ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true);
+                if (showHiddenElements === 'true') {
+                    showHiddenElemements(rootElement);
+                    onComplete && onComplete();
+                }
+            }, 2000);
+
+            pendingHiddenElementsTimeouts.add(timeoutId);
+        }
 
         $(document).on('knack-scene-render.any', function (event, scene) {
             if (Knack.router.current_scene_key !== scene.key) {
                 alert('ERROR - Scene keys do not match!');
                 return;
             }
+
+            clearPendingHiddenElementsRefreshes();
 
             if (Knack.isMobile()) {
                 $('body').addClass('ktlIsMobile');
@@ -24403,11 +24439,7 @@ function Ktl($, appInfo) {
 
             onSceneRender && onSceneRender(event, scene, appInfo);
 
-            setTimeout(() => {
-                const showHiddenElements = ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true);
-                if (showHiddenElements === 'true')
-                    showHiddenElemements();
-            }, 2000);
+            scheduleHiddenElementsRefresh(document.getElementById(scene.key));
         })
 
         var modalScanItv;
@@ -24461,17 +24493,12 @@ function Ktl($, appInfo) {
             }
 
             if (!ktl.scenes.isiFrameWnd()) {
-                setTimeout(() => {
-                    const showHiddenElements = ktl.storage.lsGetItem('SHOW_HIDDEN_ELEMENTS', false, true);
-                    if (showHiddenElements === 'true') {
-                        showHiddenElemements();
-
-                        //TODO: Why this doesn't work?
-                        setTimeout(() => {
-                            ktl.views.fixTableRowsAlignment(view.key);
-                        }, 2000);
-                    }
-                }, 2000);
+                scheduleHiddenElementsRefresh(document.getElementById(view.key), function () {
+                    //TODO: Why this doesn't work?
+                    setTimeout(() => {
+                        ktl.views.fixTableRowsAlignment(view.key);
+                    }, 2000);
+                });
             }
         })
 
@@ -25118,6 +25145,15 @@ function Ktl($, appInfo) {
         }
 
         /**
+         * Resolve the query root used for hidden-element toggling.
+         * @param {ParentNode|undefined|null} rootElement Optional root node.
+         * @returns {ParentNode} Query root.
+         */
+        function getHiddenElementsRoot(rootElement) {
+            return rootElement && typeof rootElement.querySelectorAll === 'function' ? rootElement : document;
+        }
+
+        /**
          * Swap hidden-state class prefixes, optionally skipping temporary render guards.
          * @param {string} selector Selector for elements that may contain the target classes.
          * @param {string} sourcePrefix Existing class prefix.
@@ -25127,8 +25163,9 @@ function Ktl($, appInfo) {
          */
         function swapHiddenStateClasses(selector, sourcePrefix, targetPrefix, options = {}) {
             const skipTemporary = options.skipTemporary === true;
+            const rootElement = getHiddenElementsRoot(options.rootElement);
 
-            document.querySelectorAll(selector).forEach(function (element) {
+            rootElement.querySelectorAll(selector).forEach(function (element) {
                 var currentClass = element.className;
                 if (!currentClass) return;
 
@@ -25152,28 +25189,34 @@ function Ktl($, appInfo) {
 
         /**
          * Reveal elements hidden by KTL classes without touching temporary render guards.
+         * @param {ParentNode|undefined|null} rootElement Optional root node.
          * @returns {void}
          */
-        function showHiddenElemements() {
-            hideHiddenElemements();
+        function showHiddenElemements(rootElement) {
+            const queryRoot = getHiddenElementsRoot(rootElement);
 
-            document.querySelectorAll('.ktlVisibilityHidden').forEach(function (element) {
+            hideHiddenElemements(queryRoot);
+
+            queryRoot.querySelectorAll('.ktlVisibilityHidden').forEach(function (element) {
                 element.classList.replace('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
             });
-            swapHiddenStateClasses('[class^=ktlHidden], [class*=" ktlHidden"]', 'ktlHidden', 'dis_ktlHidden', { skipTemporary: true });
-            swapHiddenStateClasses('[class^=ktlDisplayNone], [class*=" ktlDisplayNone"]', 'ktlDisplayNone', 'dis_ktlDisplayNone', { skipTemporary: true });
+            swapHiddenStateClasses('[class^=ktlHidden], [class*=" ktlHidden"]', 'ktlHidden', 'dis_ktlHidden', { skipTemporary: true, rootElement: queryRoot });
+            swapHiddenStateClasses('[class^=ktlDisplayNone], [class*=" ktlDisplayNone"]', 'ktlDisplayNone', 'dis_ktlDisplayNone', { skipTemporary: true, rootElement: queryRoot });
         }
 
         /**
          * Restore the default KTL hidden-element classes.
+         * @param {ParentNode|undefined|null} rootElement Optional root node.
          * @returns {void}
          */
-        function hideHiddenElemements() {
-            document.querySelectorAll('.dis_ktlVisibilityHidden').forEach(function (element) {
+        function hideHiddenElemements(rootElement) {
+            const queryRoot = getHiddenElementsRoot(rootElement);
+
+            queryRoot.querySelectorAll('.dis_ktlVisibilityHidden').forEach(function (element) {
                 element.classList.replace('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
             });
-            swapHiddenStateClasses('[class^=dis_ktlHidden], [class*=" dis_ktlHidden"]', 'dis_ktlHidden', 'ktlHidden');
-            swapHiddenStateClasses('[class^=dis_ktlDisplayNone], [class*=" dis_ktlDisplayNone"]', 'dis_ktlDisplayNone', 'ktlDisplayNone');
+            swapHiddenStateClasses('[class^=dis_ktlHidden], [class*=" dis_ktlHidden"]', 'dis_ktlHidden', 'ktlHidden', { rootElement: queryRoot });
+            swapHiddenStateClasses('[class^=dis_ktlDisplayNone], [class*=" dis_ktlDisplayNone"]', 'dis_ktlDisplayNone', 'ktlDisplayNone', { rootElement: queryRoot });
         }
 
         function clearThemeCssVariables() {
