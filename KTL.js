@@ -25089,6 +25089,35 @@ function Ktl($, appInfo) {
         }
 
         /**
+         * Check whether a hidden class belongs to a container or processing wrapper that should not be revealed.
+         * @param {Element} element DOM element being inspected.
+         * @param {string} className CSS class to inspect.
+         * @returns {boolean} True when the class should remain hidden in dev mode.
+         */
+        function shouldSkipHiddenReveal(element, className) {
+            if (isTemporaryHiddenClass(className)) {
+                return true;
+            }
+
+            if (element.classList.contains('kn-view') || element.classList.contains('kn-scene')) {
+                return true;
+            }
+
+            const nonRevealPrefixes = [
+                'ktlHidden_dv',
+                'ktlHidden_ro',
+                'ktlHidden_rv',
+                'ktlHidden_dr',
+                'ktlHidden_style',
+                'ktlDisplayNone_dttip'
+            ];
+
+            return nonRevealPrefixes.some(function (prefix) {
+                return className === prefix || className.startsWith(prefix + '_');
+            });
+        }
+
+        /**
          * Swap hidden-state class prefixes, optionally skipping temporary render guards.
          * @param {string} selector Selector for elements that may contain the target classes.
          * @param {string} sourcePrefix Existing class prefix.
@@ -25108,7 +25137,7 @@ function Ktl($, appInfo) {
                         return className;
                     }
 
-                    if (skipTemporary && isTemporaryHiddenClass(className)) {
+                    if (skipTemporary && shouldSkipHiddenReveal(element, className)) {
                         return className;
                     }
 
@@ -25126,6 +25155,8 @@ function Ktl($, appInfo) {
          * @returns {void}
          */
         function showHiddenElemements() {
+            hideHiddenElemements();
+
             document.querySelectorAll('.ktlVisibilityHidden').forEach(function (element) {
                 element.classList.replace('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
             });
