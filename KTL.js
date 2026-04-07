@@ -22,7 +22,7 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.42.6';
+    const KTL_VERSION = '0.42.4';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -23273,7 +23273,7 @@ function Ktl($, appInfo) {
 
                 const ttipText = this.processTextMarkup(tooltipText);
 
-                const posEl = pos.get(0);
+                const posEl = document.querySelector(tooltipIconPosition);
                 if (posEl) posEl.dataset.ktlTtipText = ttipText;
 
                 $(`${tooltipIconPosition} i.${tooltipIcon}`).on('mouseenter.ktlTooltip', function (e) {
@@ -25079,60 +25079,70 @@ function Ktl($, appInfo) {
         }
         //Add Bookmarks - END
 
-        function showHiddenElemements() {
-            $('.ktlVisibilityHidden').replaceClass('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
+        /**
+         * Check whether a hidden-state class is only a temporary render guard.
+         * @param {string} className CSS class to inspect.
+         * @returns {boolean} True when the class should not be revealed by the dev toggle.
+         */
+        function isTemporaryHiddenClass(className) {
+            return typeof className === 'string' && className.includes('viewTemp');
+        }
 
-            $('[class^=ktlHidden], [class*=" ktlHidden"]').each(function () {
-                var currentClass = $(this).attr('class');
+        /**
+         * Swap hidden-state class prefixes, optionally skipping temporary render guards.
+         * @param {string} selector Selector for elements that may contain the target classes.
+         * @param {string} sourcePrefix Existing class prefix.
+         * @param {string} targetPrefix Replacement class prefix.
+         * @param {{ skipTemporary?: boolean }} [options={}] Swap options.
+         * @returns {void}
+         */
+        function swapHiddenStateClasses(selector, sourcePrefix, targetPrefix, options = {}) {
+            const skipTemporary = options.skipTemporary === true;
+
+            document.querySelectorAll(selector).forEach(function (element) {
+                var currentClass = element.className;
+                if (!currentClass) return;
+
                 var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('ktlHidden')) {
-                        return 'dis_' + className;
+                    if (!className.startsWith(sourcePrefix)) {
+                        return className;
                     }
-                    return className;
+
+                    if (skipTemporary && isTemporaryHiddenClass(className)) {
+                        return className;
+                    }
+
+                    return targetPrefix + className.slice(sourcePrefix.length);
                 }).join(' ');
 
-                $(this).attr('class', newClass);
-            });
-
-            $('[class^=ktlDisplayNone], [class*=" ktlDisplayNone"]').each(function () {
-                var currentClass = $(this).attr('class');
-                var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('ktlDisplayNone')) {
-                        return 'dis_' + className;
-                    }
-                    return className;
-                }).join(' ');
-
-                $(this).attr('class', newClass);
+                if (newClass !== currentClass) {
+                    element.className = newClass;
+                }
             });
         }
 
+        /**
+         * Reveal elements hidden by KTL classes without touching temporary render guards.
+         * @returns {void}
+         */
+        function showHiddenElemements() {
+            document.querySelectorAll('.ktlVisibilityHidden').forEach(function (element) {
+                element.classList.replace('ktlVisibilityHidden', 'dis_ktlVisibilityHidden');
+            });
+            swapHiddenStateClasses('[class^=ktlHidden], [class*=" ktlHidden"]', 'ktlHidden', 'dis_ktlHidden', { skipTemporary: true });
+            swapHiddenStateClasses('[class^=ktlDisplayNone], [class*=" ktlDisplayNone"]', 'ktlDisplayNone', 'dis_ktlDisplayNone', { skipTemporary: true });
+        }
+
+        /**
+         * Restore the default KTL hidden-element classes.
+         * @returns {void}
+         */
         function hideHiddenElemements() {
-            $('.dis_ktlVisibilityHidden').replaceClass('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
-
-            $('[class^=dis_ktlHidden], [class*=" dis_ktlHidden"]').each(function () {
-                var currentClass = $(this).attr('class');
-                var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('dis_ktlHidden')) {
-                        return className.replace('dis_', '');
-                    }
-                    return className;
-                }).join(' ');
-
-                $(this).attr('class', newClass);
+            document.querySelectorAll('.dis_ktlVisibilityHidden').forEach(function (element) {
+                element.classList.replace('dis_ktlVisibilityHidden', 'ktlVisibilityHidden');
             });
-
-            $('[class^=dis_ktlDisplayNone], [class*=" dis_ktlDisplayNone"]').each(function () {
-                var currentClass = $(this).attr('class');
-                var newClass = currentClass.split(' ').map(function (className) {
-                    if (className.startsWith('dis_ktlDisplayNone')) {
-                        return className.replace('dis_', '');
-                    }
-                    return className;
-                }).join(' ');
-
-                $(this).attr('class', newClass);
-            });
+            swapHiddenStateClasses('[class^=dis_ktlHidden], [class*=" dis_ktlHidden"]', 'dis_ktlHidden', 'ktlHidden');
+            swapHiddenStateClasses('[class^=dis_ktlDisplayNone], [class*=" dis_ktlDisplayNone"]', 'dis_ktlDisplayNone', 'ktlDisplayNone');
         }
 
         function clearThemeCssVariables() {
@@ -28957,23 +28967,23 @@ function Ktl($, appInfo) {
                                 sendKtlUsageBtn.appendChild(helpIcon);
 
                                 ktl.fields.addButton(devBtnsDiv, 'Reset Auto-Login', '', ['devBtn', 'kn-button']).addEventListener('click', () => {
-                                    if (confirm('Are you sure?')) {
-                                        ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
-                                        var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
-                                        if (loginInfo) {
-                                            if (loginInfo === 'SkipAutoLogin')
-                                                ktl.storage.lsRemoveItem('AES_LI', true, false, false);
-                                            else
-                                                ktl.storage.lsRemoveItem('AES_LI', true, false, true);
-                                        }
+                                    ktl.core.timedPopup('Erasing Auto-Login data...', 'warning', 1800);
+                                    var loginInfo = ktl.storage.lsGetItem('AES_LI', true, false);
+                                    if (loginInfo) {
+                                        if (loginInfo === 'SkipAutoLogin')
+                                            ktl.storage.lsRemoveItem('AES_LI', true, false, false);
+                                        else
+                                            ktl.storage.lsRemoveItem('AES_LI', true, false, true);
+                                    }
 
-                                        ktl.storage.lsRemoveItem('AES_EK', true, false, false);
+                                    ktl.storage.lsRemoveItem('AES_EK', true, false, false);
 
-                                        setTimeout(() => {
+                                    setTimeout(() => {
+                                        if (confirm('Do you want to logout?')) {
                                             ktl.account.logout();
                                             processLogoutBtn();
-                                        }, 500)
-                                    }
+                                        }
+                                    }, 500)
                                 })
 
                                 //Logout button with user name
@@ -30019,11 +30029,8 @@ function Ktl($, appInfo) {
                                     } else {
                                         loginInfo = JSON.stringify({ email: email, pw: pw });
                                         ktl.storage.lsSetItem('AES_LI', loginInfo, true, false, true);
-                                        setTimeout(() => {
-                                            ktl.account.logout();
-                                            location.reload();
-                                        }, 500);
                                     }
+                                    location.reload();
                                 })
                                 .catch(reason => { ktl.log.clog('purple', reason); });
                         } else
@@ -32214,7 +32221,7 @@ function Ktl($, appInfo) {
 
             if (numToProcess > 0) {
                 if (!$.isEmptyObject(apiData) && e.target.id === 'ktl-bulk-paste-' + viewId) {
-                    processBulkEdit(viewId); //Paste button.
+                    processBulkEdit(); //Paste button.
                 } else {
                     const sourceRow = (e && e.target && typeof e.target.closest === 'function') ? e.target.closest('tr[id]') : null;
                     if (!recId && !sourceRow) {
@@ -32267,13 +32274,12 @@ function Ktl($, appInfo) {
                     }
 
                     if (operation === 'ktl-bulk-duplicate-' + viewId)
-                        processBulkDuplicate(viewId);
+                        processBulkDuplicate();
                     else
-                        processBulkEdit(viewId);
+                        processBulkEdit();
                 }
 
-                function processBulkEdit(viewId) {
-                    if (!bulkOpsViewId) bulkOpsViewId = viewId;
+                function processBulkEdit() {
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
                     addLudLubFieldsToApiData(apiData);
@@ -32309,8 +32315,7 @@ function Ktl($, appInfo) {
                         });
                 }
 
-                function processBulkDuplicate(viewId) {
-                    if (!bulkOpsViewId) bulkOpsViewId = viewId;
+                function processBulkDuplicate() {
                     const objName = ktl.views.getViewSourceName(bulkOpsViewId);
 
                     addLudLubFieldsToApiData(apiData);
