@@ -1686,4 +1686,33 @@ td.ktlStickyCell {
     box-shadow: 1px 0 0 0 var(--ktlTheme_stickyCellBg, #f3f6f9);
 }
 
+/************ Collapsible Groups (_cg) **************/
+.ktlCgToggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	margin-right: 6px;
+	border: 1px solid var(--ktlTheme_tableGridColor, #999);
+	background: var(--ktlTheme_tableCellBg, #fff);
+	color: var(--ktlTheme_tableCellText, #333);
+	font-size: 18px;
+	font-weight: bold;
+	cursor: pointer;
+	user-select: none;
+	vertical-align: middle;
+	flex-shrink: 0;
+	padding-bottom: 2px;
+}
+
+.ktlCgToggle:hover {
+	background: var(--ktlTheme_tableHeaderBg, #e0e0e0);
+	border-color: var(--ktlTheme_tableCellText, #666);
+}
+
+tr.ktlCgCollapsed td {
+	border-bottom: 1px solid var(--ktlTheme_tableGridColor, #999);
+}
+
 /**** KTL_RELATED - END ****/

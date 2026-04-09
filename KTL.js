@@ -258,6 +258,14 @@ function Ktl($, appInfo) {
 
             if (viewKwObj._legend?.some(kw => kw.params?.[0]?.includes('all')))
                 ktlKeywords._legendAll = true;
+
+            if (viewKwObj._cg) {
+                if (viewKwObj._cg.some(kw => kw.params?.[0]?.includes('all'))) {
+                    ktlKeywords._cgAll = {};
+                    if (viewKwObj._cg.some(kw => kw.params?.[0]?.includes('collapsed')))
+                        ktlKeywords._cgAll.collapsed = true;
+                }
+            }
         }
     };
 
@@ -12498,6 +12506,7 @@ function Ktl($, appInfo) {
                     keywords._click && performClick(viewId, keywords, data);
                     keywords._mail && sendBulkEmails(viewId, keywords, data);
                     keywords._dnd && dragAndDrop(viewId, keywords);
+                    keywords._cg && collapsibleGroups(viewId, keywords);
                     keywords._cpyfrom && copyRecordsFromView(viewId, keywords, data);
                     keywords._scs && sortedColumnStyle(viewId, keywords);
                     keywords._cmr && closeModalAndRefreshViews(viewId, keywords);
@@ -12525,6 +12534,9 @@ function Ktl($, appInfo) {
                 //This section is for features that can be applied with or without a keyword.
                 //When used without a keyword, they are controlled by a global flag.
                 headerAlignment(view, keywords);
+
+                if (!(keywords && keywords._cg) && ktlKeywords._cgAll)
+                    collapsibleGroups(viewId, keywords);
 
                 //This section is for keywords that are supported by views and fields.
                 ktl.fields.hideFields(viewId, keywords);
@@ -15775,6 +15787,65 @@ function Ktl($, appInfo) {
                     }
                 }
             })
+        }
+
+        function collapsibleGroups(viewId, keywords) {
+            const kw = '_cg';
+            const viewType = ktl.views.getViewType(viewId);
+            if (viewType !== 'table' && viewType !== 'search') return;
+
+            const viewElement = document.getElementById(viewId);
+            if (!viewElement) return;
+
+            const groupRows = viewElement.querySelectorAll('tbody tr.kn-table-group');
+            if (!groupRows.length) return;
+
+            let startCollapsed = false;
+            if (keywords && keywords[kw]) {
+                if (keywords[kw].length && keywords[kw][0].options) {
+                    const options = keywords[kw][0].options;
+                    if (!ktl.core.hasRoleAccess(options)) return;
+                }
+                startCollapsed = keywords[kw].some(k => k.params?.[0]?.includes('collapsed'));
+            } else if (ktlKeywords._cgAll) {
+                startCollapsed = !!ktlKeywords._cgAll.collapsed;
+            }
+
+            groupRows.forEach(groupRow => {
+                if (groupRow.querySelector('.ktlCgToggle')) return;
+
+                const td = groupRow.querySelector('td');
+                if (!td) return;
+
+                const toggle = document.createElement('span');
+                toggle.className = 'ktlCgToggle';
+                toggle.textContent = startCollapsed ? '+' : '\u2212';
+                toggle.title = startCollapsed ? 'Expand group' : 'Collapse group';
+                td.insertBefore(toggle, td.firstChild);
+
+                toggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const isCollapsed = toggle.textContent === '+';
+                    toggleGroup(groupRow, isCollapsed);
+                });
+
+                if (startCollapsed)
+                    toggleGroup(groupRow, false);
+            });
+
+            function toggleGroup(groupRow, expand) {
+                const toggle = groupRow.querySelector('.ktlCgToggle');
+                let sibling = groupRow.nextElementSibling;
+
+                while (sibling && !sibling.classList.contains('kn-table-group')) {
+                    sibling.style.display = expand ? '' : 'none';
+                    sibling = sibling.nextElementSibling;
+                }
+
+                toggle.textContent = expand ? '\u2212' : '+';
+                toggle.title = expand ? 'Collapse group' : 'Expand group';
+                groupRow.classList.toggle('ktlCgCollapsed', !expand);
+            }
         }
 
         const dragAndDropSubscribers = [];
