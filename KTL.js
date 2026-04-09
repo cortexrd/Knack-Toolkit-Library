@@ -15789,6 +15789,8 @@ function Ktl($, appInfo) {
             })
         }
 
+        let cgSaveTimeout = null;
+
         function collapsibleGroups(viewId, keywords) {
             const kw = '_cg';
             const viewType = ktl.views.getViewType(viewId);
@@ -15800,16 +15802,20 @@ function Ktl($, appInfo) {
             const groupRows = viewElement.querySelectorAll('tbody tr.kn-table-group');
             if (!groupRows.length) return;
 
-            let startCollapsed = false;
+            let kwCollapsed = false;
             if (keywords && keywords[kw]) {
                 if (keywords[kw].length && keywords[kw][0].options) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
-                startCollapsed = keywords[kw].some(k => k.params?.[0]?.includes('collapsed'));
+                kwCollapsed = keywords[kw].some(k => k.params?.[0]?.includes('collapsed'));
             } else if (ktlKeywords._cgAll) {
-                startCollapsed = !!ktlKeywords._cgAll.collapsed;
+                kwCollapsed = !!ktlKeywords._cgAll.collapsed;
             }
+
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+            const savedCg = userPrefsObj.collapsibleGroups || {};
+            const savedView = savedCg[viewId];
 
             groupRows.forEach(groupRow => {
                 if (groupRow.querySelector('.ktlCgToggle')) return;
@@ -15817,19 +15823,23 @@ function Ktl($, appInfo) {
                 const td = groupRow.querySelector('td');
                 if (!td) return;
 
+                const groupLabel = getGroupLabel(groupRow);
+                const isCollapsed = savedView ? !!savedView[groupLabel] : kwCollapsed;
+
                 const toggle = document.createElement('span');
                 toggle.className = 'ktlCgToggle';
-                toggle.textContent = startCollapsed ? '+' : '\u2212';
-                toggle.title = startCollapsed ? 'Expand group' : 'Collapse group';
+                toggle.textContent = isCollapsed ? '+' : '\u2212';
+                toggle.title = isCollapsed ? 'Expand group' : 'Collapse group';
                 td.insertBefore(toggle, td.firstChild);
 
                 toggle.addEventListener('click', function (e) {
                     e.stopPropagation();
-                    const isCollapsed = toggle.textContent === '+';
-                    toggleGroup(groupRow, isCollapsed);
+                    const expanding = toggle.textContent === '+';
+                    toggleGroup(groupRow, expanding);
+                    saveCgState(viewId);
                 });
 
-                if (startCollapsed)
+                if (isCollapsed)
                     toggleGroup(groupRow, false);
             });
 
@@ -15846,6 +15856,55 @@ function Ktl($, appInfo) {
                 toggle.title = expand ? 'Collapse group' : 'Expand group';
                 groupRow.classList.toggle('ktlCgCollapsed', !expand);
             }
+        }
+
+        function getGroupLabel(groupRow) {
+            const td = groupRow.querySelector('td');
+            if (!td) return '';
+            const clone = td.cloneNode(true);
+            const toggle = clone.querySelector('.ktlCgToggle');
+            if (toggle) toggle.remove();
+            return clone.textContent.trim();
+        }
+
+        function saveCgState(viewId) {
+            const viewElement = document.getElementById(viewId);
+            if (!viewElement) return;
+
+            const groupRows = viewElement.querySelectorAll('tbody tr.kn-table-group');
+            const viewState = {};
+            groupRows.forEach(groupRow => {
+                const label = getGroupLabel(groupRow);
+                if (groupRow.classList.contains('ktlCgCollapsed'))
+                    viewState[label] = true;
+            });
+
+            const userPrefsObj = ktl.userPrefs.getUserPrefs();
+            if (!userPrefsObj.collapsibleGroups)
+                userPrefsObj.collapsibleGroups = {};
+
+            if (Object.keys(viewState).length)
+                userPrefsObj.collapsibleGroups[viewId] = viewState;
+            else
+                delete userPrefsObj.collapsibleGroups[viewId];
+
+            if (!Object.keys(userPrefsObj.collapsibleGroups).length)
+                delete userPrefsObj.collapsibleGroups;
+
+            userPrefsObj.dt = ktl.core.getCurrentDateTime(true, true, false, true);
+            ktl.storage.lsSetItem(ktl.const.LS_USER_PREFS, JSON.stringify(userPrefsObj));
+
+            clearTimeout(cgSaveTimeout);
+            cgSaveTimeout = setTimeout(() => {
+                const myUserPrefsViewId = ktl.userPrefs.getCfg().myUserPrefsViewId;
+                const acctPrefsFld = ktl.userPrefs.getCfg().acctUserPrefsFld;
+                const userAttrs = Knack.getUserAttributes();
+                if (myUserPrefsViewId && acctPrefsFld && userAttrs?.id) {
+                    const apiData = { [acctPrefsFld]: JSON.stringify(userPrefsObj) };
+                    ktl.core.knAPI(myUserPrefsViewId, userAttrs.id, apiData, 'PUT', [], false);
+                }
+                ktl.wndMsg.send('userPrefsChangedMsg', 'req', ktl.const.MSG_APP, IFRAME_WND_ID, 0, JSON.stringify(userPrefsObj));
+            }, 1000);
         }
 
         const dragAndDropSubscribers = [];
@@ -29284,6 +29343,10 @@ function Ktl($, appInfo) {
                             ...(older.userFilters || {}),
                             ...(newer.userFilters || {})
                         };
+                    }
+                    // Collapsible groups: newer wins (reflects latest user actions)
+                    if (newer.collapsibleGroups || older.collapsibleGroups) {
+                        merged.collapsibleGroups = newer.collapsibleGroups || {};
                     }
                     return merged;
                 }
