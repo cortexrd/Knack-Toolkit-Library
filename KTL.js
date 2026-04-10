@@ -4,8 +4,10 @@
  *
  * @author  Normand Defayette <nd@ctrnd.com>
  * @license MIT
- * 2019-2023
+ * 2019-2026
  * */
+
+const KTL_VERSION = '0.42.8';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -22,7 +24,6 @@ function Ktl($, appInfo) {
     if (window.ktl)
         return window.ktl;
 
-    const KTL_VERSION = '0.42.7';
     const APP_KTL_VERSIONS = window.APP_VERSION + ' - ' + KTL_VERSION;
     window.APP_KTL_VERSIONS = APP_KTL_VERSIONS;
 
@@ -15801,6 +15802,12 @@ function Ktl($, appInfo) {
 
             const groupRows = viewElement.querySelectorAll('tbody tr.kn-table-group');
             if (!groupRows.length) return;
+
+            const headerCells = viewElement.querySelectorAll('thead th');
+            headerCells.forEach(th => {
+                if (!th.style.width)
+                    th.style.width = th.getBoundingClientRect().width + 'px';
+            });
 
             let kwCollapsed = false;
             if (keywords && keywords[kw]) {
