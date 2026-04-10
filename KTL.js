@@ -19957,6 +19957,7 @@ function Ktl($, appInfo) {
                             }, 200);
                             return;
                         } else {
+                            delete dropdownSearching[fieldId];
                             return reject(`Search timeout after retries: ${fieldId}, ${srchTxt}`);
                         }
                     }
@@ -19983,13 +19984,17 @@ function Ktl($, appInfo) {
 
                     viewSel = viewId ? '#' + viewId + ' ' : viewSel;
                     var dropdownObj = $(viewSel + '[name="' + fieldId + '"].select');
+                    if (!dropdownObj.length)
+                        dropdownObj = $(viewSel + '[name="' + fieldId + '"].chzn-select');
 
                     if (dropdownObj.length) {
+                        var chznId = dropdownObj.attr('id').replace(/-/g, '_') + '_chzn';
+
                         //Multiple choice (hard coded entries) drop downs. Ex: Work Shifts
                         var isMultipleChoice = !!$(`#${viewId} [data-input-id="${fieldId}"].kn-input-multiple_choice`).length;
-                        var isSingleSelection = !!$(`#${viewId}_${fieldId}_chzn.chzn-container-single`).length;
-                        var chznSearchInput = $(`#${viewId}_${fieldId}_chzn.chzn-container input`).first();
-                        var chznContainer = $(`#${viewId}_${fieldId}_chzn.chzn-container`);
+                        var isSingleSelection = !!$(`#${chznId}.chzn-container-single`).length;
+                        var chznSearchInput = $(`#${chznId}.chzn-container input`).first();
+                        var chznContainer = $(`#${chznId}.chzn-container`);
 
                         let currentOptionsMultipleChoices = [];
 
@@ -19997,7 +20002,7 @@ function Ktl($, appInfo) {
                         if ($(viewSel + '[id$="' + fieldId + '_chzn"] .ui-autocomplete-input').length > 0) {
                             //If it's a multiple selection, we must take note of the current options and merge the next one coming, if found.
                             if (!isSingleSelection) {
-                                const currentOptions = $(`#${viewId}-${fieldId} option`);
+                                const currentOptions = dropdownObj.find('option');
                                 currentOptions.each(function () {
                                     if ($(this).text() !== srchTxt) {
                                         currentOptionsMultipleChoices.push(this);
@@ -20148,25 +20153,24 @@ function Ktl($, appInfo) {
                                                 delete dropdownSearching[fieldId];
 
                                                 //Insert back previous selected entries.
-                                                const input = $(`#${viewId}-${fieldId}`);
                                                 for (const opt of currentOptionsMultipleChoices) {
-                                                    input.append(opt);
+                                                    dropdownObj.append(opt);
                                                 }
 
-                                                if ($(`#${viewId}_${fieldId}_chzn .chzn-results li.no-results`).length) {
+                                                if ($(`#${chznId} .chzn-results li.no-results`).length) {
                                                     Knack.hideSpinner();
                                                     ktl.core.timedPopup(srchTxt + ' not Found', 'error', 3000);
                                                 } else {
                                                     foundText = srchTxt;
                                                     if (results.length === 1) {
-                                                        $(`#${viewId}-${fieldId} option:not("selected")`).attr('selected', '');
-                                                        input.trigger("liszt:updated");
+                                                        dropdownObj.find('option:not("selected")').attr('selected', '');
+                                                        dropdownObj.trigger("liszt:updated");
                                                         if (showPopup)
                                                             ktl.core.timedPopup('Found ' + foundText);
                                                     } else {
                                                         if (showPopup)
                                                             ktl.core.timedPopup('Found many, select from list...', 'warning');
-                                                        input.trigger("liszt:updated");
+                                                        dropdownObj.trigger("liszt:updated");
                                                     }
 
                                                     chznContainer.find('.chzn-drop').css('left', ''); //Put back, since was moved to -9000px.
