@@ -1,0 +1,1 @@
+CreateObject("WScript.Shell").Run "node """ & Replace(WScript.ScriptFullName, WScript.ScriptName, "") & "NodeJS_FileServer.js""", 0, False
