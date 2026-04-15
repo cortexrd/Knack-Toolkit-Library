@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.8';
+const KTL_VERSION = '0.42.9';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -9460,6 +9460,13 @@ function Ktl($, appInfo) {
                     saveFormData(data, viewId, fieldId);
                     $(document).trigger('KTL.dropDownValueChanged', { viewId: viewId, fieldId: fieldId, records: records });
                 }
+            },
+
+            //Apply a connection field value (label:recordId[;label:recordId...]) to a form field.
+            //Supports chosen (single/multi) dropdowns and connection-picker radio/checkbox.
+            //Returns true on success, false otherwise.
+            applyConnectionFieldValue: function (params) {
+                return applyConnectionFieldValue(params);
             },
         }
     })(); //persistentForm
@@ -18946,52 +18953,37 @@ function Ktl($, appInfo) {
                                             })
                                             .catch(() => { })
                                     } else {
-                                        selector = `#${viewId}_${fieldId}_chzn.chzn-container-single`;
-                                        if ($(`${selector}`).length) {
-                                            ktl.views.searchDropdown(text, fieldId, 'exact', false, viewId)
-                                                .then(function () {
-                                                    //console.log('found!');
-                                                })
-                                                .catch(function (foundText) {
-                                                    console.log('error', foundText);
-                                                })
-                                        } else {
-                                            selector = `#${viewId}_${fieldId}_chzn.chzn-container-multi`;
-                                            if ($(`${selector}`).length) {
-                                                const values = group.slice(1);
+                                        const chznSingle = $(`#${viewId}_${fieldId}_chzn.chzn-container-single`);
+                                        const chznMulti = $(`#${viewId}_${fieldId}_chzn.chzn-container-multi`);
 
-                                                const options = values.map(record => {
-                                                    const [label, id] = record.split(':');
-                                                    return { label, id };
-                                                }).filter(v => (!!v.id && ktl.core.hasRecordIdFormat(v.id)));
+                                        if (chznSingle.length || chznMulti.length) {
+                                            const values = group.slice(1);
+                                            const hasRecordIds = values.some(v => {
+                                                const [, id] = (v || '').split(':');
+                                                return id && ktl.core.hasRecordIdFormat(id);
+                                            });
 
-                                                if (options.length) {
-                                                    //Direct, quick populating of dropdown, with labels and record IDs.
-                                                    const input = $(`#${viewId}-${fieldId}`);
-
-                                                    options.forEach(option => {
-                                                        if (!input.find(`option[value="${option.id}"]`).length) {
-                                                            input.append(`<option value="${option.id}">${option.label}</option>`);
-                                                        }
-                                                    });
-
-                                                    const values2 = input.val() || [];
-                                                    input.val([...values2, ...options.map(o => o.id)]).trigger("liszt:updated");
-                                                } else {
-                                                    //Slow, sequential searches method.
-                                                    async function searchValuesInDropdown(values, fieldId, viewId) {
-                                                        for (const [index, value] of values.entries()) {
-                                                            try {
-                                                                await ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId);
-                                                                //console.log(`${index + 1} - found!`, value);
-                                                            } catch (error) {
-                                                                console.log(`${index + 1} - error`, error);
-                                                            }
+                                            if (hasRecordIds) {
+                                                //Reuse persistentForm logic: append <option> and set value directly — works for single and multi chosen.
+                                                const fieldValue = values.join(';');
+                                                ktl.persistentForm.applyConnectionFieldValue({ fieldId, fieldValue, viewId });
+                                            } else if (chznSingle.length) {
+                                                //Label-only fallback for single chosen.
+                                                ktl.views.searchDropdown(text, fieldId, 'exact', false, viewId)
+                                                    .catch(function (foundText) {
+                                                        console.log('error', foundText);
+                                                    })
+                                            } else {
+                                                //Label-only fallback for multi chosen: sequential searches.
+                                                (async () => {
+                                                    for (const [index, value] of values.entries()) {
+                                                        try {
+                                                            await ktl.views.searchDropdown(value, fieldId, 'exact', false, viewId);
+                                                        } catch (error) {
+                                                            console.log(`${index + 1} - error`, error);
                                                         }
                                                     }
-
-                                                    searchValuesInDropdown(values, fieldId, viewId);
-                                                }
+                                                })();
                                             }
                                         }
                                     }
