@@ -1882,6 +1882,13 @@ function Ktl($, appInfo) {
             sortUList: function (uListElem) {
                 if (!uListElem) return;
 
+                //Get label text without icon glyphs (Knack icon fonts use PUA chars that break sorting).
+                var getLabel = function (li) {
+                    var clone = li.cloneNode(true);
+                    clone.querySelectorAll('i, svg').forEach(function (el) { el.remove(); });
+                    return (clone.innerText || clone.textContent || '').trim().toLowerCase();
+                };
+
                 var switching, allListElements, shouldSwitch;
                 switching = true;
                 while (switching) {
@@ -1889,7 +1896,7 @@ function Ktl($, appInfo) {
                     allListElements = uListElem.getElementsByTagName("LI");
                     for (var i = 0; i < allListElements.length - 1; i++) {
                         shouldSwitch = false;
-                        if (allListElements[i].innerText.toLowerCase() > allListElements[i + 1].innerText.toLowerCase()) {
+                        if (getLabel(allListElements[i]) > getLabel(allListElements[i + 1])) {
                             shouldSwitch = true;
                             break;
                         }
