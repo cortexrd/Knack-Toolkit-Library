@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.10';
+const KTL_VERSION = '0.42.11';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -18185,8 +18185,9 @@ function Ktl($, appInfo) {
                         .then(() => {
                             const signatureElem = $(signatureSelector);
                             signatureElem.addClass(emptyClass);
-                            // Bind a global mouseup event to revalidate the signature field when the user interacts with it
-                            $(signatureElem).closest('.kn-input').off('mouseup.ktl_signature').on('mouseup.ktl_signature', () => {
+                            // Bind mouseup/touchend to revalidate the signature field when the user finishes a stroke
+                            // (touchend is required on touchscreens — jSignature's preventDefault can suppress the synthesized mouseup)
+                            $(signatureElem).closest('.kn-input').off('mouseup.ktl_signature touchend.ktl_signature').on('mouseup.ktl_signature touchend.ktl_signature', () => {
                                 setTimeout(() => {
                                     const lastStrokeButton = viewContainer.find(`[data-input-id='${fieldId}'] input[value="Undo last stroke"]`);
                                     if (lastStrokeButton.length && lastStrokeButton.is(':visible')) {
