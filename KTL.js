@@ -16105,6 +16105,14 @@ function Ktl($, appInfo) {
                     ktl.scenes.spinnerWatchdog(false);
                     $.blockUI({ message: '', overlayCSS: { backgroundColor: '#ddd', opacity: 0.2, } })
 
+                    function finishReorder() {
+                        ktl.core.removeTimedPopup();
+                        Knack.hideSpinner();
+                        ktl.scenes.spinnerWatchdog();
+                        ktl.views.autoRefresh();
+                        $.unblockUI();
+                    }
+
                     var recIdArray = [];
                     var idx;
                     let newData;
@@ -16128,6 +16136,12 @@ function Ktl($, appInfo) {
                     }
 
                     var arrayLen = recIdArray.length;
+                    if (!arrayLen) {
+                        ktl.core.removeInfoPopup();
+                        finishReorder();
+                        return;
+                    }
+
                     idx = 0;
                     var countDone = 0;
                     var apiData = {};
@@ -16152,11 +16166,7 @@ function Ktl($, appInfo) {
                                     ktl.core.removeInfoPopup();
 
                                     ktl.views.refreshView(viewId).then(function () {
-                                        ktl.core.removeTimedPopup();
-                                        ktl.scenes.spinnerWatchdog();
-                                        ktl.views.autoRefresh();
-                                        Knack.hideSpinner();
-                                        $.unblockUI();
+                                        finishReorder();
                                         ktl.core.timedPopup('Rows Reordered successfully', 'success', 1000);
                                     })
                                 } else
@@ -16164,11 +16174,7 @@ function Ktl($, appInfo) {
                             })
                             .catch(function (reason) {
                                 ktl.core.removeInfoPopup();
-                                ktl.core.removeTimedPopup();
-                                Knack.hideSpinner();
-                                ktl.scenes.spinnerWatchdog();
-                                ktl.views.autoRefresh();
-                                $.unblockUI();
+                                finishReorder();
                                 alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
                             })
 
