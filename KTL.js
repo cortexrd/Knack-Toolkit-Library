@@ -15850,13 +15850,18 @@ function Ktl($, appInfo) {
                 const toggle = document.createElement('span');
                 toggle.className = 'ktlCgToggle';
                 toggle.textContent = isCollapsed ? '+' : '\u2212';
-                toggle.title = isCollapsed ? 'Expand group' : 'Collapse group';
+                toggle.title = (isCollapsed ? 'Expand group' : 'Collapse group') + ' (Ctrl+Click for all)';
                 td.insertBefore(toggle, td.firstChild);
 
                 toggle.addEventListener('click', function (e) {
                     e.stopPropagation();
                     const expanding = toggle.textContent === '+';
-                    toggleGroup(groupRow, expanding);
+                    if (e.ctrlKey || e.metaKey) {
+                        //Ctrl/Cmd+Click: apply the same action to every group in this view.
+                        groupRows.forEach(gr => toggleGroup(gr, expanding));
+                    } else {
+                        toggleGroup(groupRow, expanding);
+                    }
                     saveCgState(viewId);
                 });
 
@@ -15874,7 +15879,7 @@ function Ktl($, appInfo) {
                 }
 
                 toggle.textContent = expand ? '\u2212' : '+';
-                toggle.title = expand ? 'Collapse group' : 'Expand group';
+                toggle.title = (expand ? 'Collapse group' : 'Expand group') + ' (Ctrl+Click for all)';
                 groupRow.classList.toggle('ktlCgCollapsed', !expand);
             }
         }
