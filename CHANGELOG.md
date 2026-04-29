@@ -1,5 +1,40 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.12    *2026-04-28*
+
+- `_cg` keyword: Ctrl+Click (Cmd+Click on macOS) on any group toggle expands or collapses every group in the view in one shot. Tooltip updated to surface the shortcut.
+
+## 0.42.11    *2026-04-23*
+
+- `_req` signature handler now also listens to `touchend` so touchscreen strokes update the empty state (jSignature's `preventDefault` can suppress the synthesized `mouseup`)
+- `ktlNotValid_empty` background color softened to a very subtle pink (`#fdb0b026`) instead of full pink
+
+## 0.42.9    *2026-04-15*
+
+- Fix `_sfv` keyword for single chosen connection fields
+- Fix `sortUList` ignoring icon glyphs in menu items
+
+## 0.42.8    *2026-04-10*
+
+- Fix `_cg` collapsible group header width shift (lock thead column widths before collapsing); move `KTL_VERSION` to module scope to avoid layout reflow
+- Fix `searchDropdown` for search views
+- KTL_Start helper can be used from Windows Task Scheduler to launch the Node server hidden
+
+## 0.42.6    *2026-03-31*
+
+- Add `_cg` keyword: collapsible groups for table and search views with persistent per-view state in `userPrefs`
+- Fix repeated auto-login prompts after first sign-in
+- Fix bulk ops `viewId` fallback; limit cache-bust to dev/beta only
+- Improve hidden-elements dev mode: prevent overreach across scene changes, stop revealing temporary scene wrappers, and refine the reveal logic
+
+## 0.42.5    *2026-03-20*
+
+- Add `_dhh` keyword: dynamic grid header line clamping
+- Improve table header styling and icon handling
+- Fix tooltip selector to use jQuery object instead of `querySelector`
+- Fix `_ttip` `textEquals` matching
+- Skip cell-edit click handler on views without inline editing
+
 ## 0.42.4    *2026-03-11*
 
 - Add caller tracing to `clog` via `ktl.core.logCaller`
