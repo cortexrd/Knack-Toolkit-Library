@@ -6608,7 +6608,15 @@ function Ktl($, appInfo) {
             if (e.target.classList) {
                 if (e.target.closest('.cell-editable .cell-edit')) {
                     ktl.core.waitSelector('#cell-editor .kn-input, .redactor-editor')
-                        .then(() => { ktl.fields.ktlInlineEditActive(e); })
+                        .then(() => {
+                            ktl.fields.ktlInlineEditActive(e);
+                            //Move focus into the cell editor so the background page doesn't catch arrow keys (e.g. up/down scrolling the underlying table).
+                            const editor = document.querySelector('#cell-editor');
+                            if (editor && !editor.contains(document.activeElement)) {
+                                const focusable = editor.querySelector('input.ui-autocomplete-input, input:not([type="hidden"]), textarea, .redactor-editor');
+                                focusable && focusable.focus();
+                            }
+                        })
                         .catch(err => { console.log('Failed waiting for cell editor.', err, e); });
                 }
             }
@@ -8003,9 +8011,10 @@ function Ktl($, appInfo) {
             hideFields: function (viewId, keywords) {
                 if (!viewId) return;
 
-                if ($('.kn-modal').length && !$('#' + viewId).children().length) {
+                if ($('.kn-modal').length && $('#' + viewId).length && !$('#' + viewId).children().length) {
                     // Issue #458
                     // View not rendered yet: Need special processing for modals, where hidden fields are briefly shown before the kw is applied.
+                    // Require the view element to actually exist — synthetic IDs like `view_XXX_celleditor` have no DOM node and would otherwise hide the whole modal scene.
                     $('.kn-modal .kn-scene').addClass('ktlHidden_viewTemp_modal');
 
                     //Quick fix until we find an elegant solution to issue #537, which was caused by fixing issue #458.
@@ -12767,8 +12776,13 @@ function Ktl($, appInfo) {
 
         $(document).keydown(function (e) {
             if (e.keyCode === 27) { //Esc
-                $('.close-popover').trigger('click'); //Exit inline editing
-                $('#asset-viewer > div > a').trigger('click'); //asset-viewer is the image viewer.
+                //Close one layer at a time so a single Escape doesn't dismiss both an inline popover and the modal underneath it.
+                const popover = $('.close-popover:visible');
+                if (popover.length) { popover.trigger('click'); return; }
+
+                const assetViewer = $('#asset-viewer > div > a');
+                if (assetViewer.length) { assetViewer.trigger('click'); return; }
+
                 $('.close-modal').trigger('click'); //Modal page.
             } else if (e.keyCode === 37) //Left arrow
                 $('#asset-viewer > div > div > a.kn-asset-prev').trigger('click');
