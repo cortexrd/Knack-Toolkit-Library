@@ -24353,6 +24353,9 @@ function Ktl($, appInfo) {
                     let div = document.querySelector(`#${viewId} .table-keyword-search .control.has-addons`);
                     if (div) {
                         hasSearchElement = true;
+                        //Ensure the search form lays out children inline, so the addons sit on the same line as the search box.
+                        const searchForm = document.querySelector(`#${viewId} .table-keyword-search`);
+                        if (searchForm) searchForm.style.display = 'flex';
                     } else {
                         div = document.querySelector(`#${viewId} .kn-submit.control`);
                         if (div) {
@@ -24379,7 +24382,7 @@ function Ktl($, appInfo) {
 
                     ktlAddonsDiv.classList.add('ktlAddonsDiv');
                     const styles = { 'margin-bottom': '1.1em' };
-                    if (hasSearchElement) styles['margin-left'] = '1.1em';
+                    if (hasSearchElement) styles['margin-left'] = '2.5em';
                     $(ktlAddonsDiv).css(styles);
 
                     if (appendInside) {
