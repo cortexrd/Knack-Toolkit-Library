@@ -21190,37 +21190,6 @@ function Ktl($, appInfo) {
             },
 
             /**
-             * Resolves a logged-in account field value from the Knack user attributes payload.
-             * @param {object} userAttr Logged-in user attributes returned by Knack.
-             * @param {string} fieldId Knack field id to resolve.
-             * @returns {*|undefined} Comparable field value for ktlCond.
-             */
-            getLoggedInAccountFieldValue: function (userAttr, fieldId) {
-                const userValues = userAttr?.values;
-                const userValue = userValues?.[fieldId];
-                let resolvedValue;
-
-                if (userValue == null)
-                    resolvedValue = userValue;
-                else if (Array.isArray(userValue) || typeof userValue !== 'object')
-                    resolvedValue = userValue;
-                else if (userValue.full != null)
-                    resolvedValue = userValue.full;
-                else if (userValue.email != null)
-                    resolvedValue = userValue.email;
-                else if (userValue.identifier != null)
-                    resolvedValue = userValue.identifier;
-                else if (userValue.label != null)
-                    resolvedValue = userValue.label;
-                else if (userValue.date_formatted != null)
-                    resolvedValue = userValue.date_formatted;
-                else
-                    resolvedValue = Object.values(userValue).find(value => value != null && typeof value !== 'object');
-
-                return resolvedValue;
-            },
-
-            /**
              * Evaluates ktlCond for hide and unhide keyword flows.
              * @param {object} options Keyword options.
              * @param {Function} hide Hide callback.
@@ -21255,7 +21224,7 @@ function Ktl($, appInfo) {
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found' && field.startsWith('field_')) {
-                            const userValue = ktl.views.getLoggedInAccountFieldValue(userAttr, field);
+                            const userValue = ktl.account.getLoggedInAccountFieldValue(userAttr, field);
                             const conditionMatches = ktlCompare(userValue, operator, value);
 
                             if (!conditionMatches)
@@ -21264,7 +21233,6 @@ function Ktl($, appInfo) {
                             return resolve();
                         } else {
                             console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
-                            unhide();
                             return resolve();
                         }
                     }
@@ -21442,7 +21410,7 @@ function Ktl($, appInfo) {
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found' && field.startsWith('field_')) {
-                            const userValue = ktl.views.getLoggedInAccountFieldValue(userAttr, field);
+                            const userValue = ktl.account.getLoggedInAccountFieldValue(userAttr, field);
                             return resolve(ktlCompare(userValue, operator, value));
                         } else {
                             console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
@@ -30138,6 +30106,44 @@ function Ktl($, appInfo) {
 
             isLoggedIn: function () {
                 return Knack.getUserAttributes() !== 'No user found';
+            },
+
+            /**
+             * Resolves a logged-in account field value from the Knack user attributes payload.
+             * @param {object} userAttr Logged-in user attributes returned by Knack.
+             * @param {string} fieldId Knack field id to resolve.
+             * @returns {*|undefined} Comparable field value for ktlCond.
+             */
+            getLoggedInAccountFieldValue: function (userAttr, fieldId) {
+                const resolveValue = (userValue) => {
+                    if (userValue == null)
+                        return userValue;
+
+                    if (Array.isArray(userValue))
+                        return userValue.map(value => resolveValue(value)).filter(value => value != null);
+
+                    if (typeof userValue !== 'object')
+                        return userValue;
+
+                    if (userValue.full != null)
+                        return userValue.full;
+
+                    if (userValue.email != null)
+                        return userValue.email;
+
+                    if (userValue.identifier != null)
+                        return userValue.identifier;
+
+                    if (userValue.label != null)
+                        return userValue.label;
+
+                    if (userValue.date_formatted != null)
+                        return userValue.date_formatted;
+
+                    return Object.values(userValue).find(value => value != null && typeof value !== 'object');
+                };
+
+                return resolveValue(userAttr?.values?.[fieldId]);
             },
 
             logout: function () {
