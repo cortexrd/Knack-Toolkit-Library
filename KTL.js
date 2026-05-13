@@ -21189,6 +21189,15 @@ function Ktl($, appInfo) {
                 });
             },
 
+            /**
+             * Evaluates ktlCond for hide and unhide keyword flows.
+             * @param {object} options Keyword options.
+             * @param {Function} hide Hide callback.
+             * @param {Function} unhide Unhide callback.
+             * @param {boolean} fixRows Whether table rows are being fixed.
+             * @param {string} keywordViewId View id owning the keyword.
+             * @returns {Promise<void|boolean>} Promise resolving when the condition finishes evaluating.
+             */
             hideUnhideValidateKtlCond: function (options = {}, hide, unhide, fixRows, keywordViewId) {
                 return new Promise(function (resolve) {
                     hide(fixRows);
@@ -21215,11 +21224,16 @@ function Ktl($, appInfo) {
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found' && field.startsWith('field_')) {
-                            const userValue = userAttr['values'][field].full;
-                            return resolve(ktlCompare(userValue, operator, value));
+                            const userValue = ktl.account.getLoggedInAccountFieldValue(userAttr, field);
+                            const conditionMatches = ktlCompare(userValue, operator, value);
+
+                            if (!conditionMatches)
+                                unhide();
+
+                            return resolve();
                         } else {
                             console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
-                            return resolve(false);
+                            return resolve();
                         }
                     }
 
@@ -21366,6 +21380,13 @@ function Ktl($, appInfo) {
                 });
             },
 
+            /**
+             * Evaluates whether a ktlCond expression matches the current state.
+             * @param {object} options Keyword options.
+             * @param {object} recordObj Record object used by tables and lists.
+             * @param {string} keywordViewId View id owning the keyword.
+             * @returns {Promise<boolean>} Promise resolving to whether the condition matches.
+             */
             validateKtlCond: function (options = {}, recordObj = {} /*Used only with Tables and Lists*/, keywordViewId) {
                 return new Promise(function (resolve) {
                     if (!options.ktlCond) return resolve(true);
@@ -21389,7 +21410,7 @@ function Ktl($, appInfo) {
                     if (view === 'ktlLoggedInAccount') {
                         const userAttr = Knack.getUserAttributes();
                         if (userAttr !== 'No user found' && field.startsWith('field_')) {
-                            const userValue = userAttr['values'][field].full;
+                            const userValue = ktl.account.getLoggedInAccountFieldValue(userAttr, field);
                             return resolve(ktlCompare(userValue, operator, value));
                         } else {
                             console.error(`ktlCond - ktlLoggedInAccount in ${keywordViewId} requires a fieldId to compare against not a field label ${field}.`);
@@ -30085,6 +30106,44 @@ function Ktl($, appInfo) {
 
             isLoggedIn: function () {
                 return Knack.getUserAttributes() !== 'No user found';
+            },
+
+            /**
+             * Resolves a logged-in account field value from the Knack user attributes payload.
+             * @param {object} userAttr Logged-in user attributes returned by Knack.
+             * @param {string} fieldId Knack field id to resolve.
+             * @returns {*|undefined} Comparable field value for ktlCond.
+             */
+            getLoggedInAccountFieldValue: function (userAttr, fieldId) {
+                const resolveValue = (userValue) => {
+                    if (userValue == null)
+                        return userValue;
+
+                    if (Array.isArray(userValue))
+                        return userValue.map(value => resolveValue(value)).filter(value => value != null);
+
+                    if (typeof userValue !== 'object')
+                        return userValue;
+
+                    if (userValue.full != null)
+                        return userValue.full;
+
+                    if (userValue.email != null)
+                        return userValue.email;
+
+                    if (userValue.identifier != null)
+                        return userValue.identifier;
+
+                    if (userValue.label != null)
+                        return userValue.label;
+
+                    if (userValue.date_formatted != null)
+                        return userValue.date_formatted;
+
+                    return Object.values(userValue).find(value => value != null && typeof value !== 'object');
+                };
+
+                return resolveValue(userAttr?.values?.[fieldId]);
             },
 
             logout: function () {
