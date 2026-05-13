@@ -1,5 +1,17 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.14    *2026-05-13*
+
+- Fix `ktlCond` `ktlLoggedInAccount` (4th param): condition result was never applied to the hide/unhide flow, so elements stayed hidden regardless of the comparison. Now correctly unhides when the condition fails.
+- Generalize logged-in account field resolution beyond the Name field via `ktl.account.getLoggedInAccountFieldValue`: handles `.full`, `.email`, `.identifier`, `.label`, `.date_formatted`, primitives, and connection arrays (recursively).
+- Fix `_hsv` keyword on calendar views: move `.kn-subtitle`, `.kn-records-nav`, and `div.knack-calendar` into the hide/show section so all calendar content collapses together; preserves header layout and button sizing.
+
+## 0.42.13    *2026-05-06*
+
+- Fix `hideFields`: skip the modal-hide trick for synthetic IDs (e.g. `view_XXX_celleditor`) that have no DOM element, which was pulling the entire modal off-screen and causing the inline-edit popover to land at x=0.
+- Fix Escape key: close popover, asset-viewer, then modal one layer per press instead of all at once.
+- Fix inline-edit click: move focus into the cell editor so arrow keys don't scroll the background page.
+
 ## 0.42.12    *2026-04-28*
 
 - `_cg` keyword: Ctrl+Click (Cmd+Click on macOS) on any group toggle expands or collapses every group in the view in one shot. Tooltip updated to surface the shortcut.
