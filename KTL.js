@@ -18630,15 +18630,32 @@ function Ktl($, appInfo) {
                     form: 'form, .kn-form-confirmation',
                     list: '.kn-list-content, .kn-records-nav',
                     search: `form, .kn-table.${viewId}, .kn-list.${viewId}`,
-                    calendar: 'div.knack-calendar',
                     menu: 'div.menu-links',
                 };
 
                 const wrapperSelector = wrappers[viewType];
                 const sectionElement = viewElement.find('section').first();
                 const sectionClass = `${hideShowId} ktlHideShowSection ktlBoxWithBorder`;
+                let hideShowSection;
 
-                if (wrapperSelector) {
+                if (viewType === 'calendar') {
+                    hideShowSection = viewElement.find(`section.${sectionClass.replace(/\s/g, '.')}`);
+
+                    if (!hideShowSection.length) {
+                        hideShowSection = $(`<section class='${sectionClass}' />`);
+                        const viewHeader = viewElement.find('.view-header').first();
+
+                        if (viewHeader.length) {
+                            hideShowSection.insertAfter(viewHeader);
+                        } else {
+                            viewElement.append(hideShowSection);
+                        }
+
+                        viewElement.find('.kn-subtitle, .kn-records-nav, div.knack-calendar').each((index, element) => {
+                            hideShowSection.append(element);
+                        });
+                    }
+                } else if (wrapperSelector) {
                     const wrapperElement = viewElement.find(wrapperSelector);
                     if (!wrapperElement.parent().is('section')) {
                         wrapperElement.wrapAll(`<section class='${sectionClass}' />`);
@@ -18647,7 +18664,10 @@ function Ktl($, appInfo) {
                     sectionElement.addClass(sectionClass);
                 }
 
-                const hideShowSection = viewElement.find(`section.${sectionClass.replace(/\s/g, '.')}`);
+                if (!hideShowSection || !hideShowSection.length) {
+                    hideShowSection = viewElement.find(`section.${sectionClass.replace(/\s/g, '.')}`);
+                }
+
                 if (!viewStates[viewId]) {
                     hideShowSection.hide();
                 }
