@@ -16141,10 +16141,19 @@ function Ktl($, appInfo) {
                     else
                         newData = document.querySelectorAll(`#${viewId} tbody tr .${sortFieldId}`);
 
-                    for (idx = 0; idx < newData.length; idx++) {
-                        const sortValue = Number(newData[idx].innerText);
+                    //Rows with a blank/space sort value (e.g. a freshly added record) are pushed to the
+                    //end so they get the highest index, instead of wherever Knack rendered them. Sort is
+                    //stable, so all other rows keep their relative order.
+                    const orderedData = Array.from(newData).sort((a, b) => {
+                        const aBlank = a.innerText.trim() === '';
+                        const bBlank = b.innerText.trim() === '';
+                        return aBlank === bBlank ? 0 : (aBlank ? 1 : -1);
+                    });
+
+                    for (idx = 0; idx < orderedData.length; idx++) {
+                        const sortValue = Number(orderedData[idx].innerText);
                         if (sortValue !== (idx + 1)) {
-                            const recId = newData[idx].closest('tr').id;
+                            const recId = orderedData[idx].closest('tr').id;
                             if (sortValue <= maxIndexRenumber || recId === draggedRecId) {
                                 var recData = {};
                                 recData[sortFieldId] = idx + 1;
