@@ -13338,7 +13338,7 @@ function Ktl($, appInfo) {
                 { operation: 'bulkAction', role: 'Bulk Action' },
             ];
 
-            const userRoles = Knack.getUserRoleNames();
+            const userRoles = Knack.getUserRoleNames() ?? [];
             for (const op of bulkOps) {
                 if (ktl.core.getCfg().enabled.bulkOps[op.operation] && userRoles.includes(op.role)) {
                     return true;
