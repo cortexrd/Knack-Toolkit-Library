@@ -6019,7 +6019,7 @@ function Ktl($, appInfo) {
                 }
 
                 try {
-                    const userRoles = Knack.getUserRoleNames();
+                    const userRoles = ktl.account.getUserRoles();
                     this._canShowLogs = this.options.developerRoles.some(role => userRoles.includes(role));
                 } catch (error) {
                     this._canShowLogs = false;
@@ -10974,7 +10974,7 @@ function Ktl($, appInfo) {
             var filterIndex = thisFilter.index;
             var isPublic = thisFilter.filterSrc[viewId].filters[filterIndex].public;
 
-            if (isPublic && !Knack.getUserRoleNames().includes('Public Filters')) {
+            if (isPublic && !ktl.account.getUserRoles().includes('Public Filters')) {
                 $('.menuDiv').remove(); //JIC
                 return;
             }
@@ -11084,7 +11084,7 @@ function Ktl($, appInfo) {
             ul.appendChild(listRename);
 
             //Public Filters, visible to all users.
-            if (Knack.getUserRoleNames().includes('Public Filters')) {
+            if (ktl.account.getUserRoles().includes('Public Filters')) {
                 const listPublicFilters = document.createElement('li');
                 listPublicFilters.innerHTML = '<i class="fa fa-gift" style="margin-top: 2px;"></i> Public: ';
                 listPublicFilters.style.marginBottom = '8px';
@@ -11240,7 +11240,7 @@ function Ktl($, appInfo) {
                     animation: 250,
                     easing: "cubic-bezier(1, 0, 0, 1)",
                     onMove: function (/**Event*/evt, /**Event*/originalEvent) {
-                        if (evt.dragged.filter.public && !Knack.getUserRoleNames().includes('Public Filters')) {
+                        if (evt.dragged.filter.public && !ktl.account.getUserRoles().includes('Public Filters')) {
                             contextMenuFilterEnabled = true;
                             return false; //Cancel
                         }
@@ -11379,7 +11379,7 @@ function Ktl($, appInfo) {
 
                     //Lock Public Filters button - to disable public Filters' automatic updates and triggering constant uploads.
                     let lockPublicFiltersButton;
-                    if (Knack.getUserRoleNames().includes('Public Filters')) {
+                    if (ktl.account.getUserRoles().includes('Public Filters')) {
                         lockPublicFiltersButton = ktl.fields.addButton(filterCtrlDiv, 'Lock Filters', FILTER_BTN_STYLE + (monochromeButtons ? '' : '; background-color: #b3d0bd'),
                             ['kn-button', 'is-small'],
                             filterDivId + '_' + LOCK_FILTERS_BTN + '_' + FILTER_BTN_SUFFIX);
@@ -11542,7 +11542,7 @@ function Ktl($, appInfo) {
                     filterSrc = filter.filterSrc;
                     type = filter.type;
                     if (filter.index >= 0) {
-                        if (type === LS_UFP && !Knack.getUserRoleNames().includes('Public Filters')) {
+                        if (type === LS_UFP && !ktl.account.getUserRoles().includes('Public Filters')) {
                             alert('You can\'t overwrite Public Filters.\nChoose another name.');
                             return;
                         } else if (!confirm(filterName + ' already exists.  Do you want to overwrite?'))
@@ -13338,7 +13338,7 @@ function Ktl($, appInfo) {
                 { operation: 'bulkAction', role: 'Bulk Action' },
             ];
 
-            const userRoles = Knack.getUserRoleNames() ?? [];
+            const userRoles = ktl.account.getUserRoles();
             for (const op of bulkOps) {
                 if (ktl.core.getCfg().enabled.bulkOps[op.operation] && userRoles.includes(op.role)) {
                     return true;
@@ -24809,6 +24809,7 @@ function Ktl($, appInfo) {
             if (!ktl.scenes.isiFrameWnd()) {
                 waitUserId()
                     .then(() => {
+                        ktl.account.getUserRoles(); //Prime the role cache early, as soon as the user is authenticated.
                         ktl.scenes.syncUserPrefs(); // Sync prefs after authentication if not already done
                         generateUserTheme(); // Re-apply theme after authentication if it was skipped earlier (no userId) or default applied.
                         ktl.core.applyKioskMode();
@@ -30020,6 +30021,9 @@ function Ktl($, appInfo) {
         const LOGIN_WRONG_USER_INFO = 'Wrong email or password';
         const LOGIN_TIMEOUT = 'Timeout';
 
+        //User roles can only change with a full page reload, so cache them on first successful read.
+        let cachedUserRoles;
+
         //Show logged-in user ID when double-clicking on First name.
         //Useful to copy/pase in the localStorage filtering field to see only those entries.
         $(document).on('knack-scene-render.any', function (event, scene) {
@@ -30130,11 +30134,32 @@ function Ktl($, appInfo) {
 
         return {
             isDeveloper: function () {
-                return ((Knack.getUserRoleNames().split(',').map((element) => element.trim()).includes('Developer')) || (ktl.storage.lsGetItem('forceDevRole', true) === 'true'));
+                return (ktl.account.getUserRoles().includes('Developer') || (ktl.storage.lsGetItem('forceDevRole', true) === 'true'));
             },
 
             isLoggedIn: function () {
                 return Knack.getUserAttributes() !== 'No user found';
+            },
+
+            /**
+             * Returns the logged-in user's roles as a trimmed array.
+             * Cached on first successful read (roles only change on a full page reload).
+             * Safe against getUserRoleNames() returning null/undefined (happens on session expiry).
+             * @returns {string[]} Role names, or [] when there is no user/session.
+             */
+            getUserRoles: function () {
+                if (cachedUserRoles)
+                    return cachedUserRoles;
+
+                const roles = Knack.getUserRoleNames();
+                const parsed = Array.isArray(roles)
+                    ? roles.map(role => String(role).trim()).filter(Boolean)
+                    : (roles ?? '').split(',').map(role => role.trim()).filter(Boolean);
+
+                if (parsed.length) //Don't cache a pre-login empty result.
+                    cachedUserRoles = parsed;
+
+                return parsed;
             },
 
             /**
@@ -30296,7 +30321,7 @@ function Ktl($, appInfo) {
             checkUserRolesMatch: function (rolesToCheck = []/*Leave empty for any roles.*/) {
                 if (!rolesToCheck.length) return true;
                 var defaultRes = false;
-                const userRoles = Knack.getUserRoleNames().split(', ');
+                const userRoles = [...ktl.account.getUserRoles()]; //Copy: getUserRoles() returns the cached array, must not mutate it.
 
                 if (ktl.storage.lsGetItem('forceDevRole', true) === 'true')
                     userRoles.push('Developer');
@@ -30317,7 +30342,7 @@ function Ktl($, appInfo) {
             },
 
             matchUserRoles: function (roles = []) {
-                const userRoles = Knack.getUserRoleNames().split(', ');
+                const userRoles = ktl.account.getUserRoles();
                 const canIncludeRoles = roles.filter(role => !role.startsWith('!'));
                 const cannotIncludeRoles = roles.filter(role => role.startsWith('!')).map(role => role.slice(1));
 
@@ -30664,7 +30689,7 @@ function Ktl($, appInfo) {
 
                                         if (ktl.core.isMoreRecent(cloudPfDt, localPfDt))
                                             pubFiltersNeedDownload = true;
-                                        else if (Knack.getUserRoleNames().includes('Public Filters') && (!cloudPfDt || ktl.core.isMoreRecent(localPfDt, cloudPfDt))) {
+                                        else if (ktl.account.getUserRoles().includes('Public Filters') && (!cloudPfDt || ktl.core.isMoreRecent(localPfDt, cloudPfDt))) {
                                             pubFiltersNeedUpload = true;
                                         }
                                     }
@@ -32663,7 +32688,7 @@ function Ktl($, appInfo) {
             // Helper to check bulk operation permission
             const checkBulkOpPermission = (roleName, configEnabled, additionalChecks = true) => {
                 return configEnabled
-                    && (Knack.getUserRoleNames().includes(roleName) || bulkOpEnabled)
+                    && (ktl.account.getUserRoles().includes(roleName) || bulkOpEnabled)
                     && !bulkOpDisabled
                     && additionalChecks;
             };
