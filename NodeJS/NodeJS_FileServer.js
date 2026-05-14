@@ -19,6 +19,10 @@ http.createServer(function (req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    //Dev server: never let the browser cache, so local edits always load fresh.
+    //URL stays stable (no ?v= query), so DevTools breakpoints survive a reload.
+    res.setHeader('Cache-Control', 'no-store');
+
     fs.readFile(url, function (err, data) {
         const timestamp = new Date().toLocaleString();
         console.log(`[${timestamp}] url =`, url);
