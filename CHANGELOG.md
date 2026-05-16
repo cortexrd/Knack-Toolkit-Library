@@ -1,5 +1,12 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.15    *2026-05-16*
+
+- Fix `isBulkOperationEnabled` TypeError on expired session: guard against `Knack.getUserRoleNames()` returning null/undefined, which would otherwise throw on `.includes()` and break all KTL event handlers on the view (#607)
+- Add `ktl.account.getUserRoles()`: null-safe, returns a trimmed array (handles a string or array return), and caches on first successful read. Consolidates ~13 sites that previously called `Knack.getUserRoleNames()` directly with no null guard, and switches several from substring `.includes()` on the comma-separated string to exact role matching
+- Fix `_dnd` auto-sort placing blank-sort rows at the top: stable-sort rows with a blank/space Sort value to the end before numbering, so a freshly added record gets the highest index
+- FileServer: send `Cache-Control: no-store` for local dev so browsers always fetch the latest `KTL.js` on refresh, keeping URLs stable so DevTools breakpoints survive a reload
+
 ## 0.42.14    *2026-05-13*
 
 - Fix `ktlCond` `ktlLoggedInAccount` (4th param): condition result was never applied to the hide/unhide flow, so elements stayed hidden regardless of the comparison. Now correctly unhides when the condition fails.
