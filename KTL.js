@@ -8318,9 +8318,13 @@ function Ktl($, appInfo) {
 
         const debouncedFormContentHasChanged = debounce(formContentHasChanged, 500);
         $(document).on('input', function (event) {
+            const targetKnInput = $(event.target).closest('.kn-input');
+            const isChosenConnectionField = targetKnInput.hasClass('kn-input-connection') && targetKnInput.find('.chzn-select').length > 0;
+
             if (!event
                 || !event.target.type
                 || event.target.className.includes('knack-date')
+                || isChosenConnectionField
                 || $(event.target).closest('.chzn-container').length)
                 return;
 
@@ -8379,6 +8383,11 @@ function Ktl($, appInfo) {
 
             const knInput = element.closest('.kn-input');
             if (!knInput) return;
+
+            if (knInput.classList.contains('kn-input-connection')
+                && knInput.querySelector('.chzn-select')
+                && !(element instanceof HTMLSelectElement))
+                return;
 
             const fieldId = knInput.getAttribute('data-input-id');
             if (!fieldId) return;
