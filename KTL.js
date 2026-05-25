@@ -21059,6 +21059,14 @@ function Ktl($, appInfo) {
                 if (!viewId || !validationKey || !ktl.core.getCfg().enabled.formPreValidation) return;
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
+                if (!submit) {
+                    const connectionSubmit = Array.from(document.querySelectorAll('.kn-submit')).find((submitElement) => {
+                        return submitElement.querySelector(`input[value="${viewId}"]`);
+                    });
+
+                    submit = connectionSubmit ? connectionSubmit.querySelector('.is-primary') : null;
+                }
+
                 if (!submit) return;
 
                 if (submit.validity) {
