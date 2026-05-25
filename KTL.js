@@ -8317,7 +8317,7 @@ function Ktl($, appInfo) {
         });
 
         const debouncedFormContentHasChanged = debounce(formContentHasChanged, 500);
-        $(document).on('input', function (event) {
+        $(document).on('input focusout', function (event) {
             if (!event
                 || !event.target
                 || !event.target.type
