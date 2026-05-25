@@ -8318,15 +8318,16 @@ function Ktl($, appInfo) {
 
         const debouncedFormContentHasChanged = debounce(formContentHasChanged, 500);
         $(document).on('input', function (event) {
-            const targetKnInput = $(event.target).closest('.kn-input');
-            const isChosenConnectionField = targetKnInput.hasClass('kn-input-connection') && targetKnInput.find('.chzn-select').length > 0;
-
             if (!event
+                || !event.target
                 || !event.target.type
                 || event.target.className.includes('knack-date')
-                || isChosenConnectionField
                 || $(event.target).closest('.chzn-container').length)
                 return;
+
+            const targetKnInput = $(event.target).closest('.kn-input');
+            const isChosenConnectionField = targetKnInput.hasClass('kn-input-connection') && targetKnInput.find('.chzn-select').length > 0;
+            if (isChosenConnectionField) return;
 
             if ((event.type === 'focusout' && event.relatedTarget) || event.type === 'input')
                 debouncedFormContentHasChanged(event.target);
