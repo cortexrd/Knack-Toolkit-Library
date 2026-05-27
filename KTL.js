@@ -21060,7 +21060,9 @@ function Ktl($, appInfo) {
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
                 if (!submit) {
-                    const connectionSubmitInput = document.querySelector(`#connection-form-view input[value="${viewId}"]`);
+                    const connectionSubmitInput =
+                        document.querySelector(`#connection-form-view input[value="${viewId}"]`) ||
+                        document.querySelector(`.kn-submit input[value="${viewId}"]`);
                     const connectionSubmit = connectionSubmitInput ? connectionSubmitInput.closest('.kn-submit') : null;
                     submit = connectionSubmit ? connectionSubmit.querySelector('.is-primary') : null;
                 }
