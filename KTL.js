@@ -8317,12 +8317,17 @@ function Ktl($, appInfo) {
         });
 
         const debouncedFormContentHasChanged = debounce(formContentHasChanged, 500);
-        $(document).on('input', function (event) {
+        $(document).on('input focusout', function (event) {
             if (!event
+                || !event.target
                 || !event.target.type
                 || event.target.className.includes('knack-date')
                 || $(event.target).closest('.chzn-container').length)
                 return;
+
+            const targetKnInput = $(event.target).closest('.kn-input');
+            const isChosenConnectionField = targetKnInput.hasClass('kn-input-connection') && targetKnInput.find('.chzn-select').length > 0;
+            if (isChosenConnectionField) return;
 
             if ((event.type === 'focusout' && event.relatedTarget) || event.type === 'input')
                 debouncedFormContentHasChanged(event.target);
@@ -8379,6 +8384,11 @@ function Ktl($, appInfo) {
 
             const knInput = element.closest('.kn-input');
             if (!knInput) return;
+
+            if (knInput.classList.contains('kn-input-connection')
+                && knInput.querySelector('.chzn-select')
+                && !(element instanceof HTMLSelectElement))
+                return;
 
             const fieldId = knInput.getAttribute('data-input-id');
             if (!fieldId) return;
@@ -21049,6 +21059,14 @@ function Ktl($, appInfo) {
                 if (!viewId || !validationKey || !ktl.core.getCfg().enabled.formPreValidation) return;
 
                 var submit = document.querySelector('#' + viewId + ' .is-primary');
+                if (!submit) {
+                    const connectionSubmitInput =
+                        document.querySelector(`#connection-form-view input[value="${viewId}"]`) ||
+                        document.querySelector(`.kn-submit input[value="${viewId}"]`);
+                    const connectionSubmit = connectionSubmitInput ? connectionSubmitInput.closest('.kn-submit') : null;
+                    submit = connectionSubmit ? connectionSubmit.querySelector('.is-primary') : null;
+                }
+
                 if (!submit) return;
 
                 if (submit.validity) {
