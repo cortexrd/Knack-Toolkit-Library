@@ -20901,7 +20901,10 @@ function Ktl($, appInfo) {
                 for (var j = 0; j < foundFields.length; j++)
                     ktl.fields.getFieldKeywords(foundFields[j], fieldsWithKwObj);
 
-                _fieldsWithKwCache.set(viewId, fieldsWithKwObj);
+                // Don't cache an empty result: field keywords may not be registered yet on early renders.
+                // Caching {} here would mask keywords that arrive later (e.g. _ttip never injected on forms).
+                if (!$.isEmptyObject(fieldsWithKwObj))
+                    _fieldsWithKwCache.set(viewId, fieldsWithKwObj);
                 return fieldsWithKwObj;
             },
 
