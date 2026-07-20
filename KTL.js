@@ -18573,6 +18573,13 @@ function Ktl($, appInfo) {
 
         const viewStates = {};
 
+        /**
+         * Adds hide/show controls to a view and restores dependent view features when it opens.
+         *
+         * @param {object} view Knack view being rendered.
+         * @param {object} keywords Parsed keywords for the view.
+         * @returns {void}
+         */
         function hideShowView({ key: viewId }, keywords) {
             const kw = '_hsv';
             if (!viewId || !keywords || !keywords[kw]) return;
@@ -18705,7 +18712,9 @@ function Ktl($, appInfo) {
                     hiddenSection.slideDown(delay, () => {
                         const viewHasSTH = ktl.core.checkIfViewHasKeyword(viewId, '_sth');
                         if (viewHasSTH) {
-                            ktl.views.stickTableHeader(viewId);
+                            const stickyHeaderParams = keywords._sth?.[0]?.params?.[0] || [];
+                            const viewHeight = stickyHeaderParams[1] || 800;
+                            ktl.views.stickTableHeader(viewId, viewHeight);
                         }
 
                         const signatureElements = viewElement.find('.kn-input-signature');
