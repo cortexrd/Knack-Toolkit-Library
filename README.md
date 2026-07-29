@@ -176,7 +176,7 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 ## 
 
-## This project was started by:
+## This project was created in 2021 by
 
 Normand Defayette
 
@@ -189,3 +189,16 @@ Blainville, Québec, Canada
 [YouTube channel](https://www.youtube.com/@cortexrdinc.4479)
 
 <img src="./Docs/media/HiRes_Horizontal.png" alt="Cortex R&D Inc." height="50">
+
+## Contributors
+
+Special thanks to those who have contributed code to the KTL over the years:
+
+- **Craig Winnall** ([CSWinnall](https://github.com/CSWinnall))
+- **Charles Brunelle** ([CharlesBrunelleIO](https://github.com/CharlesBrunelleIO))
+- **Ivan Jovanovic** ([ivojolo](https://github.com/ivojolo))
+- **Harry Rainbird** ([hwrainbird](https://github.com/hwrainbird))
+
+…and to everyone who reported issues, tested, and shared ideas in the discussions.
+
+ 
