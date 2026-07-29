@@ -18710,11 +18710,14 @@ function Ktl($, appInfo) {
                     }
                 } else {
                     hiddenSection.slideDown(delay, () => {
-                        const viewHasSTH = ktl.core.checkIfViewHasKeyword(viewId, '_sth');
-                        if (viewHasSTH) {
+                        if (keywords._sth) {
                             const stickyHeaderParams = keywords._sth?.[0]?.params?.[0] || [];
+                            const numOfRecords = stickyHeaderParams[0] || 10;
                             const viewHeight = stickyHeaderParams[1] || 800;
-                            ktl.views.stickTableHeader(viewId, viewHeight);
+                            const rowCount = Knack.views[viewId]?.model?.data?.length || 0;
+
+                            if (rowCount >= numOfRecords)
+                                ktl.views.stickTableHeader(viewId, viewHeight);
                         }
 
                         const signatureElements = viewElement.find('.kn-input-signature');
