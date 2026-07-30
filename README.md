@@ -176,9 +176,9 @@ That's about it for now, thanks for reading this and testing the library. Hope y
 
 ## 
 
-## This project was created in 2021 by
+## History
 
-Normand Defayette
+The Knack Toolkit Library (KTL) was created in 2021 by **Normand Defayette**, founder of Cortex R&D Inc.
 
 [nd@ctrnd.com](mailto:nd@ctrnd.com)
 
