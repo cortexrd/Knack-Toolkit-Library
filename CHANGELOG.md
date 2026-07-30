@@ -1,5 +1,14 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.17    *2026-07-30*
+
+- Fix sticky header on `_hsv` open: when an `_hsv` view is expanded, `_sth` now respects its own parameters — uses the configured height (default 800) and only activates when the record count meets the min-rows threshold (default 10) instead of always sticking (#615)
+- Fix field keywords missed on early form renders (e.g. `_ttip` never injected): don't cache an empty field-keyword result, since field keywords may not be registered yet when a view renders early
+
+## 0.42.16    *2026-06-05*
+
+- Fix connection form submit state updates (#610): form pre-validation now finds the Submit button on modal connection-add forms, and chosen connection dropdowns no longer trigger spurious form-change tracking (`input`/`focusout` events from the Chosen widget are ignored; only the real `<select>` counts)
+
 ## 0.42.15    *2026-05-16*
 
 - Fix `isBulkOperationEnabled` TypeError on expired session: guard against `Knack.getUserRoleNames()` returning null/undefined, which would otherwise throw on `.includes()` and break all KTL event handlers on the view (#607)
