@@ -3,6 +3,7 @@
 ## 0.42.18    *2026-08-30*
 
 - Fix `_lf` duplicating a linked calendar when a saved filter is active on scene entry (#617): the calendar was treated as a grid and re-fetched once per master render, racing Knack's async calendar rebuild and stacking two fullCalendar instances. Calendar targets now refetch events in place, and an identical filter is not re-applied
+- Fix Record History resolving the wrong view: `viewRecordHistoryViewId` now uses an exact title match, so a view whose title merely contains "View Record History" is no longer picked up
 
 ## 0.42.17    *2026-07-30*
 

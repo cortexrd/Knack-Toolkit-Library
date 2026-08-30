@@ -17615,7 +17615,7 @@ function Ktl($, appInfo) {
         }
 
         //Record History Feature - BEGIN
-        const viewRecordHistoryViewId = ktl.core.getViewIdByTitle('View Record History');
+        const viewRecordHistoryViewId = ktl.core.getViewIdByTitle('View Record History', '', true);
         const recordHistoryObject = ktl.core.getObjectIdByName('Record History');
         const recordHistoryFieldIds = {
             status: ktl.core.getFieldIdByName('Status', recordHistoryObject),
