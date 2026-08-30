@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.17';
+const KTL_VERSION = '0.42.18';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -10550,12 +10550,30 @@ function Ktl($, appInfo) {
 
             if (linkedViewIds && !!masterView.filters && (masterView.filters.length === undefined || masterView.filters.length > 0)) {
                 linkedViewIds.forEach((linkedViewId) => {
-                    if (Knack.models[linkedViewId].view.type === 'report') {
-                        Knack.models[linkedViewId].view.rows.forEach(row => {
+                    const linkedModel = Knack.models[linkedViewId];
+                    if (!linkedModel) return;
+
+                    if (linkedModel.view.type === 'report') {
+                        linkedModel.view.rows.forEach(row => {
                             row.reports.forEach(report => {
                                 applyUserFilterToReportView(linkedViewId, report, masterView.filters);
                             });
                         });
+                    } else if (linkedModel.view.type === 'calendar') {
+                        //Issue #617: a saved filter makes the master render twice on scene entry. Two overlapping model.fetch()
+                        //on a calendar interleave Knack's async render/renderCalendar and stack two fullCalendar instances.
+                        //Filters are idempotent, so skip re-applying the same one, and refetch events instead of a full fetch.
+                        const filtersJson = JSON.stringify(masterView.filters);
+                        if (linkedModel.ktlLfFilters === filtersJson) return;
+                        linkedModel.ktlLfFilters = filtersJson;
+
+                        updateFilters(linkedViewId, masterView.filters);
+
+                        const fc = Knack.views[linkedViewId] && Knack.views[linkedViewId].$('.knack-calendar').data('fullCalendar');
+                        if (fc)
+                            Knack.views[linkedViewId].$('.knack-calendar').fullCalendar('refetchEvents');
+
+                        $(document).trigger('KTL.filterApplied', linkedViewId);
                     } else if (masterView.type === 'table') {
                         const srchVal = $(`#${masterViewId} .table-keyword-search input`).val() || '';
 

@@ -1,5 +1,9 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.18    *2026-08-30*
+
+- Fix `_lf` duplicating a linked calendar when a saved filter is active on scene entry (#617): the calendar was treated as a grid and re-fetched once per master render, racing Knack's async calendar rebuild and stacking two fullCalendar instances. Calendar targets now refetch events in place, and an identical filter is not re-applied
+
 ## 0.42.17    *2026-07-30*
 
 - Fix sticky header on `_hsv` open: when an `_hsv` view is expanded, `_sth` now respects its own parameters — uses the configured height (default 800) and only activates when the record count meets the min-rows threshold (default 10) instead of always sticking (#615)
