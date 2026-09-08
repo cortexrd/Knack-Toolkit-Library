@@ -18227,6 +18227,7 @@ function Ktl($, appInfo) {
                                     }, 300);
                                 }
                             });
+                        inputField.each((_, input) => wireDatePickerValidation(input));
                         // Initial validation pass
                         inputField.each((_, el) => validateNonEmptyTextField(viewContainer, el));
                     } else {
@@ -18421,6 +18422,28 @@ function Ktl($, appInfo) {
                 } catch (error) {
                     console.error(`Error validating field ${fieldId}:`, error);
                 }
+            }
+
+            /**
+             * Revalidate a required field when a jQuery UI calendar date is selected.
+             * Datepicker selections call onSelect without reliably emitting a native change event.
+             * @param {HTMLInputElement} input - Datepicker input to wire.
+             * @returns {void}
+             */
+            function wireDatePickerValidation(input) {
+                const datePickerInput = $(input);
+                if (!datePickerInput.hasClass('hasDatepicker')
+                    || typeof datePickerInput.datepicker !== 'function'
+                    || datePickerInput.data('ktlReqDatePickerBound')) return;
+
+                const existingOnSelect = datePickerInput.datepicker('option', 'onSelect');
+                datePickerInput.datepicker('option', 'onSelect', function (dateText, instance) {
+                    if (typeof existingOnSelect === 'function')
+                        existingOnSelect.call(this, dateText, instance);
+
+                    setTimeout(() => validateNonEmptyTextField(viewContainer, input), 0);
+                });
+                datePickerInput.data('ktlReqDatePickerBound', true);
             }
 
             // Listen for individual field value changes and revalidate as necessary.
