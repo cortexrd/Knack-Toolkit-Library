@@ -5,7 +5,7 @@ See `KTL_AI_Instructions.md` for full architecture, conventions, and coding guid
 ## Quick Reference (from shared guide)
 
 - **Never use `alert()` or `confirm()`** — use `ktl.core.selectOption()` (Pi kiosk compatibility)
-- **Vanilla JS for new code** — no jQuery except Knack event hooks, Chosen bindings, and existing jQuery functions
+- **Vanilla JS preferred, jQuery allowed** — a recommendation, not a rule; keep jQuery whenever it makes the code simpler or matches the surrounding function (see KTL_AI_Instructions.md 2.2)
 - **`ktl` prefix** for all new CSS classes
 - **Underscore prefix** for keywords (`_legend`, `_ttip`, `_cfv`)
 - Add new utilities to existing `ktl.*` modules, not as new globals

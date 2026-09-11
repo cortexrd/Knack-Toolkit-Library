@@ -38,12 +38,15 @@ This guide captures the Knack Toolkit Library (KTL) architecture and conventions
   ```
 
 ### 2.2 Vanilla JS vs jQuery
-- **New code should use vanilla JS** (`querySelector`, `addEventListener`, `fetch`, etc.).
-- **Convert to vanilla JS** when explicitly asked or when doing a large refactor.
-- **Keep jQuery** in these cases:
-  - Knack event hooks (`knack-view-render`, `knack-scene-render`, etc.)
-  - Chosen event bindings (`.chosen()` / `.on('change', ...)`)
-  - Existing functions already written in jQuery (keep consistency within the function)
+- **Vanilla JS is preferred, not required** (decision 2026-09-11). jQuery stays available in
+  Knack's runtime, and KTL will not be ported to a next-gen codebase from this one, so
+  there is no payoff in avoiding it at all cost.
+- **Use whichever is simpler.** If jQuery makes new or existing code shorter or clearer,
+  keep jQuery. Match the style of the surrounding function.
+- **Do not convert existing jQuery to vanilla** for its own sake; only when explicitly asked.
+- **Always jQuery** for Knack event hooks (`knack-view-render`, etc.), Chosen bindings, and
+  jQuery UI widgets (`.datepicker(...)`).
+- Reviews should not flag jQuery usage as a convention issue.
 
 ### 2.3 Code structure & naming
 - Use `camelCase` for functions/variables; `UPPER_SNAKE_CASE` for constants.
@@ -79,7 +82,7 @@ This guide captures the Knack Toolkit Library (KTL) architecture and conventions
 1. **Reuse first**: Check for existing helpers before writing new logic.
 2. **Extend modules**: Add reusable functions to `ktl.core` (or the most relevant module).
 3. **Avoid new globals**: Keep functionality encapsulated within the KTL instance.
-4. **Large refactors**: Convert to vanilla JS except for Knack events and chosen events.
+4. **Large refactors**: Vanilla or jQuery, whichever reads simpler (see 2.2); no wholesale conversion.
 
 ## 6. Where to Look for Patterns
 - **`CLAUDE.md`**: alert replacement and JS style rules.
