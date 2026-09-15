@@ -30072,7 +30072,7 @@ function Ktl($, appInfo) {
         const LOGIN_WRONG_USER_INFO = 'Wrong email or password';
         const LOGIN_TIMEOUT = 'Timeout';
 
-        //User roles can only change with a full page reload, so cache them on first successful read.
+        //User roles are cached on first successful read and reloaded on log-in (Knack login is a SPA flow, no page reload).
         let cachedUserRoles;
 
         //Show logged-in user ID when double-clicking on First name.
@@ -30104,6 +30104,8 @@ function Ktl($, appInfo) {
                             if (result === LOGIN_SUCCESSFUL) {
                                 waitUserId()
                                     .then(() => {
+                                        ktl.account.getUserRoles(true); //Reload roles: a different account may have logged in without a page reload.
+
                                         result = JSON.stringify({ result: result, APP_KTL_VERSIONS: APP_KTL_VERSIONS, publicIP: ktl.sysInfo.getSysInfo().ip, page: menuInfo, agent: navigator.userAgent });
 
                                         ktl.storage.lsRemoveItem('PAUSE_SERVER_ERROR_LOGS');
@@ -30194,12 +30196,13 @@ function Ktl($, appInfo) {
 
             /**
              * Returns the logged-in user's roles as a trimmed array.
-             * Cached on first successful read (roles only change on a full page reload).
+             * Cached on first successful read; the log-in handler reloads it so a new account never inherits the previous one's roles.
              * Safe against getUserRoleNames() returning null/undefined (happens on session expiry).
+             * @param {boolean} [reload=false] Bypass the cache and re-read from Knack.
              * @returns {string[]} Role names, or [] when there is no user/session.
              */
-            getUserRoles: function () {
-                if (cachedUserRoles)
+            getUserRoles: function (reload = false) {
+                if (cachedUserRoles && !reload)
                     return cachedUserRoles;
 
                 const roles = Knack.getUserRoleNames();
@@ -30207,8 +30210,7 @@ function Ktl($, appInfo) {
                     ? roles.map(role => String(role).trim()).filter(Boolean)
                     : (roles ?? '').split(',').map(role => role.trim()).filter(Boolean);
 
-                if (parsed.length) //Don't cache a pre-login empty result.
-                    cachedUserRoles = parsed;
+                cachedUserRoles = parsed.length ? parsed : undefined; //Don't cache a pre-login empty result.
 
                 return parsed;
             },
