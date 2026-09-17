@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.18';
+const KTL_VERSION = '0.42.19';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -30251,6 +30251,20 @@ function Ktl($, appInfo) {
                 };
 
                 return resolveValue(userAttr?.values?.[fieldId]);
+            },
+
+            /**
+             * Returns the logged-in account's tags as a trimmed array.
+             * Tags are separated by commas or line breaks (a paragraph field returns them as \n or <br />).
+             * @param {string} fieldId Knack field id of the account's tags field.
+             * @returns {string[]} Tags, or [] when there is no user or no tags.
+             */
+            getAccountTags: function (fieldId) {
+                const tags = Knack.getUserAttributes()?.values?.[fieldId];
+                if (typeof tags !== 'string')
+                    return [];
+
+                return tags.split(/,|\n|<br\s*\/?>/i).map(tag => tag.trim()).filter(Boolean);
             },
 
             logout: function () {

@@ -1,5 +1,10 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.19    *2026-09-17*
+
+- New `ktl.account.getAccountTags(fieldId)`: returns the logged-in account's tags as a trimmed array (comma or line-break separated), for exact tag matching instead of substring tests; `[]` when there is no user or no tags
+- Fix `getUserRoles` stale cache: roles are reloaded on log-in, so a new account never inherits the previous account's roles (Knack login does not reload the page)
+
 ## 0.42.18    *2026-08-30*
 
 - Fix `_lf` duplicating a linked calendar when a saved filter is active on scene entry (#617): the calendar was treated as a grid and re-fetched once per master render, racing Knack's async calendar rebuild and stacking two fullCalendar instances. Calendar targets now refetch events in place, and an identical filter is not re-applied
