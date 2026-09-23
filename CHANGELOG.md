@@ -1,5 +1,10 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.20    *2026-09-23*
+
+- Fix `_copy` turning action and delete links into plain text after a copy (#616): links are swapped for text only for the duration of the copy and restored afterwards, instead of being replaced permanently
+- User theme now styles Knack action and delete link buttons (filled/outlined link styles): menu-button background, text and border, top-header background on hover; before they kept Knack's grey pill with the theme's blue link text forced on top
+
 ## 0.42.19    *2026-09-17*
 
 - New `ktl.account.getAccountTags(fieldId)`: returns the logged-in account's tags as a trimmed array (comma or line-break separated), for exact tag matching instead of substring tests; `[]` when there is no user or no tags

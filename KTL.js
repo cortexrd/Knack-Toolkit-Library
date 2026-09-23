@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.19';
+const KTL_VERSION = '0.42.20';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
