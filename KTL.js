@@ -26098,6 +26098,20 @@ function Ktl($, appInfo) {
                                 border-color: var(--ktlTheme_menuButtonBorder) !important;
                             }
 
+                            /* Action/Delete link buttons (Knack "filled" and "outlined" link styles) */
+                            .ktlUserTheme .kn-content a.kn-link.knViewLink--filled {
+                                background-color: var(--ktlTheme_menuButtonBg) !important;
+                                color: var(--ktlTheme_menuButtonText) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+                            .ktlUserTheme .kn-content a.kn-link.knViewLink--filled:hover {
+                                background-color: var(--ktlTheme_topHeaderBg) !important;
+                            }
+                            .ktlUserTheme .kn-content a.kn-link.knViewLink--outlined {
+                                color: var(--ktlTheme_linkColor) !important;
+                                border-color: var(--ktlTheme_menuButtonBorder) !important;
+                            }
+
                             /* KTL Developer Tools */
                             .ktlUserTheme #devBtnsDivId {
                                 background-color: var(--ktlTheme_pageBg) !important;
