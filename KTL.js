@@ -508,6 +508,7 @@ function Ktl($, appInfo) {
         var timedPopupEl = null;
         var timedPopupTimer = null;
         var progressWnd = null;
+        var selectedLinksBackup = []; //Links swapped for text by selectElementContents, restored on its next call.
 
         $(document).on('click', function (e) {
             //Context menu removal.
@@ -1642,13 +1643,12 @@ function Ktl($, appInfo) {
                     sel = window.getSelection();
                     sel.removeAllRanges();
 
-                    if (el === null) return;  // If el is null, remove selection and exit the function
+                    if (el === null) {
+                        restoreLinks();
+                        return;
+                    }
 
-                    // Temporarily remove a.ktlShrinkLink elements
-                    const shrinkLinkElements = $(el).find('a.ktlShrinkLink').detach();
-
-                    // Replace other <a> tags with their text content
-                    replaceLinksWithText(el);
+                    hideLinks(el);
 
                     range = document.createRange();
                     try {
@@ -1657,35 +1657,38 @@ function Ktl($, appInfo) {
                         range.selectNode(el);
                     }
                     sel.addRange(range);
-
-                    // Reattach a.ktlShrinkLink elements
-                    $(el).append(shrinkLinkElements);
                 } else if (body.createTextRange) {
                     if (el === null) {
-                        document.selection.empty(); // For IE, remove selection and exit function if el is null
+                        restoreLinks();
+                        document.selection.empty();
                         return;
                     }
 
-                    // Temporarily remove a.ktlShrinkLink elements
-                    const shrinkLinkElements = $(el).find('a.ktlShrinkLink').detach();
-
-                    // Replace other <a> tags with their text content
-                    replaceLinksWithText(el);
+                    hideLinks(el);
 
                     range = body.createTextRange();
                     range.moveToElementText(el);
                     range.select();
-
-                    // Reattach a.ktlShrinkLink elements
-                    $(el).append(shrinkLinkElements);
                 }
 
-                // Helper function to replace <a> tags with their text content, ignoring those with the class 'ktlShrinkLink'
-                function replaceLinksWithText(el) {
-                    $(el).find('a').not('.ktlShrinkLink').each(function () {
-                        const text = document.createTextNode($(this).text());
-                        $(this).replaceWith(text);
+                //Swap each <a> for a text node (empty for ktlShrinkLink) so only text gets copied.
+                //The links are put back by the caller's selectElementContents() call, otherwise
+                //action/delete buttons stay as plain text after a copy - see issue #616.
+                function hideLinks(el) {
+                    restoreLinks();
+                    $(el).find('a').each(function () {
+                        const placeholder = document.createTextNode($(this).hasClass('ktlShrinkLink') ? '' : $(this).text());
+                        selectedLinksBackup.push({ link: this, placeholder: placeholder });
+                        $(this).replaceWith(placeholder);
                     });
+                }
+
+                function restoreLinks() {
+                    selectedLinksBackup.forEach(({ link, placeholder }) => {
+                        if (placeholder.parentNode)
+                            placeholder.replaceWith(link);
+                    });
+                    selectedLinksBackup = [];
                 }
             },
 
