@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.20';
+const KTL_VERSION = '0.42.21';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -265,6 +265,8 @@ function Ktl($, appInfo) {
                     ktlKeywords._cgAll = {};
                     if (viewKwObj._cg.some(kw => kw.params?.[0]?.includes('collapsed')))
                         ktlKeywords._cgAll.collapsed = true;
+                    if (viewKwObj._cg.some(kw => kw.params?.[0]?.includes('count')))
+                        ktlKeywords._cgAll.count = true;
                 }
             }
         }
@@ -15869,14 +15871,17 @@ function Ktl($, appInfo) {
             });
 
             let kwCollapsed = false;
+            let kwCount = false;
             if (keywords && keywords[kw]) {
                 if (keywords[kw].length && keywords[kw][0].options) {
                     const options = keywords[kw][0].options;
                     if (!ktl.core.hasRoleAccess(options)) return;
                 }
                 kwCollapsed = keywords[kw].some(k => k.params?.[0]?.includes('collapsed'));
+                kwCount = keywords[kw].some(k => k.params?.[0]?.includes('count'));
             } else if (ktlKeywords._cgAll) {
                 kwCollapsed = !!ktlKeywords._cgAll.collapsed;
+                kwCount = !!ktlKeywords._cgAll.count;
             }
 
             const userPrefsObj = ktl.userPrefs.getUserPrefs();
@@ -15897,6 +15902,14 @@ function Ktl($, appInfo) {
                 toggle.textContent = isCollapsed ? '+' : '\u2212';
                 toggle.title = (isCollapsed ? 'Expand group' : 'Collapse group') + ' (Ctrl+Click for all)';
                 td.insertBefore(toggle, td.firstChild);
+
+                if (kwCount) {
+                    //Own span, stripped by getGroupLabel(), so the saved state stays keyed on the real label.
+                    const count = document.createElement('span');
+                    count.className = 'ktlCgCount';
+                    count.textContent = `(${countGroupRecords(groupRow)})`;
+                    td.appendChild(count);
+                }
 
                 toggle.addEventListener('click', function (e) {
                     e.stopPropagation();
@@ -15933,9 +15946,19 @@ function Ktl($, appInfo) {
             const td = groupRow.querySelector('td');
             if (!td) return '';
             const clone = td.cloneNode(true);
-            const toggle = clone.querySelector('.ktlCgToggle');
-            if (toggle) toggle.remove();
+            clone.querySelectorAll('.ktlCgToggle, .ktlCgCount').forEach(el => el.remove());
             return clone.textContent.trim();
+        }
+
+        function countGroupRecords(groupRow) {
+            let count = 0;
+            let sibling = groupRow.nextElementSibling;
+            while (sibling && !sibling.classList.contains('kn-table-group')) {
+                if (!sibling.classList.contains('kn-table-totals'))
+                    count++;
+                sibling = sibling.nextElementSibling;
+            }
+            return count;
         }
 
         function saveCgState(viewId) {

@@ -1,5 +1,9 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.21    *2026-09-24*
+
+- New `count` parameter for `_cg` (#618): `_cg=collapsed, count` shows each group's record count in its header, e.g. `SHPCHK_1003 (14)`, so a collapsed group is not a mystery. Works with `all`. The count lives in its own span that the saved-state key ignores, so adding it never breaks the `collapsed` default the way a custom-JS counter did
+
 ## 0.42.20    *2026-09-23*
 
 - Fix `_copy` turning action and delete links into plain text after a copy (#616): links are swapped for text only for the duration of the copy and restored afterwards, instead of being replaced permanently

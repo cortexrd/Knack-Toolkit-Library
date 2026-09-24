@@ -1715,4 +1715,10 @@ tr.ktlCgCollapsed td {
 	border-bottom: 1px solid var(--ktlTheme_tableGridColor, #999);
 }
 
+.ktlCgCount {
+	margin-left: 6px;
+	font-weight: normal;
+	opacity: 0.7;
+}
+
 /**** KTL_RELATED - END ****/
