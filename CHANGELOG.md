@@ -3,6 +3,7 @@
 ## 0.42.21    *2026-09-24*
 
 - New `count` parameter for `_cg` (#618): `_cg=collapsed, count` shows each group's record count in its header, e.g. `SHPCHK_1003 (14)`, so a collapsed group is not a mystery. Works with `all`. The count lives in its own span that the saved-state key ignores, so adding it never breaks the `collapsed` default the way a custom-JS counter did
+- Fix My Preferences page empty for non-Developer accounts (#622): the view was hidden whole whenever `allowShowPrefs()` returned nothing, taking the `_theme` Hotkeys and Theme Editor buttons with it. With `_theme` on the view, only the raw User Prefs form is hidden now, so every user can open the Theme Editor
 
 ## 0.42.20    *2026-09-23*
 

@@ -29981,7 +29981,10 @@ function Ktl($, appInfo) {
                 } else if (viewId === ktl.userPrefs.getCfg().myUserPrefsViewId) { //Form for user to update his own prefs
                     var allow = allowShowPrefs ? allowShowPrefs() : {};
                     if ($.isEmptyObject(allow)) {
-                        ktl.core.hideSelector('#' + ktl.userPrefs.getCfg().myUserPrefsViewId);
+                        //No developer prefs to show. With _theme on this view, keep it visible for the Hotkeys/Theme Editor
+                        //buttons (inserted before .view-header) and hide only the raw User Prefs form.
+                        const hasTheme = ktlKeywords._theme?.viewId === viewId;
+                        ktl.core.hideSelector('#' + viewId + (hasTheme ? ' .columns' : ''));
                         return;
                     }
 
