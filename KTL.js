@@ -33444,6 +33444,45 @@ function Ktl($, appInfo) {
                         reject('Recovery Watchdog is not supported on ' + sysInfo.os);
                 })
             },
+
+            //Page-to-agent call on a Pi terminal: GET http://localhost:3000/<path>?<params>, resolves the agent's JSON reply.
+            //Rejects when not on a Linux device or when the agent does not answer.
+            callAgent: function (path = '', params = {}, timeoutMs = 10000) {
+                return new Promise(function (resolve, reject) {
+                    const sys = ktl.sysInfo.getSysInfo();
+                    if (sys.os !== 'Linux') return reject('Device not running a Linux OS');
+                    if (!path) return reject('callAgent: path is required');
+
+                    const query = Object.keys(params)
+                        .filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '')
+                        .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k]))
+                        .join('&');
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.timeout = timeoutMs;
+                    xhr.open('GET', 'http://localhost:' + LOCAL_SERVER_PORT + '/' + path.replace(/^\//, '') + (query ? '?' + query : ''), true);
+                    xhr.onload = function () {
+                        if (xhr.status === 200) {
+                            try {
+                                resolve(JSON.parse(xhr.responseText));
+                            } catch (e) {
+                                resolve(xhr.responseText);
+                            }
+                        } else
+                            reject('Agent responded ' + xhr.status + ': ' + xhr.responseText);
+                    };
+                    xhr.onerror = function () { reject('Agent not reachable'); };
+                    xhr.ontimeout = function () { reject('Agent timeout'); };
+                    xhr.send();
+                });
+            },
+
+            //Ask the local agent to queue a command on another device of the same owner (relayed through the IoT server).
+            //Resolves the agent's { success, result }. Allowed operations are whitelisted by the agent (nexttab for now).
+            remoteCommand: function (serial = '', operation = '', payload = '') {
+                if (!serial || !operation) return Promise.reject('remoteCommand: serial and operation are required');
+                return ktl.sysInfo.callAgent('remote', { device: serial, op: operation, payload: payload });
+            },
         }
     })(); //sysInfo
 
