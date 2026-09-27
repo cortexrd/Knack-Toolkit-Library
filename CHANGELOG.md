@@ -1,5 +1,10 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.22    *2026-09-27*
+
+- New `ktl.sysInfo.callAgent(path, params, timeoutMs)`: from a page running on a Pi terminal, GET `http://localhost:3000/<path>` on the IoT agent and resolve its JSON reply; rejects when not on a Linux device or when the agent does not answer. Same channel as the recovery watchdog heartbeat, now available to apps
+- New `ktl.sysInfo.remoteCommand(serial, operation, payload)`: ask the local agent to queue a command on another device of the same owner, relayed through the IoT server (agent 3.11.6+, whitelisted operations only, `nexttab` for now). First use: a touch-screen terminal's menu button toggles the dashboard tabs of a Pi that has no input device
+
 ## 0.42.21    *2026-09-24*
 
 - New `count` parameter for `_cg` (#618): `_cg=collapsed, count` shows each group's record count in its header, e.g. `SHPCHK_1003 (14)`, so a collapsed group is not a mystery. Works with `all`. The count lives in its own span that the saved-state key ignores, so adding it never breaks the `collapsed` default the way a custom-JS counter did
