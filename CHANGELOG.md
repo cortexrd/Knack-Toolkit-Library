@@ -4,6 +4,7 @@
 
 - Fix Cancel on the "Can't find source file" prompt in Local mode (#624): it cleared an obsolete key, so the page reloaded into the same prompt. It now reverts to Prod as announced
 - Local server check more tolerant (#625): `ktl.core.checkLocalhostServer(port, timeoutMs)` now waits up to 1000 ms by default (was 100 ms) and rejects as soon as the fetch fails. When it gets no answer, switching to Local asks whether to switch anyway, for slow servers such as an SSH tunnel. The two duplicate KTL Code pickers (mode-switch hotkey and Developer Tools popup) are now one `ktl.core.selectKtlCode()`
+- Defensive handling of Knack's Oct 7, 2026 view-based API rules: a 400 on a view-based write is logged for everyone and shown once per view to developers ("API call refused..., see console logs for details"); `_lud`/`_lub` warns when its columns aren't inline-editable and no longer alerts after each cell edit; `_dnd` stops at the first refused update and restores the grid order; `_cpyfrom` edit mode skips non-editable destination columns, as documented. New helpers `ktl.views.getNonEditableFields` and `ktl.core.warnLockedFields`
 
 ## 0.42.22    *2026-09-27*
 

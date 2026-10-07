@@ -521,6 +521,8 @@ function Ktl($, appInfo) {
             }
         })
 
+        const apiRefusedWarned = new Set(); //Views already reported to the developer this session.
+
         return {
             setCfg: function (cfgObj = {}) {
                 cfgObj.developerNames && (cfg.developerNames = cfgObj.developerNames);
@@ -655,6 +657,9 @@ function Ktl($, appInfo) {
                                 response.caller = 'knAPI';
                                 response.viewId = viewId;
 
+                                if (response.status === 400 && (requestType === 'PUT' || requestType === 'POST'))
+                                    ktl.core.apiRefusedWarning(viewId, requestType, apiData);
+
                                 // Process critical failures by forcing a logout or hard reset.
                                 ktl.wndMsg.ktlProcessServerErrors({
                                     reason: 'KNACK_API_ERROR',
@@ -741,6 +746,48 @@ function Ktl($, appInfo) {
                         return apiDataIso;
                     }
                 });
+            },
+
+            //Since Knack's Oct 7, 2026 release, view-based writes must follow the view's editing settings, otherwise they get a 400.
+            //Logged for everyone, shown once per view and session to developers only.
+            //Knack silently drops non-editable columns from a view-based write, so features check before writing.
+            //Returns the locked fields; logged for everyone, shown once per view and feature to developers.
+            warnLockedFields: function (viewId, fieldIds = [], feature = '') {
+                const lockedFields = ktl.views.getNonEditableFields(viewId, fieldIds);
+                if (!lockedFields.length) return lockedFields;
+
+                const fieldsText = lockedFields.map(fieldId => `${ktl.core.getFieldNameById(fieldId) || '?'} (${fieldId})`).join(', ');
+                const msg = `${feature} in ${viewId}: these columns must be inline-editable, otherwise Knack won't update them: ${fieldsText}.`;
+                ktl.log.clog('purple', msg);
+
+                const key = viewId + '|' + feature;
+                if (ktl.account.isDeveloper() && !apiRefusedWarned.has(key)) {
+                    apiRefusedWarned.add(key);
+                    ktl.core.timedPopup(`${feature} issue found in ${viewId}, see console logs for details`, 'warning', 5000);
+                }
+                return lockedFields;
+            },
+
+            apiRefusedWarning: function (viewId, requestType = '', apiData = {}) {
+                const fieldIds = Object.keys(apiData || {}).filter(key => key.startsWith('field_'));
+                const lockedFields = ktl.views.getNonEditableFields(viewId, fieldIds);
+                const fieldsText = (lockedFields.length ? lockedFields : fieldIds)
+                    .map(fieldId => `${ktl.core.getFieldNameById(fieldId) || '?'} (${fieldId})`).join(', ');
+
+                let msg = `Knack refused a ${requestType} through ${viewId}. `;
+                if (requestType === 'POST' && ktl.views.getViewType(viewId) !== 'form')
+                    msg += 'Check that Settings > Security > Restrict POST for View-based API is off.';
+                else if (lockedFields.length)
+                    msg += `Not inline-editable in that view: ${fieldsText}.`;
+                else
+                    msg += `Check that the view has Inline Editing on and these columns are editable: ${fieldsText}.`;
+
+                ktl.log.clog('purple', msg);
+
+                if (ktl.account.isDeveloper() && !apiRefusedWarned.has(viewId)) {
+                    apiRefusedWarned.add(viewId);
+                    ktl.core.timedPopup(`API call refused in ${viewId}, see console logs for details`, 'warning', 5000);
+                }
             },
 
             //Param is selector string and optionally if we want to put back a hidden element as it was.
@@ -16250,6 +16297,7 @@ function Ktl($, appInfo) {
 
                     idx = 0;
                     var countDone = 0;
+                    var reorderFailed = false;
                     var apiData = {};
 
                     var itv = setInterval(() => {
@@ -16279,9 +16327,19 @@ function Ktl($, appInfo) {
                                     showProgress();
                             })
                             .catch(function (reason) {
+                                if (reorderFailed) return;
+                                reorderFailed = true;
+                                clearInterval(itv);
                                 ktl.core.removeInfoPopup();
-                                finishReorder();
-                                alert('Rows Reorder failed: ' + JSON.parse(reason.responseText).errors[0].message);
+                                ktl.views.refreshView(viewId).then(() => finishReorder()); //Show the real order back.
+
+                                if (reason && reason.status === 400) //Details already reported by knAPI.
+                                    ktl.core.timedPopup('Rows Reorder failed', 'error', 3000);
+                                else {
+                                    let errMsg = '';
+                                    try { errMsg = JSON.parse(reason.responseText).errors[0].message; } catch (e) { }
+                                    alert('Rows Reorder failed: ' + errMsg);
+                                }
                             })
 
                         function showProgress() {
@@ -16300,7 +16358,7 @@ function Ktl($, appInfo) {
             if (viewType !== 'table') return;
 
             if (!ktl.views.viewHasInlineEdit(dstViewId)) {
-                ktl.log.clog('purple', `_recid keyword used in a grid without inline edit: ${dstViewId}`);
+                ktl.log.clog('purple', `_cpyfrom keyword used in a grid without inline edit: ${dstViewId}`);
                 return;
             }
 
@@ -16506,6 +16564,19 @@ function Ktl($, appInfo) {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    //Edit mode: Knack refuses updates to non-editable columns, so they are skipped, as documented.
+                    if (mode === 'edit') {
+                        const dstFieldIds = Object.values(headersMapping).map(m => m.dst).filter(dst => typeof dst === 'string' && dst.startsWith('field_'));
+                        const lockedFields = ktl.views.getNonEditableFields(dstViewId, dstFieldIds);
+                        if (lockedFields.length) {
+                            for (const header in headersMapping) {
+                                if (lockedFields.includes(headersMapping[header].dst))
+                                    delete headersMapping[header];
+                            }
+                            ktl.log.clog('purple', `_cpyfrom in ${dstViewId}: skipped non-editable columns ${lockedFields.join(', ')}`);
                         }
                     }
 
@@ -24265,6 +24336,26 @@ function Ktl($, appInfo) {
                 }
             },
 
+            //Returns which of fieldIds can't be edited inline in a grid or search view: all of them when inline editing is off.
+            //Other view types return none, since forms decide by their inputs.
+            getNonEditableFields: function (viewId, fieldIds = []) {
+                try {
+                    const viewModel = Knack.router.scene_view.model.views._byId[viewId];
+                    if (!viewModel) return [];
+                    const viewAttr = viewModel.attributes;
+                    if (!['table', 'search'].includes(viewAttr.type)) return [];
+                    if (!ktl.views.viewHasInlineEdit(viewId)) return [...fieldIds];
+
+                    const cols = (viewAttr.type === 'table' ? viewAttr.columns : viewAttr.results.columns) || [];
+                    return fieldIds.filter(fieldId => {
+                        const col = cols.find(c => c.field && c.field.key === fieldId);
+                        return col && col.ignore_edit;
+                    });
+                } catch (e) {
+                    return [];
+                }
+            },
+
             //Used to perform bulk edits and copies of records programmatically.
             processAutomatedBulkOps: function (bulkOpsViewId, bulkOpsRecordsArray, requestType = 'PUT', viewsToRefresh = [], showSpinner = true, enableShowProgress = true) {
                 return new Promise(function (resolve, reject) {
@@ -29611,6 +29702,7 @@ function Ktl($, appInfo) {
             if (bulkOpsLudFieldId && bulkOpsLubFieldId) {
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLudFieldId).addClass('ktlNoInlineEdit');
                 $('#' + view.key + ' .cell-edit.' + bulkOpsLubFieldId).addClass('ktlNoInlineEdit');
+                ktl.core.warnLockedFields(view.key, [bulkOpsLudFieldId, bulkOpsLubFieldId], '_lud/_lub');
                 $(document).off(`knack-cell-update.${view.key}.ktl_lud`).on(`knack-cell-update.${view.key}.ktl_lud`, function (event, view, record) {
                     Knack.showSpinner();
                     var apiData = {};
@@ -29620,6 +29712,7 @@ function Ktl($, appInfo) {
                         .then((updated) => { Knack.hideSpinner(); })
                         .catch(function (reason) {
                             Knack.hideSpinner();
+                            if (reason && reason.status === 400) return; //The user's edit was saved, only the stamp was refused. Reported by knAPI.
                             alert('Error while processing Auto-Update log operation, reason: ' + JSON.stringify(reason));
                         })
                 });
