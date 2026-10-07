@@ -2634,7 +2634,15 @@ function Ktl($, appInfo) {
 
             checkLocalhostServer: function (port, timeoutMs = 1000) {
                 return new Promise(function (resolve, reject) {
-                    fetch(`http://localhost:${port}`, { method: 'GET', mode: 'no-cors' })
+                    //Validate port to prevent SSRF via unexpected/non-numeric or out-of-range values.
+                    const portNum = Number(port);
+                    if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+                        console.error("Invalid port specified for checkLocalhostServer.");
+                        reject();
+                        return;
+                    }
+
+                    fetch(`http://localhost:${portNum}`, { method: 'GET', mode: 'no-cors' })
                         .then(() => {
                             ktl.log.clog('green', 'Local server check successful.');
                             resolve();
