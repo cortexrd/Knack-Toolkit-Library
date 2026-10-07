@@ -10,7 +10,7 @@
 
 let callback;
 function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = 'min', noCacheBust = false) {
-    const KTL_LATEST_JS_VERSION = '0.42.22';
+    const KTL_LATEST_JS_VERSION = '0.42.23';
     const KTL_LATEST_CSS_VERSION = '0.14.3';
 
     let cssVersion = KTL_LATEST_CSS_VERSION;
@@ -86,7 +86,7 @@ function loadKtl($, _callback, _KnackApp, ktlVersion = '', fullCode = 'min', noC
                 if (typeof window.ktlReady !== 'function') {
                     let srcFileName = prompt(`Can't find source file with ktlReady:\n\n${appJsFile}\n\nWhat is file name (without .js)?\n\nLeave empty for none.`, Knack.app.attributes.name);
                     if (srcFileName === null) {
-                        localStorage.removeItem(lsShortName + 'dev');
+                        localStorage.removeItem(lsShortName + 'ktlCode');
                         alert('Reverting to Prod mode.');
                         location.reload(true);
                     } else if (srcFileName !== '') {

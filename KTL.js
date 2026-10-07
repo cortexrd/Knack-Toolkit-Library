@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.22';
+const KTL_VERSION = '0.42.23';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -2010,6 +2010,31 @@ function Ktl($, appInfo) {
                 }, 500);
             },
 
+            //Prompts for Prod, Beta, Dev, Local or a specific version number, then switches to it.
+            selectKtlCode: async function () {
+                const newKtlCode = await ktl.core.selectOption('Select which KTL version to use - or a specific number', 'Prod, Beta, Dev, Local, ktlOther');
+                if (newKtlCode === -1) return;
+
+                if (newKtlCode === 0) {
+                    ktl.core.switchKtlCode('prod');
+                } else if (newKtlCode === 3) {
+                    //A slow server (ex: SSH tunnel) may miss the check, so let the user switch anyway.
+                    //If the files can't be loaded, KTL_Start's prompt offers to revert to Prod.
+                    ktl.core.checkLocalhostServer(3000)
+                        .then(() => { ktl.core.switchKtlCode('local'); })
+                        .catch(() => {
+                            if (confirm('Local server on port 3000 did not answer.\n\nSwitch to Local mode anyway?'))
+                                ktl.core.switchKtlCode('local');
+                        });
+                } else {
+                    let ktlCode;
+                    if (newKtlCode === 1) ktlCode = 'beta';
+                    else if (newKtlCode === 2) ktlCode = 'dev';
+                    else if (/^\d.*\./.test(newKtlCode)) ktlCode = newKtlCode;
+                    if (ktlCode) ktl.core.switchKtlCode(ktlCode);
+                }
+            },
+
             isKiosk: function () {
                 var sessionKiosk = (ktl.storage.lsGetItem('KIOSK', false, true) === 'true');
                 return sessionKiosk || (isKiosk ? isKiosk() : false);
@@ -2607,18 +2632,17 @@ function Ktl($, appInfo) {
                 return parentURL;
             },
 
-            checkLocalhostServer: function (port) {
+            checkLocalhostServer: function (port, timeoutMs = 1000) {
                 return new Promise(function (resolve, reject) {
                     fetch(`http://localhost:${port}`, { method: 'GET', mode: 'no-cors' })
                         .then(() => {
+                            ktl.log.clog('green', 'Local server check successful.');
                             resolve();
-                            return;
                         })
-                        .catch(() => { })
-                        .finally(() => { ktl.log.clog('green', 'Local server check successfull.  Ignore error above.'); })
+                        .catch(() => { reject(); });
 
-                    //We can safely reject very quickly since server usually responds within 50ms.  Catch takes way too long.
-                    setTimeout(() => { reject(); }, 100);
+                    //Cap needed: on Windows, a refused localhost connection can take ~2 s to fail.
+                    setTimeout(() => { reject(); }, timeoutMs);
                 })
             },
 
@@ -24801,24 +24825,7 @@ function Ktl($, appInfo) {
                         }
                     });
             },
-            modeSwitcher: async () => {
-                const newKtlCode = await ktl.core.selectOption('Select which KTL version to use - or a specific number', 'Prod, Beta, Dev, Local, ktlOther');
-                if (newKtlCode === -1) return;
-
-                if (newKtlCode === 0) {
-                    ktl.core.switchKtlCode('prod');
-                } else if (newKtlCode === 3) {
-                    ktl.core.checkLocalhostServer(3000)
-                        .then(() => { ktl.core.switchKtlCode('local'); })
-                        .catch(() => { ktl.core.timedPopup('Local server not running', 'error', 3000); });
-                } else {
-                    let ktlCode;
-                    if (newKtlCode === 1) ktlCode = 'beta';
-                    else if (newKtlCode === 2) ktlCode = 'dev';
-                    else if (/^\d.*\./.test(newKtlCode)) ktlCode = newKtlCode;
-                    if (ktlCode) ktl.core.switchKtlCode(ktlCode);
-                }
-            },
+            modeSwitcher: () => ktl.core.selectKtlCode(),
             hotkeySettings: () => {
                 ktl.core.showHotkeySettings();
             },
@@ -28499,34 +28506,7 @@ function Ktl($, appInfo) {
                                 ktl.fields.addButton(devBtnsDiv, 'KTL Code: ' + ktlCode, '', ['devBtn', 'kn-button']).addEventListener('click', async () => {
                                     //This forces loading a specific 'KTL-xyz.js' version code from CTRND's CDN, in Prod folder.
                                     //See 'ktlCode' in KTL_Start.js
-
-                                    const newKtlCode = await ktl.core.selectOption('Select which KTL version to use - or a specific number', 'Prod, Beta, Dev, Local, ktlOther');
-                                    if (newKtlCode === -1) return;
-
-                                    if (newKtlCode === 0)
-                                        ktl.core.switchKtlCode('prod');
-                                    else {
-                                        if (newKtlCode === 3) {
-                                            //Only apply Local mode if NodeJS file server is running.
-                                            ktl.core.checkLocalhostServer(3000)
-                                                .then(() => {
-                                                    ktl.core.switchKtlCode('local');
-                                                })
-                                                .catch(() => {
-                                                    alert('Local server not running');
-                                                    return;
-                                                })
-                                        } else {
-                                            if (newKtlCode === 1)
-                                                ktlCode = 'beta';
-                                            else if (newKtlCode === 2)
-                                                ktlCode = 'dev';
-                                            else if (/^\d.*\./.test(newKtlCode))
-                                                ktlCode = newKtlCode;
-
-                                            ktl.core.switchKtlCode(ktlCode);
-                                        }
-                                    }
+                                    ktl.core.selectKtlCode();
                                 })
 
                                 var searchBtn = ktl.fields.addButton(devBtnsDiv, 'Search...', '', ['devBtn', 'kn-button'], 'ktlDevToolsSearchButtonId');

@@ -1,5 +1,10 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.23    *2026-10-07*
+
+- Fix Cancel on the "Can't find source file" prompt in Local mode (#624): it cleared an obsolete key, so the page reloaded into the same prompt. It now reverts to Prod as announced
+- Local server check more tolerant (#625): `ktl.core.checkLocalhostServer(port, timeoutMs)` now waits up to 1000 ms by default (was 100 ms) and rejects as soon as the fetch fails. When it gets no answer, switching to Local asks whether to switch anyway, for slow servers such as an SSH tunnel. The two duplicate KTL Code pickers (mode-switch hotkey and Developer Tools popup) are now one `ktl.core.selectKtlCode()`
+
 ## 0.42.22    *2026-09-27*
 
 - New `ktl.sysInfo.callAgent(path, params, timeoutMs)`: from a page running on a Pi terminal, GET `http://localhost:3000/<path>` on the IoT agent and resolve its JSON reply; rejects when not on a Linux device or when the agent does not answer. Same channel as the recovery watchdog heartbeat, now available to apps
