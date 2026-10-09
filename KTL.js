@@ -3117,11 +3117,18 @@ function Ktl($, appInfo) {
                 let appUrl;
                 const isKeyword = /^_[a-zA-Z]/.test(search);
 
+                //Wildcard: * matches any characters, e.g. _pdf* or _pdf_*.
+                const kwWildcard = isKeyword && search.includes('*')
+                    ? new RegExp('^' + search.split('*').map(part => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$', 'i')
+                    : null;
+                const kwMatches = name => kwWildcard ? kwWildcard.test(name) : name === search;
+
                 for (const kwKey in ktlKeywords) {
                     const kwInfo = ktlKeywords[kwKey];
 
                     //App-wide keywords sit at the top level (ktlKeywords._pdf_templates), not under a view.
-                    if (isKeyword && kwKey === search && APP_WIDE_KEYWORDS.includes(kwKey)) {
+                    if (isKeyword && APP_WIDE_KEYWORDS.includes(kwKey)) {
+                        if (!kwMatches(kwKey)) continue;
                         for (const kwInstance of kwInfo) {
                             const scene = Knack.scenes.models.find(s => s.views.models.some(v => v?.attributes?.key === kwInstance.viewId));
                             if (scene) {
@@ -3132,17 +3139,18 @@ function Ktl($, appInfo) {
                                 result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
                                 result += `${kwInstance.viewId}: ${view.attributes.title || '<no title>'}<br>`;
                             }
-                            console.log(`\t${search}=${kwInstance.paramStr} (app-wide, from ${kwInstance.viewId})\n`);
-                            result += `   ${search}=${kwInstance.paramStr} (app-wide)<br><br>`;
+                            console.log(`\t${kwKey}=${kwInstance.paramStr} (app-wide, from ${kwInstance.viewId})\n`);
+                            result += `   ${kwKey}=${kwInstance.paramStr} (app-wide)<br><br>`;
                             foundItemsCount++;
                         }
                         continue;
                     }
 
                     const str = JSON.stringify(kwInfo, null, 4);
+                    const matchedKws = isKeyword && kwInfo && typeof kwInfo === 'object' ? Object.keys(kwInfo).filter(kwMatches) : [];
                     let found = false;
                     if (isKeyword) {
-                        if (kwInfo[search])
+                        if (matchedKws.length)
                             found = true;
                     } else {
                         if (regex.test(kwKey) || regex.test(str))
@@ -3203,33 +3211,35 @@ function Ktl($, appInfo) {
                         }
 
                         if (isKeyword) {
-                            let kwInstanceStr = '[]';
-                            if (kwInfo[search].length) {
-                                for (const kwInstance of kwInfo[search]) {
-                                    kwInstanceStr = kwInstance.paramStr;
-                                    console.log(`\t${search}=${kwInstanceStr}\n`);
-                                    result += `   ${search}=${kwInstanceStr}<br>`;
-                                    foundItemsCount++;
+                            for (const kw of matchedKws) {
+                                let kwInstanceStr = '[]';
+                                if (kwInfo[kw].length) {
+                                    for (const kwInstance of kwInfo[kw]) {
+                                        kwInstanceStr = kwInstance.paramStr;
+                                        console.log(`\t${kw}=${kwInstanceStr}\n`);
+                                        result += `   ${kw}=${kwInstanceStr}<br>`;
+                                        foundItemsCount++;
 
-                                    // Check for _ar instances < 60 seconds
-                                    if (search === '_ar') {
-                                        const cleanParam = kwInstanceStr.replace(/[\[\]]/g, '');
-                                        const paramValue = parseInt(cleanParam);
-                                        if (!isNaN(paramValue) && paramValue < 60) {
-                                            lowRefreshInstances.push({
-                                                viewKey: kwKey,
-                                                paramStr: kwInstanceStr,
-                                                value: paramValue,
-                                                builderUrl: builderUrl,
-                                                appUrl: appUrl
-                                            });
+                                        // Check for _ar instances < 60 seconds
+                                        if (kw === '_ar') {
+                                            const cleanParam = kwInstanceStr.replace(/[\[\]]/g, '');
+                                            const paramValue = parseInt(cleanParam);
+                                            if (!isNaN(paramValue) && paramValue < 60) {
+                                                lowRefreshInstances.push({
+                                                    viewKey: kwKey,
+                                                    paramStr: kwInstanceStr,
+                                                    value: paramValue,
+                                                    builderUrl: builderUrl,
+                                                    appUrl: appUrl
+                                                });
+                                            }
                                         }
                                     }
+                                } else {
+                                    console.log(`\t${kw}=${kwInstanceStr}\n`);
+                                    result += `   ${kw}=${kwInstanceStr}<br>`;
+                                    foundItemsCount++;
                                 }
-                            } else {
-                                console.log(`\t${search}=${kwInstanceStr}\n`);
-                                result += `   ${search}=${kwInstanceStr}<br>`;
-                                foundItemsCount++;
                             }
                             console.log('\n');
                             result += `<br>`;
