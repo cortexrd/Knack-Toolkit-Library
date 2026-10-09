@@ -206,7 +206,8 @@ function Ktl($, appInfo) {
             if (!viewKwObj[kw]) return;
             if (ktlKeywords[kw])
                 console.log(`KTL Warning: ${kw} found in more than one view. Using the one in ${view.id}.`);
-            ktlKeywords[kw] = viewKwObj[kw];
+            //viewId: the source view, so the Search tool can link back to where it's typed.
+            ktlKeywords[kw] = viewKwObj[kw].map(instance => ({ ...instance, viewId: view.id }));
             delete viewKwObj[kw];
         });
 
@@ -3118,6 +3119,26 @@ function Ktl($, appInfo) {
 
                 for (const kwKey in ktlKeywords) {
                     const kwInfo = ktlKeywords[kwKey];
+
+                    //App-wide keywords sit at the top level (ktlKeywords._pdf_templates), not under a view.
+                    if (isKeyword && kwKey === search && APP_WIDE_KEYWORDS.includes(kwKey)) {
+                        for (const kwInstance of kwInfo) {
+                            const scene = Knack.scenes.models.find(s => s.views.models.some(v => v?.attributes?.key === kwInstance.viewId));
+                            if (scene) {
+                                const view = scene.views.models.find(v => v?.attributes?.key === kwInstance.viewId);
+                                builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${scene.attributes.key}/views/${kwInstance.viewId}/${view.attributes.type}`;
+                                appUrl = `${Knack.url_base}#${scene.attributes.slug}`;
+                                result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                result += `${kwInstance.viewId}: ${view.attributes.title || '<no title>'}<br>`;
+                            }
+                            console.log(`\t${search}=${kwInstance.paramStr} (app-wide, from ${kwInstance.viewId})\n`);
+                            result += `   ${search}=${kwInstance.paramStr} (app-wide)<br><br>`;
+                            foundItemsCount++;
+                        }
+                        continue;
+                    }
+
                     const str = JSON.stringify(kwInfo, null, 4);
                     let found = false;
                     if (isKeyword) {
@@ -3286,6 +3307,11 @@ function Ktl($, appInfo) {
                 for (const key in obj) {
                     if (obj.hasOwnProperty(key)) {
                         const subObj = obj[key];
+                        if (APP_WIDE_KEYWORDS.includes(key)) {
+                            propertyCount[key] = (propertyCount[key] || 0) + subObj.length;
+                            totalKeywords += subObj.length;
+                            continue;
+                        }
                         for (const subKey in subObj) {
                             // Check if the property starts with an underscore followed by at least one letter
                             if (/^_[a-zA-Z]/.test(subKey)) {
