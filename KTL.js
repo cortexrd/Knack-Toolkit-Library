@@ -90,6 +90,9 @@ function Ktl($, appInfo) {
     // Double underscores (__) are converted to single underscores (_) in display, but not parsed as keywords
     const ESCAPED_UNDERSCORE_PLACEHOLDER = '\uFFFEKTLESC\uFFFE';
 
+    // Keywords that apply to the whole app: whatever view they're typed in, they end up in ktlKeywords[kw].
+    const APP_WIDE_KEYWORDS = ['_pdf_templates', '_pdf_output'];
+
     function escapeDoubleUnderscores(text = '') {
         // Only escape __ at the beginning of a line, after whitespace, or after > (HTML tags), not in the middle of words
         return text.replace(/(^|\s|>)__/gm, '$1' + ESCAPED_UNDERSCORE_PLACEHOLDER);
@@ -197,6 +200,15 @@ function Ktl($, appInfo) {
                 });
             });
         }
+
+        //App-wide only keywords: stored directly under ktlKeywords, never under the view they're typed in.
+        APP_WIDE_KEYWORDS.forEach(kw => {
+            if (!viewKwObj[kw]) return;
+            if (ktlKeywords[kw])
+                console.log(`KTL Warning: ${kw} found in more than one view. Using the one in ${view.id}.`);
+            ktlKeywords[kw] = viewKwObj[kw];
+            delete viewKwObj[kw];
+        });
 
         if (!$.isEmptyObject(viewKwObj)) {
             ktlKeywords[view.id] = viewKwObj;
