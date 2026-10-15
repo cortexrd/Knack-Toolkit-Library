@@ -484,16 +484,26 @@ function Ktl($, appInfo) {
         let knackSceneHooked = false;
 
         const resizeSubscribers = [];
+        let stickyRefreshWidth = window.innerWidth;
+        let stickyRefreshTimer = null;
         window.addEventListener('resize', handleResize);
         function handleResize() {
             for (const subscriber of resizeSubscribers)
                 subscriber.callback(...subscriber.additionalParameters);
 
-            // Refresh views with sticky columns to recalculate positions
-            $('.ktlHasStickyColumns').each(function () {
-                const viewId = $(this).closest('.kn-view').attr('id');
-                if (viewId) ktl.views.refreshView(viewId);
-            });
+            //Width only: on Android, the on-screen keyboard and the address bar change the height.
+            //Refreshing then rebuilds the view's search box, which closes the keyboard (#627).
+            if (window.innerWidth === stickyRefreshWidth) return;
+
+            clearTimeout(stickyRefreshTimer);
+            stickyRefreshTimer = setTimeout(() => {
+                stickyRefreshWidth = window.innerWidth;
+                // Refresh views with sticky columns to recalculate positions
+                $('.ktlHasStickyColumns').each(function () {
+                    const viewId = $(this).closest('.kn-view').attr('id');
+                    if (viewId) ktl.views.refreshView(viewId);
+                });
+            }, 250);
         }
 
         let defaultConfigurationReady = false;
