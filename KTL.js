@@ -91,7 +91,7 @@ function Ktl($, appInfo) {
     const ESCAPED_UNDERSCORE_PLACEHOLDER = '\uFFFEKTLESC\uFFFE';
 
     // Keywords that apply to the whole app: whatever view they're typed in, they end up in ktlKeywords[kw].
-    const APP_WIDE_KEYWORDS = ['_pdf_templates', '_pdf_output'];
+    const APP_WIDE_KEYWORDS = ['_pdf_setup'];
 
     function escapeDoubleUnderscores(text = '') {
         // Only escape __ at the beginning of a line, after whitespace, or after > (HTML tags), not in the middle of words
@@ -6821,6 +6821,8 @@ function Ktl($, appInfo) {
                 $(`#${viewId} .option.checkbox`).addClass('horizontal');
             }
 
+            ktl.fields.processJsonFields(viewId);
+
             //Process special field keywords
             $('input').on('input keyup', function (e) {
                 var fieldId = e.target.id;
@@ -7529,6 +7531,69 @@ function Ktl($, appInfo) {
                 catch (e) {
                     ktl.log.clog('purple', 'getFieldLabelFromId error: Invalid field selector encountered', fieldId, e);
                 }
+            },
+
+            //_json keyword: on a form, the text area is checked as JSON on each keystroke (red border +
+            //parser message while invalid, Submit disabled through updateSubmitButtonState, so
+            //formPreValidation must be enabled), with a Format button (Alt+A). Two ways to apply it:
+            //  - in a field's description: every form showing that field;
+            //  - on a form view: _json=[Value], [field_123] names the inputs (label or field key),
+            //    for fields that hold JSON only on that form (e.g. a key/value App Settings table).
+            processJsonFields: function (viewId) {
+                if (!viewId) return;
+                const viewParams = (ktlKeywords[viewId]?._json || [])
+                    .flatMap(kw => (kw.params || []).flat())
+                    .map(p => String(p).trim().toLowerCase());
+
+                $(`#${viewId} .kn-input[data-input-id]`).each(function () {
+                    const inputDiv = this;
+                    const fieldId = inputDiv.getAttribute('data-input-id');
+                    const label = (inputDiv.querySelector('.kn-label')?.textContent || '').replace(/\*\s*$/, '').trim().toLowerCase();
+                    const byField = !!(ktlKeywords[fieldId] && ktlKeywords[fieldId]._json);
+                    const byView = viewParams.includes(fieldId) || (!!label && viewParams.includes(label));
+                    if (!byField && !byView) return;
+
+                    const textarea = inputDiv.querySelector('textarea, input[type="text"]');
+                    if (!textarea || textarea.dataset.ktlJson) return;
+                    textarea.dataset.ktlJson = '1';
+
+                    const validationKey = `_json_${fieldId}`;
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'ktlJsonError';
+                    textarea.insertAdjacentElement('afterend', errorDiv);
+
+                    const validate = () => {
+                        const text = textarea.value.trim();
+                        let error = '';
+                        if (text) {
+                            try { JSON.parse(text); } catch (e) { error = e.message; }
+                        }
+                        textarea.classList.toggle('ktlJsonInvalid', !!error);
+                        errorDiv.textContent = error;
+                        ktl.views.updateSubmitButtonState(viewId, validationKey, !error);
+                        return !error;
+                    };
+
+                    const format = () => {
+                        if (!textarea.value.trim() || !validate()) return;
+                        textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 4);
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    };
+
+                    textarea.addEventListener('input', validate);
+                    textarea.addEventListener('keydown', e => {
+                        if (e.altKey && e.key.toLowerCase() === 'a') {
+                            e.preventDefault();
+                            format();
+                        }
+                    });
+
+                    const button = ktl.fields.addButton(inputDiv, 'Format', '', ['kn-button', 'is-small', 'ktlJsonFormat'], `${viewId}_${fieldId}_ktlJsonFormat`);
+                    button.title = 'Reindent the JSON (Alt+A)';
+                    button.addEventListener('click', format);
+
+                    validate();
+                });
             },
 
             getFieldKeywords: function (fieldId, fieldKeywords = {}) {
