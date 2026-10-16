@@ -91,7 +91,7 @@ function Ktl($, appInfo) {
     const ESCAPED_UNDERSCORE_PLACEHOLDER = '\uFFFEKTLESC\uFFFE';
 
     // Keywords that apply to the whole app: whatever view they're typed in, they end up in ktlKeywords[kw].
-    const APP_WIDE_KEYWORDS = ['_pdf_setup'];
+    const APP_WIDE_KEYWORDS = ['_pdf_setup', '_pdf_url'];
 
     function escapeDoubleUnderscores(text = '') {
         // Only escape __ at the beginning of a line, after whitespace, or after > (HTML tags), not in the middle of words
