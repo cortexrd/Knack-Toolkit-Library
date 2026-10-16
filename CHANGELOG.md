@@ -1,5 +1,9 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.24    *2026-10-15*
+
+- Fix the Android keyboard closing right after tapping a search box (#627): on pages with sticky columns (`_stc`), the keyboard (and the address bar while scrolling) resizes the window, and KTL refreshed the view on every resize, rebuilding the search box. Sticky-column views now refresh only when the window width changes, once resizing stops (250 ms)
+
 ## 0.42.23    *2026-10-07*
 
 - Fix Cancel on the "Can't find source file" prompt in Local mode (#624): it cleared an obsolete key, so the page reloaded into the same prompt. It now reverts to Prod as announced
