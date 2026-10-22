@@ -15761,11 +15761,9 @@ function Ktl($, appInfo) {
             const kwInstance = keywords[kw][0];
             if (kwInstance?.options && !ktl.core.hasRoleAccess(kwInstance.options)) return;
 
-            const template = kwInstance?.params?.[0]?.[0];
-            if (!template) {
-                ktl.log.clog('purple', `_pdf: ${viewId} needs a template name, e.g. _pdf=Opportunities`);
-                return;
-            }
+            //A bare _pdf = no template: the service prints each record as its own page shows it. The name is
+            //never sent; the service reads it from the view's own keyword, so the browser can't pick another one.
+            const template = kwInstance?.params?.[0]?.[0] || '';
 
             const viewElement = document.getElementById(viewId);
             if (viewElement && !viewElement.querySelector(TAGS_BULK_OPS_CHECKBOX_SELECTOR)) {
@@ -15787,7 +15785,7 @@ function Ktl($, appInfo) {
                 pdfDiv.id = `ktlPdfDiv-${viewId}`;
                 pdfDiv.classList.add('ktlPdfControlsDiv', 'ktlFeatureGroup');
                 const btn = ktl.fields.addButton(pdfDiv, 'Create PDF', '', ['kn-button'], `ktlCreatePdf-${viewId}`);
-                btn.title = `One PDF with the checked rows, template "${template}"`;
+                btn.title = template ? `One PDF with the checked rows, template "${template}"` : 'One PDF with the checked rows, each record as its page shows it';
                 ktlAddonsDiv.appendChild(pdfDiv);
                 $(btn).on('click', () => pdfCreate(viewId, template));
             }
