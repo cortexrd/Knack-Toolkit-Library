@@ -90,6 +90,9 @@ function Ktl($, appInfo) {
     // Double underscores (__) are converted to single underscores (_) in display, but not parsed as keywords
     const ESCAPED_UNDERSCORE_PLACEHOLDER = '\uFFFEKTLESC\uFFFE';
 
+    // Keywords that apply to the whole app: whatever view they're typed in, they end up in ktlKeywords[kw].
+    const APP_WIDE_KEYWORDS = ['_pdf_setup', '_pdf_url'];
+
     function escapeDoubleUnderscores(text = '') {
         // Only escape __ at the beginning of a line, after whitespace, or after > (HTML tags), not in the middle of words
         return text.replace(/(^|\s|>)__/gm, '$1' + ESCAPED_UNDERSCORE_PLACEHOLDER);
@@ -197,6 +200,16 @@ function Ktl($, appInfo) {
                 });
             });
         }
+
+        //App-wide only keywords: stored directly under ktlKeywords, never under the view they're typed in.
+        APP_WIDE_KEYWORDS.forEach(kw => {
+            if (!viewKwObj[kw]) return;
+            if (ktlKeywords[kw])
+                console.log(`KTL Warning: ${kw} found in more than one view. Using the one in ${view.id}.`);
+            //viewId: the source view, so the Search tool can link back to where it's typed.
+            ktlKeywords[kw] = viewKwObj[kw].map(instance => ({ ...instance, viewId: view.id }));
+            delete viewKwObj[kw];
+        });
 
         if (!$.isEmptyObject(viewKwObj)) {
             ktlKeywords[view.id] = viewKwObj;
@@ -3114,12 +3127,40 @@ function Ktl($, appInfo) {
                 let appUrl;
                 const isKeyword = /^_[a-zA-Z]/.test(search);
 
+                //Wildcard: * matches any characters, e.g. _pdf* or _pdf_*.
+                const kwWildcard = isKeyword && search.includes('*')
+                    ? new RegExp('^' + search.split('*').map(part => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$', 'i')
+                    : null;
+                const kwMatches = name => kwWildcard ? kwWildcard.test(name) : name === search;
+
                 for (const kwKey in ktlKeywords) {
                     const kwInfo = ktlKeywords[kwKey];
+
+                    //App-wide keywords sit at the top level (ktlKeywords._pdf_templates), not under a view.
+                    if (isKeyword && APP_WIDE_KEYWORDS.includes(kwKey)) {
+                        if (!kwMatches(kwKey)) continue;
+                        for (const kwInstance of kwInfo) {
+                            const scene = Knack.scenes.models.find(s => s.views.models.some(v => v?.attributes?.key === kwInstance.viewId));
+                            if (scene) {
+                                const view = scene.views.models.find(v => v?.attributes?.key === kwInstance.viewId);
+                                builderUrl = `https://builder.knack.com/${Knack.app.attributes.account.slug}/${Knack.app.attributes.slug}/pages/${scene.attributes.key}/views/${kwInstance.viewId}/${view.attributes.type}`;
+                                appUrl = `${Knack.url_base}#${scene.attributes.slug}`;
+                                result += `<a href="${builderUrl}" target="_blank">${builderUrl}</a><br>`;
+                                result += `<a href="${appUrl}" target="_self">${appUrl}</a><br>`;
+                                result += `${kwInstance.viewId}: ${view.attributes.title || '<no title>'}<br>`;
+                            }
+                            console.log(`\t${kwKey}=${kwInstance.paramStr} (app-wide, from ${kwInstance.viewId})\n`);
+                            result += `   ${kwKey}=${kwInstance.paramStr} (app-wide)<br><br>`;
+                            foundItemsCount++;
+                        }
+                        continue;
+                    }
+
                     const str = JSON.stringify(kwInfo, null, 4);
+                    const matchedKws = isKeyword && kwInfo && typeof kwInfo === 'object' ? Object.keys(kwInfo).filter(kwMatches) : [];
                     let found = false;
                     if (isKeyword) {
-                        if (kwInfo[search])
+                        if (matchedKws.length)
                             found = true;
                     } else {
                         if (regex.test(kwKey) || regex.test(str))
@@ -3180,33 +3221,35 @@ function Ktl($, appInfo) {
                         }
 
                         if (isKeyword) {
-                            let kwInstanceStr = '[]';
-                            if (kwInfo[search].length) {
-                                for (const kwInstance of kwInfo[search]) {
-                                    kwInstanceStr = kwInstance.paramStr;
-                                    console.log(`\t${search}=${kwInstanceStr}\n`);
-                                    result += `   ${search}=${kwInstanceStr}<br>`;
-                                    foundItemsCount++;
+                            for (const kw of matchedKws) {
+                                let kwInstanceStr = '[]';
+                                if (kwInfo[kw].length) {
+                                    for (const kwInstance of kwInfo[kw]) {
+                                        kwInstanceStr = kwInstance.paramStr;
+                                        console.log(`\t${kw}=${kwInstanceStr}\n`);
+                                        result += `   ${kw}=${kwInstanceStr}<br>`;
+                                        foundItemsCount++;
 
-                                    // Check for _ar instances < 60 seconds
-                                    if (search === '_ar') {
-                                        const cleanParam = kwInstanceStr.replace(/[\[\]]/g, '');
-                                        const paramValue = parseInt(cleanParam);
-                                        if (!isNaN(paramValue) && paramValue < 60) {
-                                            lowRefreshInstances.push({
-                                                viewKey: kwKey,
-                                                paramStr: kwInstanceStr,
-                                                value: paramValue,
-                                                builderUrl: builderUrl,
-                                                appUrl: appUrl
-                                            });
+                                        // Check for _ar instances < 60 seconds
+                                        if (kw === '_ar') {
+                                            const cleanParam = kwInstanceStr.replace(/[\[\]]/g, '');
+                                            const paramValue = parseInt(cleanParam);
+                                            if (!isNaN(paramValue) && paramValue < 60) {
+                                                lowRefreshInstances.push({
+                                                    viewKey: kwKey,
+                                                    paramStr: kwInstanceStr,
+                                                    value: paramValue,
+                                                    builderUrl: builderUrl,
+                                                    appUrl: appUrl
+                                                });
+                                            }
                                         }
                                     }
+                                } else {
+                                    console.log(`\t${kw}=${kwInstanceStr}\n`);
+                                    result += `   ${kw}=${kwInstanceStr}<br>`;
+                                    foundItemsCount++;
                                 }
-                            } else {
-                                console.log(`\t${search}=${kwInstanceStr}\n`);
-                                result += `   ${search}=${kwInstanceStr}<br>`;
-                                foundItemsCount++;
                             }
                             console.log('\n');
                             result += `<br>`;
@@ -3284,6 +3327,11 @@ function Ktl($, appInfo) {
                 for (const key in obj) {
                     if (obj.hasOwnProperty(key)) {
                         const subObj = obj[key];
+                        if (APP_WIDE_KEYWORDS.includes(key)) {
+                            propertyCount[key] = (propertyCount[key] || 0) + subObj.length;
+                            totalKeywords += subObj.length;
+                            continue;
+                        }
                         for (const subKey in subObj) {
                             // Check if the property starts with an underscore followed by at least one letter
                             if (/^_[a-zA-Z]/.test(subKey)) {
@@ -6773,6 +6821,8 @@ function Ktl($, appInfo) {
                 $(`#${viewId} .option.checkbox`).addClass('horizontal');
             }
 
+            ktl.fields.processJsonFields(viewId);
+
             //Process special field keywords
             $('input').on('input keyup', function (e) {
                 var fieldId = e.target.id;
@@ -7481,6 +7531,69 @@ function Ktl($, appInfo) {
                 catch (e) {
                     ktl.log.clog('purple', 'getFieldLabelFromId error: Invalid field selector encountered', fieldId, e);
                 }
+            },
+
+            //_json keyword: on a form, the text area is checked as JSON on each keystroke (red border +
+            //parser message while invalid, Submit disabled through updateSubmitButtonState, so
+            //formPreValidation must be enabled), with a Format button (Alt+A). Two ways to apply it:
+            //  - in a field's description: every form showing that field;
+            //  - on a form view: _json=[Value], [field_123] names the inputs (label or field key),
+            //    for fields that hold JSON only on that form (e.g. a key/value App Settings table).
+            processJsonFields: function (viewId) {
+                if (!viewId) return;
+                const viewParams = (ktlKeywords[viewId]?._json || [])
+                    .flatMap(kw => (kw.params || []).flat())
+                    .map(p => String(p).trim().toLowerCase());
+
+                $(`#${viewId} .kn-input[data-input-id]`).each(function () {
+                    const inputDiv = this;
+                    const fieldId = inputDiv.getAttribute('data-input-id');
+                    const label = (inputDiv.querySelector('.kn-label')?.textContent || '').replace(/\*\s*$/, '').trim().toLowerCase();
+                    const byField = !!(ktlKeywords[fieldId] && ktlKeywords[fieldId]._json);
+                    const byView = viewParams.includes(fieldId) || (!!label && viewParams.includes(label));
+                    if (!byField && !byView) return;
+
+                    const textarea = inputDiv.querySelector('textarea, input[type="text"]');
+                    if (!textarea || textarea.dataset.ktlJson) return;
+                    textarea.dataset.ktlJson = '1';
+
+                    const validationKey = `_json_${fieldId}`;
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'ktlJsonError';
+                    textarea.insertAdjacentElement('afterend', errorDiv);
+
+                    const validate = () => {
+                        const text = textarea.value.trim();
+                        let error = '';
+                        if (text) {
+                            try { JSON.parse(text); } catch (e) { error = e.message; }
+                        }
+                        textarea.classList.toggle('ktlJsonInvalid', !!error);
+                        errorDiv.textContent = error;
+                        ktl.views.updateSubmitButtonState(viewId, validationKey, !error);
+                        return !error;
+                    };
+
+                    const format = () => {
+                        if (!textarea.value.trim() || !validate()) return;
+                        textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 4);
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    };
+
+                    textarea.addEventListener('input', validate);
+                    textarea.addEventListener('keydown', e => {
+                        if (e.altKey && e.key.toLowerCase() === 'a') {
+                            e.preventDefault();
+                            format();
+                        }
+                    });
+
+                    const button = ktl.fields.addButton(inputDiv, 'Format', '', ['kn-button', 'is-small', 'ktlJsonFormat'], `${viewId}_${fieldId}_ktlJsonFormat`);
+                    button.title = 'Reindent the JSON (Alt+A)';
+                    button.addEventListener('click', format);
+
+                    validate();
+                });
             },
 
             getFieldKeywords: function (fieldId, fieldKeywords = {}) {
@@ -12666,12 +12779,14 @@ function Ktl($, appInfo) {
                     keywords._string && generateAndPutString(view, keywords);
                     keywords._mmb && moveMenuButtons(view, keywords);
                     keywords._tags && addRemoveTags(viewId, keywords, data);
+                    keywords._pdf && createPdfFromGrid(viewId, keywords, data);
                     keywords._cgc && ktl.views.chooseGridColumns(view, keywords);
                 }
 
                 //This section is for features that can be applied with or without a keyword.
                 //When used without a keyword, they are controlled by a global flag.
                 headerAlignment(view, keywords);
+                pdfSetupTestButton(viewId); //The view named by the app-wide _pdf_setup gets a Test PDF setup button.
 
                 if (!(keywords && keywords._cg) && ktlKeywords._cgAll)
                     collapsibleGroups(viewId, keywords);
@@ -15133,13 +15248,18 @@ function Ktl($, appInfo) {
             return Array.from(tagSet).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
         }
 
-        function tagsGetSelectedRecordIds(viewId) {
+        //Record ids of the checked rows (Bulk Ops checkboxes), in display order. Shared by _tags and _pdf.
+        function bulkCheckedRecordIds(viewId) {
             const recordIds = [];
             $(`#${viewId} tbody ${TAGS_BULK_OPS_CHECKBOX_SELECTOR}:checked`).each(function () {
                 const recordId = $(this).closest('tr').attr('id');
                 if (recordId) recordIds.push(recordId);
             });
             return recordIds;
+        }
+
+        function tagsGetSelectedRecordIds(viewId) {
+            return bulkCheckedRecordIds(viewId);
         }
 
         function tagsAddDialogStyles() {
@@ -15563,6 +15683,222 @@ function Ktl($, appInfo) {
             }
 
             tagsCreateButtons(viewId, fieldId, data);
+        }
+
+        //_pdf=TemplateName - Create PDF: the checked rows of a grid go to the PDF Creator service, which renders
+        //each record with the named template, merges them into one PDF and saves it in the app's Uploads table.
+        //App-wide companions (typed once, on a Home page view): _pdf_url=[https://...] is the service address;
+        //_pdf_setup=[view_x] names the table view showing the app's PDF Creator Setup record, which gets a
+        //Test PDF setup button. The checkboxes show without any Bulk role: the service only prints records
+        //that the user's own session can read from this view, so the checkbox grants nothing.
+        //Request and answers: pdf-creator repo, lambda/README.md.
+        const PDF_POPUP_STYLE = 'position:fixed;top:20%;left:50%;margin-right:-50%;transform:translate(-50%,-50%);min-width:320px;line-height:1.6;padding:15px 25px;font-size:large;text-align:center;font-weight:bold;border-radius:25px;background-color:#81b378;border:5px solid #294125;white-space:pre;z-index:3000';
+
+        function pdfServiceUrl() {
+            return ktlKeywords._pdf_url?.[0]?.params?.[0]?.[0] || '';
+        }
+
+        function pdfSetupViewId() {
+            return ktlKeywords._pdf_setup?.[0]?.params?.[0]?.[0] || '';
+        }
+
+        function pdfEscapeHtml(text) {
+            return String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        //One request to the service. Resolves { status, body } for any HTTP answer; rejects only when it can't be reached.
+        async function pdfPost(payload) {
+            const url = pdfServiceUrl();
+            if (!url) throw new Error('PDF service address missing: add _pdf_url=[https://...] on a view of the Home page');
+            const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            let body;
+            try { body = await response.json(); } catch (e) { body = { error: `HTTP ${response.status}` }; }
+            return { status: response.status, body: body || {} };
+        }
+
+        function pdfErrorText(status, body) {
+            if (status === 401) return 'Your Knack session is not valid for this request: log in again.';
+            if (status === 429) return 'The PDF service is busy: try again in a moment.';
+            return body?.error || `HTTP ${status}`;
+        }
+
+        const pdfPausedRefreshViews = new Set();
+        function pdfUpdateButtonState(viewId) {
+            const btn = viewId && document.getElementById(`ktlCreatePdf-${viewId}`);
+            if (!btn) return;
+            const count = bulkCheckedRecordIds(viewId).length;
+            btn.disabled = !count || btn.dataset.ktlBusy === '1';
+            btn.textContent = count ? `Create PDF (${count})` : 'Create PDF';
+
+            //As Bulk Ops does: a refresh would drop the selection. Only on a change, so a plain render leaves the timers alone.
+            if (count && !pdfPausedRefreshViews.has(viewId)) {
+                pdfPausedRefreshViews.add(viewId);
+                ktl.views.autoRefresh(false);
+            } else if (!count && pdfPausedRefreshViews.has(viewId)) {
+                pdfPausedRefreshViews.delete(viewId);
+                ktl.views.autoRefresh();
+            }
+        }
+
+        //Bulk Ops fires this when the user has a Bulk role (its own checkbox handlers run first); the delegated
+        //change covers the role-less checkboxes added by _tags or _pdf, whichever came first.
+        $(document).on('KTL.BulkOperations.Updated.ktlPdf', (e, bViewId) => pdfUpdateButtonState(bViewId));
+        $(document).on('change.ktlPdf', '.kn-table input[type="checkbox"]', e => {
+            const view = e.target.closest('.kn-view');
+            if (view && document.getElementById(`ktlCreatePdf-${view.id}`))
+                setTimeout(() => pdfUpdateButtonState(view.id), 0); //After a master checkbox has set its rows.
+        });
+
+        function createPdfFromGrid(viewId, keywords, data) {
+            const kw = '_pdf';
+            if (!(viewId && keywords && keywords[kw])) return;
+
+            const viewType = ktl.views.getViewType(viewId);
+            if (!(viewType === 'table' || viewType === 'search')) return;
+
+            if (!data || !data.length) return;
+
+            const kwInstance = keywords[kw][0];
+            if (kwInstance?.options && !ktl.core.hasRoleAccess(kwInstance.options)) return;
+
+            //A bare _pdf = no template: the service prints each record as its own page shows it. The name is
+            //never sent; the service reads it from the view's own keyword, so the browser can't pick another one.
+            const template = kwInstance?.params?.[0]?.[0] || '';
+
+            const viewElement = document.getElementById(viewId);
+            if (viewElement && !viewElement.querySelector(TAGS_BULK_OPS_CHECKBOX_SELECTOR)) {
+                ktl.views.addCheckboxesToTable(viewId, {
+                    withMaster: true,
+                    checkboxClasses: ['bulkEditCb', 'ktlCheckbox-bulkops'],
+                    checkboxDataAttrs: { 'data-ktl-selection': 'ktlCheckbox', 'data-ktl-bulkops': '1' },
+                    enhanceExisting: true,
+                    onRowChange: ({ viewId: vId }) => { if (vId === viewId) pdfUpdateButtonState(viewId); },
+                    onMasterChange: ({ viewId: vId }) => { if (vId === viewId) pdfUpdateButtonState(viewId); },
+                });
+            }
+
+            if (!document.getElementById(`ktlPdfDiv-${viewId}`)) {
+                const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+                if (!ktlAddonsDiv) return;
+
+                const pdfDiv = document.createElement('div');
+                pdfDiv.id = `ktlPdfDiv-${viewId}`;
+                pdfDiv.classList.add('ktlPdfControlsDiv', 'ktlFeatureGroup');
+                const btn = ktl.fields.addButton(pdfDiv, 'Create PDF', '', ['kn-button'], `ktlCreatePdf-${viewId}`);
+                btn.title = template ? `One PDF with the checked rows, template "${template}"` : 'One PDF with the checked rows, each record as its page shows it';
+                ktlAddonsDiv.appendChild(pdfDiv);
+                $(btn).on('click', () => pdfCreate(viewId, template));
+            }
+
+            pdfUpdateButtonState(viewId);
+        }
+
+        async function pdfCreate(viewId, template, overwrite = false) {
+            const recordIds = bulkCheckedRecordIds(viewId);
+            if (!recordIds.length) return;
+
+            const token = Knack.getUserToken();
+            if (!token) {
+                ktl.core.timedPopup('Log in to create a PDF.', 'error', 3000);
+                return;
+            }
+
+            const btn = document.getElementById(`ktlCreatePdf-${viewId}`);
+            const label = `${recordIds.length} record${recordIds.length > 1 ? 's' : ''}`;
+            const t0 = Date.now();
+            if (btn) btn.dataset.ktlBusy = '1';
+            pdfUpdateButtonState(viewId);
+            ktl.core.infoPopup(PDF_POPUP_STYLE);
+            const tick = () => ktl.core.setInfoPopupText(`Creating the PDF for ${label}${overwrite ? ' (replacing the previous one)' : ''}...\n${Math.round((Date.now() - t0) / 1000)} s`);
+            tick();
+            const timer = setInterval(tick, 1000);
+
+            let result;
+            try {
+                result = await pdfPost({ appId: Knack.application_id, recordIds, sourceView: viewId, user: { token }, overwrite });
+            } catch (err) {
+                result = { status: 0, body: { error: `Could not reach the PDF service: ${err.message || err}` } };
+            } finally {
+                clearInterval(timer);
+                ktl.core.removeInfoPopup();
+                if (btn) delete btn.dataset.ktlBusy;
+                pdfUpdateButtonState(viewId);
+            }
+
+            const { status, body } = result;
+            if (status === 200 && body.ok) {
+                const failed = body.failed || [];
+                let msg = `<b>PDF created:</b> ${pdfEscapeHtml(body.filename)}<br>${body.records} record${body.records > 1 ? 's' : ''}, ${Math.round((body.bytes || 0) / 1024)} KB`
+                    + `${body.upload?.uploadId ? ', ' + pdfEscapeHtml(body.upload.uploadId) : ''}${body.replaced ? ' (replaced)' : ''}`;
+                if (failed.length)
+                    msg += `<br><br><b>${failed.length} record${failed.length > 1 ? 's' : ''} not included:</b><br>` + failed.map(f => pdfEscapeHtml(`${f.id}: ${f.error}`)).join('<br>');
+                const choice = await ktl.core.selectOption(msg, body.url ? 'Open PDF,Close' : 'Close');
+                if (body.url && choice === 0)
+                    window.open(body.url, '_blank');
+                return;
+            }
+
+            if (status === 409 && body.exists) {
+                const upload = body.upload || {};
+                const when = upload.date ? ` on ${String(upload.date).slice(0, 10)}` : '';
+                const choice = await ktl.core.selectOption(`A PDF for these ${label} already exists (${pdfEscapeHtml(upload.uploadId || upload.id || '')}${when}).<br>Replace it?`, 'Replace,Cancel');
+                if (choice === 0)
+                    pdfCreate(viewId, template, true);
+                return;
+            }
+
+            ktl.log.clog('red', `_pdf: ${viewId} request failed (${status})`, body);
+            await ktl.core.selectOption(`<b>PDF not created</b><br>${pdfEscapeHtml(pdfErrorText(status, body))}`, 'Close');
+        }
+
+        //Test PDF setup, on the table view named by _pdf_setup: the service checks the app's setup record
+        //(mode "check": setup JSON, service account, allowed origin, each source view's template and output form), renders nothing.
+        function pdfSetupTestButton(viewId) {
+            if (!viewId || viewId !== pdfSetupViewId()) return;
+            if (document.getElementById(`ktlPdfTestSetup-${viewId}`)) return;
+
+            const ktlAddonsDiv = ktl.views.getKtlAddOnsDiv(viewId);
+            if (!ktlAddonsDiv) return;
+
+            const div = document.createElement('div');
+            div.classList.add('ktlPdfControlsDiv', 'ktlFeatureGroup');
+            const btn = ktl.fields.addButton(div, 'Test PDF setup', '', ['kn-button'], `ktlPdfTestSetup-${viewId}`);
+            btn.title = 'Ask the PDF service to check the saved setup record (nothing is rendered)';
+            ktlAddonsDiv.appendChild(div);
+            $(btn).on('click', () => pdfTestSetup(btn));
+        }
+
+        async function pdfTestSetup(btn) {
+            const token = Knack.getUserToken();
+            if (!token) {
+                ktl.core.timedPopup('Log in first.', 'error', 3000);
+                return;
+            }
+
+            btn.disabled = true;
+            ktl.core.infoPopup(PDF_POPUP_STYLE);
+            ktl.core.setInfoPopupText('Checking the PDF Creator setup...');
+            let result;
+            try {
+                result = await pdfPost({ appId: Knack.application_id, mode: 'check', user: { token } });
+            } catch (err) {
+                result = { status: 0, body: { error: `Could not reach the PDF service: ${err.message || err}` } };
+            } finally {
+                ktl.core.removeInfoPopup();
+                btn.disabled = false;
+            }
+
+            const { status, body } = result;
+            if (status === 200 && Array.isArray(body.checks)) {
+                const rows = body.checks.map(c =>
+                    `<div style="text-align:left;margin:2px 0"><span style="color:${c.ok ? '#27ae60' : '#e23b3b'};font-weight:bold">${c.ok ? '&#10004;' : '&#10008;'}</span> `
+                    + `${pdfEscapeHtml(c.name)}${c.detail ? `<span style="color:#666"> &ndash; ${pdfEscapeHtml(c.detail)}</span>` : ''}</div>`).join('');
+                await ktl.core.selectOption(`<b>PDF Creator setup: ${body.ok ? 'all good' : 'needs attention'}</b><br><span style="color:#666">${pdfEscapeHtml(pdfServiceUrl())}</span><br><br>${rows}`, 'Close');
+                return;
+            }
+
+            ktl.log.clog('red', `_pdf_setup: check failed (${status})`, body);
+            await ktl.core.selectOption(`<b>Setup check failed</b><br>${pdfEscapeHtml(pdfErrorText(status, body))}`, 'Close');
         }
 
         const vrdCurrentlySelectedRows = {};

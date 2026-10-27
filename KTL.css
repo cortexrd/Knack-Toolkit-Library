@@ -7,7 +7,7 @@
 	* 2019-2023
     */
 
-/* KTL CSS version: 0.14.3*/
+/* KTL CSS version: 0.14.4*/
 
 /************ KTL Spacing Constants **************/
 :root {
@@ -1719,6 +1719,22 @@ tr.ktlCgCollapsed td {
 	margin-left: 6px;
 	font-weight: normal;
 	opacity: 0.7;
+}
+
+/* _json field keyword: live JSON check on a form text area + Format button */
+.ktlJsonInvalid {
+	border: 2px solid #e23b3b !important;
+}
+
+.ktlJsonError {
+	color: #e23b3b;
+	font-size: 0.85em;
+	margin-top: 4px;
+	white-space: pre-wrap;
+}
+
+.ktlJsonFormat {
+	margin-top: 6px;
 }
 
 /**** KTL_RELATED - END ****/

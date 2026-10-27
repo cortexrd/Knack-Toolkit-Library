@@ -3,6 +3,11 @@
 ## 0.42.25    *2026-10-27*
 
 - `_dnd` sort: new `[step, N]` group parameter. After a drop, rows are renumbered N, 2N, 3N... instead of 1, 2, 3... (default step 1, unchanged behavior). Lets an Order field keep a x100 integer convention (100, 200, 300) with room to insert values by hand between two rows. Example: `_dnd=[sort, Seq], [lte, 9800], [step, 100]`
+- New `_pdf=TemplateName` keyword on grid and search views: a **Create PDF** button for the checked rows. The row checkboxes show without any Bulk role (as `_tags` does); on click, KTL posts the record ids, the view and the user's session token to the PDF Creator service, which renders each record with the named template (a bare `_pdf` = no template: each record printed as its own page shows it), merges them into one PDF and saves it in the app's Uploads table; a popup shows the elapsed time, then the result with an Open PDF link. A second click on the same selection asks "Replace it?" and updates the existing PDF. Supports `ktlRoles`
+- New app-wide keywords `_pdf_url=[https://...]` (the service address) and `_pdf_setup=[view_x]` (the table view showing the app's PDF Creator Setup record), typed once on any view, typically the Home page. The `_pdf_setup` view gets a **Test PDF setup** button that asks the service to check the saved setup (service account, allowed origin, each source view's template and output form) and lists the results
+- New `_json` keyword: a form text area is checked as JSON while typing (red border and parser message, Submit disabled while invalid), with a Format button (Alt+A). In a field's description, or `_json=[Value]` on a form view for a field that holds JSON only there
+- Search tool: app-wide keywords are found, and `*` matches any characters (e.g. `_pdf*`)
+- CSS 0.14.4: `_json` styles (invalid border, parser message, Format button)
 
 ## 0.42.24    *2026-10-15*
 
