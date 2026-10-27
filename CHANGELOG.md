@@ -1,5 +1,9 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.26    *2026-10-27*
+
+- `_dnd` sort: rows above the `lte` limit no longer consume a slot in the renumbering. Before, a row dropped among protected rows (ex: 9900 = kicked out) took its grid position times the step (33rd row = 3300) and the protected rows above it left holes; it now gets the value right after the last renumbered row (2900). Same fix for the plain `[lte, N]` views (29 instead of 33)
+
 ## 0.42.25    *2026-10-27*
 
 - `_dnd` sort: new `[step, N]` group parameter. After a drop, rows are renumbered N, 2N, 3N... instead of 1, 2, 3... (default step 1, unchanged behavior). Lets an Order field keep a x100 integer convention (100, 200, 300) with room to insert values by hand between two rows. Example: `_dnd=[sort, Seq], [lte, 9800], [step, 100]`

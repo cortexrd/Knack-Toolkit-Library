@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.25';
+const KTL_VERSION = '0.42.26';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -16625,12 +16625,16 @@ function Ktl($, appInfo) {
                         return aBlank === bBlank ? 0 : (aBlank ? 1 : -1);
                     });
 
+                    //Only the rows that get renumbered consume a slot. A protected row (above lte) sitting
+                    //between two renumbered rows leaves no hole, so a row dropped among protected rows
+                    //gets the value right after the last renumbered one.
+                    let slot = 0;
                     for (idx = 0; idx < orderedData.length; idx++) {
                         const sortValue = Number(orderedData[idx].innerText);
-                        const newValue = (idx + 1) * step;
-                        if (sortValue !== newValue) {
-                            const recId = orderedData[idx].closest('tr').id;
-                            if (sortValue <= maxIndexRenumber || recId === draggedRecId) {
+                        const recId = orderedData[idx].closest('tr').id;
+                        if (sortValue <= maxIndexRenumber || recId === draggedRecId) {
+                            const newValue = ++slot * step;
+                            if (sortValue !== newValue) {
                                 var recData = {};
                                 recData[sortFieldId] = newValue;
                                 recData.recId = recId;
