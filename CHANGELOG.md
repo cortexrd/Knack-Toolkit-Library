@@ -1,5 +1,9 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.25    *2026-10-27*
+
+- `_dnd` sort: new `[step, N]` group parameter. After a drop, rows are renumbered N, 2N, 3N... instead of 1, 2, 3... (default step 1, unchanged behavior). Lets an Order field keep a x100 integer convention (100, 200, 300) with room to insert values by hand between two rows. Example: `_dnd=[sort, Seq], [lte, 9800], [step, 100]`
+
 ## 0.42.24    *2026-10-15*
 
 - Fix the Android keyboard closing right after tapping a search box (#627): on pages with sticky columns (`_stc`), the keyboard (and the address bar while scrolling) resizes the window, and KTL refreshed the view on every resize, rebuilding the search box. Sticky-column views now refresh only when the window width changes, once resizing stops (250 ms)

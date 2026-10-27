@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.24';
+const KTL_VERSION = '0.42.25';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -16121,6 +16121,7 @@ function Ktl($, appInfo) {
                 let viewHasGrouping = ktl.views.viewHasGroups(viewId);
 
                 let maxIndexRenumber = Number.MAX_SAFE_INTEGER;
+                let step = 1; //Renumbering increment: rows get step, 2*step, 3*step...
                 let applyButtonLabel;
                 let applyButton;
                 let draggedRecId;
@@ -16130,7 +16131,10 @@ function Ktl($, appInfo) {
                 for (const group of params) {
                     if (group.length === 2 && group[0] === 'lte')
                         maxIndexRenumber = Number(group[1]);
-                    else if (group.length >= 1 && group[0] === 'apply') {
+                    else if (group.length === 2 && group[0] === 'step') {
+                        const s = Number(group[1]);
+                        if (Number.isFinite(s) && s > 0) step = s;
+                    } else if (group.length >= 1 && group[0] === 'apply') {
                         hasApplyParam = true;
                         applyButtonLabel = (group[1] && group[1].trim()) ? group[1] : 'Apply Reorder';
                     }
@@ -16287,11 +16291,12 @@ function Ktl($, appInfo) {
 
                     for (idx = 0; idx < orderedData.length; idx++) {
                         const sortValue = Number(orderedData[idx].innerText);
-                        if (sortValue !== (idx + 1)) {
+                        const newValue = (idx + 1) * step;
+                        if (sortValue !== newValue) {
                             const recId = orderedData[idx].closest('tr').id;
                             if (sortValue <= maxIndexRenumber || recId === draggedRecId) {
                                 var recData = {};
-                                recData[sortFieldId] = idx + 1;
+                                recData[sortFieldId] = newValue;
                                 recData.recId = recId;
                                 recIdArray.push(recData);
                             }
