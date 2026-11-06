@@ -7,7 +7,7 @@
  * 2019-2026
  * */
 
-const KTL_VERSION = '0.42.26';
+const KTL_VERSION = '0.42.27';
 
 const IFRAME_WND_ID = 'iFrameWnd';
 window.IFRAME_WND_ID = IFRAME_WND_ID;
@@ -15687,6 +15687,8 @@ function Ktl($, appInfo) {
 
         //_pdf=TemplateName - Create PDF: the checked rows of a grid go to the PDF Creator service, which renders
         //each record with the named template, merges them into one PDF and saves it in the app's Uploads table.
+        //_pdf=[TemplateName], [ask, Filename, Description]: the "ask" group opens a dialog first, prefilled with the
+        //names the service would use (Filename, Description, or both with a bare [ask]), that the user can change.
         //App-wide companions (typed once, on a Home page view): _pdf_url=[https://...] is the service address;
         //_pdf_setup=[view_x] names the table view showing the app's PDF Creator Setup record, which gets a
         //Test PDF setup button. The checkboxes show without any Bulk role: the service only prints records
@@ -15707,13 +15709,164 @@ function Ktl($, appInfo) {
         }
 
         //One request to the service. Resolves { status, body } for any HTTP answer; rejects only when it can't be reached.
-        async function pdfPost(payload) {
+        //The service streams its answer as JSON lines: { progress: {...} } lines while the PDF is made (each given
+        //to onProgress as it arrives), then the answer as the last line. A plain JSON answer is one line.
+        async function pdfPost(payload, onProgress) {
             const url = pdfServiceUrl();
             if (!url) throw new Error('PDF service address missing: add _pdf_url=[https://...] on a view of the Home page');
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            let body;
-            try { body = await response.json(); } catch (e) { body = { error: `HTTP ${response.status}` }; }
-            return { status: response.status, body: body || {} };
+            let last = null;
+            const take = line => {
+                line = line.trim();
+                if (!line) return;
+                let obj;
+                try { obj = JSON.parse(line); } catch (e) { return; }
+                if (obj && obj.progress) { if (onProgress) onProgress(obj.progress); }
+                else last = obj;
+            };
+            if (response.body && response.body.getReader) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                for (; ;) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    let nl;
+                    while ((nl = buffer.indexOf('\n')) >= 0) { take(buffer.slice(0, nl)); buffer = buffer.slice(nl + 1); }
+                }
+                take(buffer + decoder.decode());
+            } else
+                (await response.text()).split('\n').forEach(take);
+            return { status: response.status, body: last || { error: `HTTP ${response.status}` } };
+        }
+
+        //The progress popup: the action, the step under way, a bar and the steps left (the service's progress
+        //lines: phase, done, total, record, records). Before the first line, the action with moving dots.
+        const PDF_PHASES = {
+            start: 'Starting the browser',
+            records: p => `Record ${p.record} of ${p.records} ready`,
+            render: 'Laying out the pages',
+            cover: 'Making the front page',
+            save: 'Uploading and saving',
+        };
+        function pdfShowProgress(title, p, dots = 0) {
+            const el = document.getElementById('kn-modeless-wnd');
+            if (!el) return;
+            if (!p) { el.innerText = `${title}${'.'.repeat(1 + dots % 3)}`; return; }
+            const phase = typeof PDF_PHASES[p.phase] === 'function' ? PDF_PHASES[p.phase](p) : (PDF_PHASES[p.phase] || p.phase);
+            const left = Math.max(0, (p.total || 0) - (p.done || 0));
+            const pct = p.total ? Math.round(100 * p.done / p.total) : 0;
+            el.innerHTML = `${pdfEscapeHtml(title)}<br><span style="font-weight:normal">${pdfEscapeHtml(phase)}...</span>
+<div style="margin:8px auto 4px;width:280px;height:12px;border:2px solid #294125;border-radius:7px;background:#fff;overflow:hidden"><div style="height:100%;width:${pct}%;background:#294125;transition:width .3s"></div></div><span style="font-size:14px;font-weight:normal">${left} step${left === 1 ? '' : 's'} left</span>`;
+        }
+
+        //The request failed: console for developers, the service's words for the user.
+        async function pdfFailed(viewId, status, body) {
+            ktl.log.clog('red', `_pdf: ${viewId} request failed (${status})`, body);
+            await ktl.core.selectOption(`<b>PDF not created</b><br>${pdfEscapeHtml(pdfErrorText(status, body))}`, 'Close');
+        }
+
+        //One request with the button busy and the progress popup. Resolves { status, body }.
+        async function pdfRequest(viewId, payload, text) {
+            const btn = document.getElementById(`ktlCreatePdf-${viewId}`);
+            if (btn) btn.dataset.ktlBusy = '1';
+            pdfUpdateButtonState(viewId);
+            ktl.core.infoPopup(PDF_POPUP_STYLE);
+            let dots = 0;
+            let timer = setInterval(() => pdfShowProgress(text, null, ++dots), 500);
+            pdfShowProgress(text, null);
+            const onProgress = p => { clearInterval(timer); timer = null; pdfShowProgress(text, p); };
+            try {
+                return await pdfPost({ appId: Knack.application_id, sourceView: viewId, user: { token: Knack.getUserToken() }, ...payload }, onProgress);
+            } catch (err) {
+                return { status: 0, body: { error: `Could not reach the PDF service: ${err.message || err}` } };
+            } finally {
+                clearInterval(timer);
+                ktl.core.removeInfoPopup();
+                if (btn) delete btn.dataset.ktlBusy;
+                pdfUpdateButtonState(viewId);
+            }
+        }
+
+        //Knack keeps only lowercase letters, digits, "_" and "." in an uploaded file's name and drops the rest; the
+        //service applies this same rule (separators become "_", accents plain letters) before uploading, and the
+        //dialog shows the result under the field while typing. Same function as the service's knackFilename.
+        function pdfKnackFilename(text) {
+            let name = String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+                .replace(/\.pdf$/, '').replace(/[\s\-]+/g, '_').replace(/[^a-z0-9_.]+/g, '').replace(/_+/g, '_').replace(/^[._]+|[._]+$/g, '');
+            name = name.slice(0, 146).replace(/[._]+$/g, '');
+            return name ? `${name}.pdf` : '';
+        }
+
+        //The "ask" dialog: Filename and/or Description, prefilled with the service's defaults (its prepare answer).
+        //Resolves { filename, description } with the asked fields only, or null when cancelled. Own dialog, not
+        //selectOption: its letter shortcuts would fire while typing.
+        function pdfAskDialog(ask, prep, label) {
+            return new Promise(resolve => {
+                const inputStyle = 'width:100%;box-sizing:border-box;padding:8px 12px;border:1px solid #ccc;border-radius:4px;font-size:14px;margin-top:4px';
+                //The (?) next to Filename: what Knack keeps and what the name becomes. Shown on hover or click, inside the dialog.
+                const help = `<span class="ktlPdfAskHelp" style="position:relative;display:inline-block;margin-left:6px;vertical-align:middle">
+                    <i class="fa fa-question-circle ktlPdfAskHelpIcon" style="cursor:help;color:#4a7ebb;font-size:15px" title=""></i>
+                    <div class="ktlPdfAskHelpText" style="display:none;position:absolute;left:0;top:22px;z-index:1;width:340px;padding:10px 14px;border:1px solid #000;border-radius:5px;background:#fffbe6;color:#333;font-size:13px;font-weight:400;line-height:1.5;text-align:left;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                        <b>Knack keeps only lowercase letters, digits, _ and . in a file name.</b><br>
+                        Converted: capitals &rarr; lowercase, spaces and dashes &rarr; _, accents &rarr; plain letters (é &rarr; e).<br>
+                        Dropped: anything else, such as ( ) + &amp; / : ; ' " #.<br>
+                        .pdf is added; 150 characters at most.<br>
+                        The grey line below the field shows the stored name when it differs.
+                    </div></span>`;
+                const rows = ask.map(f => `<label style="display:block;text-align:left;margin-top:12px;font-size:14px;color:#333">${f === 'filename' ? 'Filename' + help : 'Description'}
+                    <input type="text" class="ktlPdfAskInput" data-field="${f}" value="${pdfEscapeHtml(prep[f] || '')}" style="${inputStyle}"></label>${
+                    f === 'filename' ? '<div class="ktlPdfAskStored" style="text-align:left;font-size:12px;color:#666;min-height:16px;margin-top:3px"></div>' : ''}`).join('');
+                const upload = prep.upload || {};
+                const replacing = prep.exists
+                    ? `<div style="margin-top:14px;font-size:14px;color:#a33;text-align:left">Replaces the PDF already made for these records (${pdfEscapeHtml(upload.uploadId || upload.id || '')}${upload.date ? ', ' + pdfEscapeHtml(String(upload.date).slice(0, 10)) : ''}).</div>`
+                    : '';
+                const buttonStyle = 'padding:10px 20px;border-radius:4px;cursor:pointer;font-size:14px;';
+                const overlay = $(`<div class="ktlConfirmOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background-color:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center">
+<div class="ktlConfirmDialog" style="background-color:white;padding:30px;border-radius:8px;border:1px solid #ddd;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:440px;max-width:90vw;text-align:center">
+  <div class="ktlConfirmMessage" style="font-size:16px;color:#333"><b>Create PDF</b> for ${label}</div>
+  ${rows}${replacing}
+  <div class="ktlConfirmButtons" style="display:flex;justify-content:center;gap:12px;margin-top:20px">
+    <button class="ktlConfirmOption ktlPdfAskOk" style="${buttonStyle}border:2px solid #999;background-color:#f0f0f0">Create</button>
+    <button class="ktlConfirmOption ktlPdfAskCancel" style="${buttonStyle}border:1px solid #ccc;background-color:#f8f9fa">Cancel</button>
+  </div>
+</div></div>`);
+                const close = value => { $(document).off('keydown.ktlPdfAsk'); overlay.remove(); resolve(value); };
+                const showStored = () => {
+                    const input = overlay.find('.ktlPdfAskInput[data-field="filename"]')[0];
+                    if (!input) return;
+                    const stored = pdfKnackFilename(input.value);
+                    overlay.find('.ktlPdfAskStored').text(stored && stored !== input.value.trim() ? `Stored by Knack as ${stored} (lowercase letters, digits, _ and . only)` : '');
+                };
+                overlay.find('.ktlPdfAskInput[data-field="filename"]').on('input', showStored);
+                showStored();
+                const helpText = overlay.find('.ktlPdfAskHelpText');
+                overlay.find('.ktlPdfAskHelpIcon')
+                    .on('mouseenter', () => helpText.show())
+                    .on('mouseleave', () => { if (!helpText.data('pinned')) helpText.hide(); })
+                    .on('click', e => { e.preventDefault(); const pin = !helpText.data('pinned'); helpText.data('pinned', pin); helpText.toggle(pin); });
+                const answer = () => {
+                    const out = {};
+                    overlay.find('.ktlPdfAskInput').each((i, el) => { out[el.dataset.field] = el.value.trim(); });
+                    if (out.filename === '') { overlay.find('.ktlPdfAskInput[data-field="filename"]').focus(); return; } //A PDF needs a name.
+                    close(out);
+                };
+                overlay.on('click', e => { if (e.target === overlay[0]) close(null); });
+                overlay.find('.ktlPdfAskOk').on('click', answer);
+                overlay.find('.ktlPdfAskCancel').on('click', () => close(null));
+                $(document).on('keydown.ktlPdfAsk', e => {
+                    if (e.key === 'Escape') { e.preventDefault(); close(null); }
+                    else if (e.key === 'Enter') { e.preventDefault(); answer(); }
+                });
+                $('body').append(overlay);
+                const first = overlay.find('.ktlPdfAskInput')[0];
+                if (first) {
+                    first.focus();
+                    const ext = first.dataset.field === 'filename' ? first.value.toLowerCase().lastIndexOf('.pdf') : -1;
+                    first.setSelectionRange(0, ext > 0 ? ext : first.value.length); //The name without .pdf, ready to be typed over.
+                }
+            });
         }
 
         function pdfErrorText(status, body) {
@@ -15761,9 +15914,15 @@ function Ktl($, appInfo) {
             const kwInstance = keywords[kw][0];
             if (kwInstance?.options && !ktl.core.hasRoleAccess(kwInstance.options)) return;
 
-            //A bare _pdf = no template: the service prints each record as its own page shows it. The name is
-            //never sent; the service reads it from the view's own keyword, so the browser can't pick another one.
-            const template = kwInstance?.params?.[0]?.[0] || '';
+            //Groups: [TemplateName] and [ask, Filename, Description], either order. A bare _pdf = no template: the
+            //service prints each record as its own page shows it. The name is never sent; the service reads it from
+            //the view's own keyword, so the browser can't pick another one. The ask group is read the same way there.
+            const PDF_ASK_FIELDS = ['filename', 'description'];
+            const groups = kwInstance?.params || [];
+            const askGroup = groups.find(g => (g[0] || '').toLowerCase() === 'ask');
+            const askFields = askGroup ? askGroup.slice(1).map(f => f.toLowerCase()).filter(f => PDF_ASK_FIELDS.includes(f)) : [];
+            const ask = askGroup ? (askFields.length ? askFields : PDF_ASK_FIELDS) : [];
+            const template = groups.find(g => g !== askGroup)?.[0] || '';
 
             const viewElement = document.getElementById(viewId);
             if (viewElement && !viewElement.querySelector(TAGS_BULK_OPS_CHECKBOX_SELECTOR)) {
@@ -15787,45 +15946,36 @@ function Ktl($, appInfo) {
                 const btn = ktl.fields.addButton(pdfDiv, 'Create PDF', '', ['kn-button'], `ktlCreatePdf-${viewId}`);
                 btn.title = template ? `One PDF with the checked rows, template "${template}"` : 'One PDF with the checked rows, each record as its page shows it';
                 ktlAddonsDiv.appendChild(pdfDiv);
-                $(btn).on('click', () => pdfCreate(viewId, template));
+                $(btn).on('click', () => pdfCreate(viewId, template, ask));
             }
 
             pdfUpdateButtonState(viewId);
         }
 
-        async function pdfCreate(viewId, template, overwrite = false) {
+        //names: { filename, description } from the ask dialog; sent as typed, the service cleans and applies them.
+        async function pdfCreate(viewId, template, ask = [], overwrite = false, names = null) {
             const recordIds = bulkCheckedRecordIds(viewId);
             if (!recordIds.length) return;
 
-            const token = Knack.getUserToken();
-            if (!token) {
+            if (!Knack.getUserToken()) {
                 ktl.core.timedPopup('Log in to create a PDF.', 'error', 3000);
                 return;
             }
 
-            const btn = document.getElementById(`ktlCreatePdf-${viewId}`);
             const label = `${recordIds.length} record${recordIds.length > 1 ? 's' : ''}`;
-            const t0 = Date.now();
-            if (btn) btn.dataset.ktlBusy = '1';
-            pdfUpdateButtonState(viewId);
-            ktl.core.infoPopup(PDF_POPUP_STYLE);
-            const tick = () => ktl.core.setInfoPopupText(`Creating the PDF for ${label}${overwrite ? ' (replacing the previous one)' : ''}...\n${Math.round((Date.now() - t0) / 1000)} s`);
-            tick();
-            const timer = setInterval(tick, 1000);
 
-            let result;
-            try {
-                result = await pdfPost({ appId: Knack.application_id, recordIds, sourceView: viewId, user: { token }, overwrite });
-            } catch (err) {
-                result = { status: 0, body: { error: `Could not reach the PDF service: ${err.message || err}` } };
-            } finally {
-                clearInterval(timer);
-                ktl.core.removeInfoPopup();
-                if (btn) delete btn.dataset.ktlBusy;
-                pdfUpdateButtonState(viewId);
+            //With an ask group: the service's defaults first (and whether a PDF of these records exists), the
+            //dialog, then the real request. Replacing is announced in the dialog, so no second question.
+            if (ask.length && !names) {
+                const prep = await pdfRequest(viewId, { mode: 'prepare', recordIds }, `Preparing the PDF for ${label}`);
+                if (!(prep.status === 200 && prep.body.ok)) return pdfFailed(viewId, prep.status, prep.body);
+                const answer = await pdfAskDialog(ask, prep.body, label);
+                if (answer) pdfCreate(viewId, template, ask, !!prep.body.exists, answer);
+                return;
             }
 
-            const { status, body } = result;
+            const { status, body } = await pdfRequest(viewId, { recordIds, overwrite, ...(names || {}) },
+                `Creating the PDF for ${label}${overwrite ? ' (replacing the previous one)' : ''}`);
             if (status === 200 && body.ok) {
                 const failed = body.failed || [];
                 let msg = `<b>PDF created:</b> ${pdfEscapeHtml(body.filename)}<br>${body.records} record${body.records > 1 ? 's' : ''}, ${Math.round((body.bytes || 0) / 1024)} KB`
@@ -15843,12 +15993,11 @@ function Ktl($, appInfo) {
                 const when = upload.date ? ` on ${String(upload.date).slice(0, 10)}` : '';
                 const choice = await ktl.core.selectOption(`A PDF for these ${label} already exists (${pdfEscapeHtml(upload.uploadId || upload.id || '')}${when}).<br>Replace it?`, 'Replace,Cancel');
                 if (choice === 0)
-                    pdfCreate(viewId, template, true);
+                    pdfCreate(viewId, template, ask, true, names);
                 return;
             }
 
-            ktl.log.clog('red', `_pdf: ${viewId} request failed (${status})`, body);
-            await ktl.core.selectOption(`<b>PDF not created</b><br>${pdfEscapeHtml(pdfErrorText(status, body))}`, 'Close');
+            await pdfFailed(viewId, status, body);
         }
 
         //Test PDF setup, on the table view named by _pdf_setup: the service checks the app's setup record

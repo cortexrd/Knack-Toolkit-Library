@@ -1,5 +1,10 @@
 # Knack Toolkit Library Changelog
 
+## 0.42.27    *2026-11-05*
+
+- `_pdf`: new `[ask, Filename, Description]` group, e.g. `_pdf=[ask, Filename, Description]` (no template) or `_pdf=[Brief], [ask, Filename]`. Create PDF then opens a dialog first, prefilled with the names the service would use (the filename, the upload's Description, or both with a bare `[ask]`), that the user can change before the PDF is made; the dialog also says when the PDF of these records already exists and will be replaced, so the "Replace it?" question is not asked again. Knack keeps only lowercase letters, digits, `_` and `.` in a file name: the dialog shows the stored name under the Filename field while typing (dashes and spaces become `_`, accents plain letters, the rest dropped), and a (?) next to Filename explains the rule. Views without the group work as before
+- `_pdf`: the popup shows the service's progress instead of elapsed seconds: the step under way (browser, each record, the pages or the front page, the save), a bar and the steps left. The service streams one JSON line per step and the answer last; a plain JSON answer still works. Needs the PDF Creator service 0.3.0 (prepare mode, streamed answers)
+
 ## 0.42.26    *2026-10-27*
 
 - `_dnd` sort: rows above the `lte` limit no longer consume a slot in the renumbering. Before, a row dropped among protected rows (ex: 9900 = kicked out) took its grid position times the step (33rd row = 3300) and the protected rows above it left holes; it now gets the value right after the last renumbered row (2900). Same fix for the plain `[lte, N]` views (29 instead of 33)
