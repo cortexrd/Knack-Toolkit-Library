@@ -15833,14 +15833,18 @@ function Ktl($, appInfo) {
   </div>
 </div></div>`);
                 const close = value => { $(document).off('keydown.ktlPdfAsk'); overlay.remove(); resolve(value); };
+                //The stored name stands out: bold, in the app's link color (its button color if none), easy to miss otherwise.
+                let storedColor = '#4a7ebb';
                 const showStored = () => {
                     const input = overlay.find('.ktlPdfAskInput[data-field="filename"]')[0];
                     if (!input) return;
                     const stored = pdfKnackFilename(input.value);
-                    overlay.find('.ktlPdfAskStored').text(stored && stored !== input.value.trim() ? `Stored by Knack as ${stored} (lowercase letters, digits, _ and . only)` : '');
+                    overlay.find('.ktlPdfAskStored').html(stored && stored !== input.value.trim()
+                        ? `Stored by Knack as <b style="color:${storedColor};font-size:13px">${pdfEscapeHtml(stored)}</b> (lowercase letters, digits, _ and . only)` : '');
                 };
                 overlay.find('.ktlPdfAskInput[data-field="filename"]').on('input', showStored);
                 showStored();
+                ktl.systemColors.getSystemColors().then(sc => { storedColor = sc.text?.rgb || sc.button?.rgb || storedColor; showStored(); }).catch(() => { });
                 const helpText = overlay.find('.ktlPdfAskHelpText');
                 overlay.find('.ktlPdfAskHelpIcon')
                     .on('mouseenter', () => helpText.show())
